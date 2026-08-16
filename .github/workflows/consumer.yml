@@ -1,0 +1,68 @@
+name: consumer
+
+on:
+  pull_request:
+    paths:
+      - consumer-mobile/**
+  push:
+    branches:
+      - main
+    paths:
+      - consumer-mobile/**
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: consumer-mobile/app/package-lock.json
+      - name: Install
+        working-directory: consumer-mobile/app
+        run: npm ci
+      - name: Typecheck
+        working-directory: consumer-mobile/app
+        run: npm run typecheck
+      - name: Lint
+        working-directory: consumer-mobile/app
+        run: npm run lint
+      - name: Test
+        working-directory: consumer-mobile/app
+        run: npm test
+
+  # E2E (Detox — TESTING.md §4). Disabled by default: it needs a native
+  # emulator + a debug APK (`npx expo run:android` → expo prebuild generates
+  # android/), which this ubuntu runner does not provide. Enable on a
+  # macOS/Android-Hosted runner (or self-hosted with an Android SDK + AVD)
+  # by removing the `if: false` below. The suite runs against the MSW-backed
+  # mock build (mocks default ON in debug) per TESTING.md §4; release
+  # candidates run the same specs against staging by flipping the
+  # EXPO_PUBLIC_MOCK_* switches off in the build step.
+  e2e:
+    # if: false  # <-- enable on an emulator-capable runner
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: consumer-mobile/app/package-lock.json
+      - name: Install
+        working-directory: consumer-mobile/app
+        run: npm ci
+      - name: Prebuild + build debug APK
+        working-directory: consumer-mobile/app
+        run: npx expo prebuild --platform android && npm run e2e:build
+      - name: Boot emulator
+        working-directory: consumer-mobile/app
+        run: |
+          nohup $ANDROID_HOME/emulator/emulator -avd Pixel_7_API_36 -no-snapshot -no-audio -no-window > /tmp/emulator.log 2>&1 &
+          $ANDROID_HOME/platform-tools/adb wait-for-device
+          $ANDROID_HOME/platform-tools/adb shell input keyevent 82 || true
+      - name: Run E2E
+        working-directory: consumer-mobile/app
+        run: npm run e2e:test

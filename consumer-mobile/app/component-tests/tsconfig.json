@@ -1,0 +1,14 @@
+/* Typecheck scope for component tests only: jest globals (describe/it/expect)
+ * stay here — the app's root tsconfig keeps `types: ["node"]` so jest types
+ * never leak into app code. The root project excludes component-tests/; run
+ * `tsc -p component-tests` (part of `npm run typecheck`) to check this tree.
+ */
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "jest"],
+    "noEmit": true
+  },
+  "include": ["./**/*.ts", "./**/*.tsx"],
+  "exclude": ["node_modules"]
+}

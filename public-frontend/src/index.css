@@ -1,0 +1,143 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", "Cairo", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", "Cairo", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Hudumika — restrained enterprise palette */
+  --color-paper: #fbf8f3;
+  --color-surface: #ffffff;
+  --color-line: #e8e6e0;
+  --color-line-strong: #d9d7d1;
+
+  --color-ink-900: #101412;
+  --color-ink-700: #2b332f;
+  --color-ink-500: #5c6560;
+  --color-ink-300: #8a9490;
+
+  --color-brand-700: #0f2e22;
+  --color-brand-600: #134332;
+  --color-brand-500: #1a5c44;
+  --color-brand-50: #eef4f0;
+
+  --color-accent: #c9a84e; /* muted gold — use only for dot/badge, max 5% of UI */
+  --color-accent-soft: #f4ecd2;
+
+  --color-danger: #b42318;
+  --color-danger-soft: #fef3f2;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink-900);
+    font-family: var(--font-sans);
+    overflow-x: hidden;
+  }
+  ::selection {
+    background: var(--color-brand-500);
+    color: #fff;
+  }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--color-paper); }
+  ::-webkit-scrollbar-thumb { background: var(--color-line-strong); border-radius: 99px; border: 2px solid var(--color-paper); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--color-ink-300); }
+}
+
+/* Scrollbars (reference build) */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+@utility container-x {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 80rem;
+  padding-inline: 1.25rem;
+  @media (min-width: 640px) { padding-inline: 1.5rem; }
+}
+
+/* ── Animations ─────────────────────────────────────────────── */
+@keyframes marquee-x {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-50%, 0, 0); }
+}
+.animate-marquee { animation: marquee-x var(--marquee-duration, 42s) linear infinite; }
+.marquee-mask {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
+}
+
+@keyframes caret {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.animate-caret { animation: caret 1.05s step-end infinite; }
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.85); opacity: 0.7; }
+  70% { transform: scale(1.5); opacity: 0; }
+  100% { opacity: 0; }
+}
+.animate-pulse-ring { animation: pulse-ring 3s cubic-bezier(0.22, 1, 0.36, 1) infinite; }
+
+@keyframes floaty {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+.animate-floaty { animation: floaty 6s ease-in-out infinite; }
+
+/* ── Textures ───────────────────────────────────────────────── */
+.bg-grid {
+  background-image: linear-gradient(rgba(16,20,18,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(16,20,18,0.04) 1px, transparent 1px);
+  background-size: 72px 72px;
+}
+
+/* ── Skip link ──────────────────────────────────────────────── */
+.skip-link {
+  position: fixed; top: 0.75rem; left: 50%; z-index: 200;
+  translate: -50% -200%; border-radius: 999px;
+  background: var(--color-ink-900); color: var(--color-surface);
+  padding: 0.6rem 1.4rem; font-size: 13px; font-weight: 500;
+  transition: translate 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.skip-link:focus { translate: -50% 0; }
+
+.sr-only-live {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
+/* ── Accessibility ──────────────────────────────────────────── */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+  .no-ring:focus-visible { outline: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .animate-marquee, .animate-floaty, .animate-pulse-ring { animation: none !important; }
+  .tilt-3d { transform: none !important; }
+}
+
+@media print {
+  body { background: #fff !important; color: #000 !important; }
+  header, footer, nav, aside, .no-print { display: none !important; }
+  main { padding-top: 0 !important; }
+  * { color: #000 !important; background: transparent !important; box-shadow: none !important; }
+}

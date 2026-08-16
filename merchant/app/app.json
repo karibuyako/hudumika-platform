@@ -1,0 +1,62 @@
+{
+  "expo": {
+    "name": "Hudumika Merchant",
+    "slug": "merchant-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "merchantapp",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "icon": "./assets/expo.icon",
+      "supportsTablet": false
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#1a5c44",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#1a5c44",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 90
+        }
+      ],
+      "expo-image",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Hudumika Merchant to use the camera to scan and redeem customer coupon QR codes."
+        }
+      ],
+      "expo-secure-store",
+      [
+        "expo-localization",
+        {
+          "supportsRTL": true,
+          "supportedLocales": {
+            "ios": ["en", "sw", "ar"],
+            "android": ["en", "sw", "ar"]
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

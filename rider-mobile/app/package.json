@@ -1,0 +1,52 @@
+{
+  "name": "@hudumika/rider",
+  "main": "expo-router/entry",
+  "version": "0.1.0",
+  "dependencies": {
+    "@expo-google-fonts/plus-jakarta-sans": "^0.4.0",
+    "@expo-google-fonts/space-grotesk": "^0.4.0",
+    "@expo/vector-icons": "^15.0.2",
+    "@hudumika/contract": "file:../../packages/contract",
+    "@hudumika/tokens": "file:../../packages/tokens",
+    "expo": "~57.0.11",
+    "expo-constants": "~57.0.9",
+    "expo-dev-client": "~57.0.11",
+    "expo-font": "~57.0.1",
+    "expo-haptics": "~57.0.1",
+    "expo-image": "~57.0.2",
+    "expo-linking": "~57.0.5",
+    "expo-location": "~57.0.9",
+    "expo-router": "~57.0.11",
+    "expo-secure-store": "~57.0.1",
+    "expo-splash-screen": "~57.0.5",
+    "expo-status-bar": "~57.0.1",
+    "expo-system-ui": "~57.0.2",
+    "expo-task-manager": "~57.0.9",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.2",
+    "react-native-qrcode-svg": "^6.3.21",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.0",
+    "react-native-svg": "15.15.4",
+    "react-native-web": "~0.21.0",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "@types/react": "~19.2.2",
+    "esbuild": "^0.25.9",
+    "eslint": "^9.0.0",
+    "eslint-config-expo": "~57.0.1",
+    "typescript": "~6.0.3"
+  },
+  "scripts": {
+    "start": "expo start",
+    "web": "expo start --web",
+    "lint": "expo lint",
+    "test": "node tests/run.mjs",
+    "test:contract": "node tests/run.mjs rider-contract.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "private": true
+}

@@ -1,0 +1,31 @@
+name: public-web
+
+on:
+  pull_request:
+    paths:
+      - public-frontend/**
+  push:
+    branches:
+      - main
+    paths:
+      - public-frontend/**
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # public-frontend is a root workspace member with no own lockfile —
+      # install at the workspace root, run scripts in the app folder.
+      - name: Install
+        run: npm ci
+      - name: Typecheck
+        working-directory: public-frontend
+        run: npm run typecheck
+      - name: Build
+        working-directory: public-frontend
+        run: npm run build

@@ -1,0 +1,52 @@
+{
+  "expo": {
+    "name": "Hudumika",
+    "slug": "hudumika-customer",
+    "version": "0.3.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "hudumika",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "buildNumber": "1"
+    },
+    "android": {
+      "predictiveBackGestureEnabled": false,
+      "versionCode": 1
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#1a5c44",
+          "imageWidth": 90
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#1a5c44"
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Hudumika uses your camera to scan table QR codes and add photos to your bookings."
+        }
+      ],
+      "expo-image",
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

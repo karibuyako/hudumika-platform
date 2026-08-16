@@ -1,0 +1,220 @@
+/* ── Shared module building blocks ────────────────────────
+   Tokens-only light theme. Consumed by feature modules in
+   src/features/*. Keep additions token-driven (no hex). */
+
+/* Page header with actions */
+.page-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.page-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* Toolbar: search + filters + export in one row */
+.toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.toolbar .topbar-search { width: 260px; flex: 0 1 260px; }
+.toolbar-spacer { flex: 1 1 auto; }
+
+/* Key/value meta grid for drawers and detail panels */
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px 20px;
+  margin-bottom: 16px;
+}
+.meta-item { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.meta-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-ink-300);
+}
+.meta-value { font-size: 13px; color: var(--color-ink-900); overflow-wrap: anywhere; }
+
+/* Monospace values (IDs, amounts, scores) */
+.mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-ink-700);
+}
+.mono-strong {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink-900);
+}
+
+/* Segmented control (status buckets) */
+.segmented {
+  display: inline-flex;
+  background: var(--color-paper);
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+}
+.segmented button {
+  border: 0;
+  background: transparent;
+  color: var(--color-ink-500);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+.segmented button:hover { color: var(--color-ink-900); }
+.segmented button.active { background: var(--color-surface); color: var(--color-ink-900); box-shadow: var(--shadow-sm); }
+
+/* Tabs for detail panels */
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--color-line);
+  margin-bottom: 16px;
+}
+.tab {
+  border: 0;
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-ink-500);
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.tab:hover { color: var(--color-ink-900); }
+.tab.active { color: var(--color-brand-600); border-bottom-color: var(--color-brand-600); }
+
+/* Form grids (2-column) */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0 16px;
+}
+.form-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+textarea.field { min-height: 88px; resize: vertical; }
+select.field { appearance: none; }
+
+/* Progress / capacity bar */
+.bar-track {
+  background: var(--color-line);
+  border-radius: 999px;
+  height: 8px;
+  overflow: hidden;
+  min-width: 60px;
+}
+.bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-brand-500);
+  transition: width 200ms ease;
+}
+.bar-fill.warn { background: var(--color-warning); }
+.bar-fill.bad { background: var(--color-danger); }
+
+/* KPI strip with sub-labels */
+.kpi {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+/* Queue list rows */
+.queue-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.queue-item {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.queue-item:hover { border-color: var(--color-line-strong); }
+.queue-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.queue-actions { display: flex; gap: 8px; align-items: center; }
+
+/* Small inline tags for documents / signals / chips inside rows */
+.tag {
+  display: inline-block;
+  background: var(--color-brand-50);
+  color: var(--color-brand-700);
+  border-radius: 6px;
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.tag.warn { background: var(--color-warning-soft); color: var(--color-warning); }
+.tag.bad { background: var(--color-danger-soft); color: var(--color-danger); }
+.tag.info { background: var(--color-info-soft); color: var(--color-info); }
+.tag.muted { background: var(--color-paper); color: var(--color-ink-500); }
+
+/* Masked sensitive values */
+.masked {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-ink-300);
+  letter-spacing: 0.08em;
+}
+
+/* Divider inside drawers */
+.divider { border: 0; border-top: 1px solid var(--color-line); margin: 14px 0; }
+
+/* Tone text helpers */
+.text-danger { color: var(--color-danger); }
+.text-success { color: var(--color-success); }
+.text-warning { color: var(--color-warning); }
+.text-muted { color: var(--color-ink-500); }
+
+/* Detail section header inside drawers */
+.detail-section { margin-bottom: 14px; }
+.detail-section h3 {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--color-ink-500);
+  margin: 0 0 8px;
+}
+
+/* Wrap tables for horizontal scroll on narrow screens */
+.table-wrap { overflow-x: auto; }
+.table-wrap .table { min-width: 720px; }
+
+/* Pagination footer */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  color: var(--color-ink-500);
+  font-size: 12px;
+}
+.pagination-actions { display: flex; gap: 8px; }
+
+/* Empty table cell with a hint icon-free layout */
+.empty-cell { padding: 28px 16px; text-align: center; }

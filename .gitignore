@@ -1,0 +1,21 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+*.tsbuildinfo
+
+# env files (keep examples)
+.env
+.env.*
+!.env.example
+
+# local tooling binaries
+tools/
+
+# logs & OS
+*.log
+.DS_Store
+
+# go build artifacts (none in-tree, safety)
+backend/app/bin/

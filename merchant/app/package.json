@@ -1,0 +1,72 @@
+{
+  "name": "@hudumika/merchant",
+  "main": "expo-router/entry",
+  "version": "1.0.0",
+  "dependencies": {
+    "@expo-google-fonts/plus-jakarta-sans": "^0.4.0",
+    "@expo-google-fonts/space-grotesk": "^0.4.0",
+    "@expo/ui": "~57.0.9",
+    "@expo/vector-icons": "^15.0.2",
+    "@hudumika/contract": "file:../../packages/contract",
+    "@hudumika/tokens": "file:../../packages/tokens",
+    "expo": "~57.0.11",
+    "expo-camera": "~57.0.3",
+    "expo-clipboard": "~57.0.1",
+    "expo-constants": "~57.0.9",
+    "expo-device": "~57.0.1",
+    "expo-font": "~57.0.1",
+    "expo-glass-effect": "~57.0.1",
+    "expo-haptics": "~57.0.1",
+    "expo-image": "~57.0.2",
+    "expo-linking": "~57.0.5",
+    "expo-localization": "~57.0.1",
+    "expo-notifications": "~57.0.11",
+    "expo-router": "~57.0.11",
+    "expo-secure-store": "~57.0.1",
+    "expo-splash-screen": "~57.0.5",
+    "expo-status-bar": "~57.0.1",
+    "expo-symbols": "~57.0.2",
+    "expo-system-ui": "~57.0.2",
+    "expo-web-browser": "~57.0.2",
+    "msw": "^2.15.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.2",
+    "react-native-gesture-handler": "~2.32.0",
+    "react-native-reanimated": "4.5.1",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.0",
+    "react-native-svg": "15.15.4",
+    "react-native-web": "~0.21.0",
+    "react-native-worklets": "0.10.1",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "@types/react": "~19.2.2",
+    "esbuild": "^0.25.9",
+    "eslint": "^9.0.0",
+    "eslint-config-expo": "~57.0.1",
+    "playwright": "^1.62.1",
+    "typescript": "~6.0.3"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "build": "expo export --platform web",
+    "lint": "expo lint",
+    "mock:gateway": "esbuild scripts/mock-gateway.ts --bundle --platform=node --format=esm --alias:@=./src --outfile=scripts/.build/mock-gateway.mjs --log-level=warning && node scripts/.build/mock-gateway.mjs",
+    "test": "node tests/run.mjs",
+    "test:contract": "node tests/run.mjs contract.test.ts",
+    "test:e2e": "node tests/e2e/web-e2e.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "private": true,
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
+  }
+}

@@ -1,0 +1,39 @@
+# Hudumika Prometheus configuration (PROVISIONABLE monitoring stack).
+#
+# Scrapes the API's /metrics endpoint and loads the Hudumika alerting rules
+# from backend/app/dashboards/alerts.yml.
+#
+# Target note: this file is written for a host-level Prometheus run next to
+# the API. Under the compose deployment (backend/app/docker-compose.yml,
+# service name `api`) the same config applies with the target host swapped to
+# the compose-network hostname `api:8080` (the API listens on 8080 in the
+# container). No docker is required on this repo host — the mapping is
+# documented here, not executed.
+#
+# Alerting rules: `rule_files` paths are relative to the directory of this
+# file. Alerts live at backend/app/dashboards/alerts.yml, one level above
+# this directory, hence `../dashboards/alerts.yml` (group names
+# hudumika_api / hudumika_platform). If this file is copied to a Prometheus
+# install root, adjust the path accordingly.
+#
+# Validated against: docs/MONITORING.md metric list + alert rules table,
+# backend/app/dashboards/alerts.yml, backend/app/internal/api/metrics.go.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - ../dashboards/alerts.yml
+
+scrape_configs:
+  - job_name: hudumika-api
+    # API /metrics on the default API port (config PORT, default 8080).
+    # Compose-network hostname for the same target: api:8080.
+    metrics_path: /metrics
+    scrape_interval: 15s
+    static_configs:
+      - targets: ["localhost:8080"]
+        labels:
+          env: local
+          team: backend

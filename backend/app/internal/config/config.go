@@ -1,0 +1,152 @@
+package config
+
+import (
+	"errors"
+	"fmt"
+	"os"
+	"strings"
+	"time"
+)
+
+const (
+	EnvDevelopment = "development"
+	EnvStaging     = "staging"
+	EnvProduction  = "production"
+)
+
+var validEnvs = map[string]bool{
+	EnvDevelopment: true,
+	EnvStaging:     true,
+	EnvProduction:  true,
+}
+
+// Default JWT secrets that must never be used outside development. The list is
+// kept short and explicit; anything not matching the production strength rules
+// below is also rejected.
+var devJWTSecrets = []string{
+	"dev-secret-change-me",
+	"change-me-in-production",
+	"compose-dev-secret",
+	"secret",
+	"password",
+}
+
+type Config struct {
+	Env         string
+	Port        string
+	DatabaseURL string
+	RedisURL    string
+	JWTSecret   []byte
+	OTPDevCode  string
+	AccessTTL   time.Duration
+	RefreshTTL  time.Duration
+	CORSOrigins []string
+}
+
+// Load reads the environment and validates it. Any invalid value is a hard
+// boot failure: the caller must not start the process with a bad config.
+func Load() (Config, error) {
+	cfg := Config{
+		Env:         getEnv("ENV", ""),
+		Port:        getEnv("PORT", "8080"),
+		DatabaseURL: os.Getenv("DATABASE_URL"),
+		RedisURL:    os.Getenv("REDIS_URL"),
+		JWTSecret:   []byte(getEnv("JWT_SECRET", getEnv("JWT_SIGNING_KEY", ""))),
+		OTPDevCode:  getEnv("OTP_DEV_CODE", "123456"),
+		AccessTTL:   durationEnv("ACCESS_TOKEN_TTL", 15*time.Minute),
+		RefreshTTL:  durationEnv("REFRESH_TOKEN_TTL", 30*24*time.Hour),
+		CORSOrigins: splitEnv("CORS_ORIGINS", ""),
+	}
+	if err := cfg.Validate(); err != nil {
+		return Config{}, err
+	}
+	return cfg, nil
+}
+
+// Validate enforces the platform environment rules. It returns a single error
+// listing every problem so operators see all violations at once.
+func (c Config) Validate() error {
+	var problems []string
+
+	if !validEnvs[c.Env] {
+		problems = append(problems,
+			fmt.Sprintf("ENV must be one of %q, %q, %q — got %q", EnvDevelopment, EnvStaging, EnvProduction, c.Env))
+	}
+
+	if len(c.JWTSecret) == 0 {
+		problems = append(problems, "JWT_SECRET (or its alias JWT_SIGNING_KEY) is required")
+	} else if c.Env == EnvProduction {
+		if len(c.JWTSecret) < 32 {
+			problems = append(problems,
+				fmt.Sprintf("production JWT_SECRET must be at least 32 bytes, got %d", len(c.JWTSecret)))
+		}
+		s := string(c.JWTSecret)
+		for _, weak := range devJWTSecrets {
+			if s == weak {
+				problems = append(problems, "refusing to boot in production with a known weak JWT_SECRET")
+				break
+			}
+		}
+	}
+
+	if c.Env == EnvProduction {
+		if c.DatabaseURL == "" {
+			problems = append(problems, "DATABASE_URL is required in production")
+		}
+		if c.RedisURL == "" {
+			problems = append(problems, "REDIS_URL is required in production")
+		}
+		for _, o := range c.CORSOrigins {
+			if o == "*" {
+				problems = append(problems, "CORS_ORIGINS must not be '*' in production")
+			}
+		}
+		if c.OTPDevCode != "" && c.OTPDevCode == "123456" {
+			problems = append(problems, "OTP_DEV_CODE must not be the default dev code in production")
+		}
+	}
+
+	if len(problems) > 0 {
+		return errors.New(strings.Join(problems, "; "))
+	}
+	return nil
+}
+
+func (c Config) IsProd() bool { return c.Env == EnvProduction }
+
+// DevOTPEnabled reports whether the fixed development OTP code is usable in
+// the current environment. It is never usable in production.
+func (c Config) DevOTPEnabled() bool { return !c.IsProd() && c.OTPDevCode != "" }
+
+func getEnv(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
+
+func durationEnv(key string, fallback time.Duration) time.Duration {
+	if v := os.Getenv(key); v != "" {
+		if d, err := time.ParseDuration(v); err == nil {
+			return d
+		}
+	}
+	return fallback
+}
+
+func splitEnv(key, fallback string) []string {
+	if v := os.Getenv(key); v != "" {
+		parts := strings.Split(v, ",")
+		out := make([]string, 0, len(parts))
+		for _, p := range parts {
+			if p = strings.TrimSpace(p); p != "" {
+				out = append(out, p)
+			}
+		}
+		return out
+	}
+	if fallback == "" {
+		return nil
+	}
+	return []string{fallback}
+}

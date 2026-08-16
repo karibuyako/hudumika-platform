@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Lint
+        run: npx expo lint
+      - name: Contract tests (MSW backend)
+        run: node tests/run.mjs
+      - name: Web export (production)
+        run: EXPO_PUBLIC_ENVIRONMENT=production npx expo export --platform web
+      - name: Mock gate — production bundle must not load mocks
+        run: |
+          # MOCK_RUNTIME_MARKER (src/mock/switches.ts) is only referenced inside the
+          # mock-enabled branch, so tree-shaking drops it from production exports.
+          # Finding it here means mocks would load in production — fail the build.
+          echo "Checking production bundle for mock marker (hudumika-mock-runtime)…"
+          if grep -r "hudumika-mock-runtime" dist/ --include='*.js'; then
+            echo "FAIL: mock runtime marker found in production bundle"
+            exit 1
+          fi
+          echo "OK: no mock marker in production bundle"
+      - name: Bundle budget check
+        run: node tests/bundle-budget.mjs
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: dist/

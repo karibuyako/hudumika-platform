@@ -1,0 +1,41 @@
+name: admin-web
+
+on:
+  pull_request:
+    paths:
+      - admin-web/**
+  push:
+    branches:
+      - main
+    paths:
+      - admin-web/**
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # admin-web/app is a root workspace member with no own lockfile —
+      # install at the workspace root, run scripts in the app folder.
+      - name: Install
+        run: npm ci
+      - name: Typecheck
+        working-directory: admin-web/app
+        run: npm run typecheck
+      - name: Test
+        working-directory: admin-web/app
+        run: npm test
+      # MSW parity gate: every contract client function the console consumes
+      # must resolve 200 against the mocks generated from API-CONTRACT.yaml.
+      - name: Parity
+        working-directory: admin-web/app
+        run: npm run test:parity
+      # Playwright E2E runs against staging, not in this CI job — see
+      # DEPLOYMENT.md for the staging E2E gate.
+      - name: Build
+        working-directory: admin-web/app
+        run: npm run build

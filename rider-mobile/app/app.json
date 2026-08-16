@@ -1,0 +1,64 @@
+{
+  "expo": {
+    "name": "Hudumika Rider",
+    "slug": "rider-app",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "hudumika-rider",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "co.tz.hudumika.rider",
+      "buildNumber": "1"
+    },
+    "android": {
+      "package": "co.tz.hudumika.rider",
+      "predictiveBackGestureEnabled": false,
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION"
+      ]
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Hudumika Rider uses your location to show delivery progress.",
+          "locationAlwaysAndWhenInUsePermission": "Hudumika Rider shares your live location while you deliver so customers can track their order.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#1a5c44",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 90
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "68f25f3a-553d-48cb-af00-b63b69d3d0a6"
+      }
+    },
+    "owner": "hudumika"
+  }
+}

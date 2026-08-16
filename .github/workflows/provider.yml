@@ -1,0 +1,37 @@
+name: provider
+
+on:
+  pull_request:
+    paths:
+      - provider/**
+  push:
+    branches:
+      - main
+    paths:
+      - provider/**
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: provider/app/package-lock.json
+      - name: Install
+        working-directory: provider/app
+        run: npm ci
+      - name: Typecheck
+        working-directory: provider/app
+        run: npm run typecheck
+      - name: Test
+        working-directory: provider/app
+        run: npm test
+      - name: Lint
+        working-directory: provider/app
+        run: npm run lint
+      - name: Mocks never ship
+        working-directory: provider/app
+        run: node scripts/check-prod-mocks.mjs

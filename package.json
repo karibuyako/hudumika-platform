@@ -1,0 +1,30 @@
+{
+  "name": "hudumika-platform",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Hudumika platform monorepo — shared contract package, per-team app folders, and docs.",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "packages/tokens",
+    "public-frontend",
+    "admin-web/app",
+    "rider-mobile/app"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev -w @hudumika/public-web",
+    "build:web": "npm run build -w @hudumika/public-web",
+    "dev:admin": "npm run dev -w @hudumika/admin-web",
+    "build:admin": "npm run build -w @hudumika/admin-web",
+    "generate:contract": "orval --config orval.config.ts",
+    "build:contract": "npm run generate:contract && npm run typecheck -w @hudumika/contract",
+    "publish:contract": "npm run typecheck -w @hudumika/contract && npm run publish -w @hudumika/contract",
+    "doctor:publish": "npm pack --dry-run -w @hudumika/contract",
+    "test:api": "make -C backend/app test",
+    "build:api": "make -C backend/app build",
+    "lint": "expo lint"
+  },
+  "devDependencies": {
+    "orval": "^8.24.0"
+  }
+}

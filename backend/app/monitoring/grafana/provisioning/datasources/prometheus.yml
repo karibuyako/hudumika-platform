@@ -1,0 +1,22 @@
+# Hudumika Grafana datasource provisioning.
+#
+# url note: http://prometheus:9090 is the docker-compose-network hostname of
+# the Prometheus service; there is no docker on this repo host, so this URL
+# is the provisioning artifact only. When Grafana runs on the same host as a
+# host-level Prometheus (see monitoring/prometheus.yml), point the url at
+# http://localhost:9090 instead. The uid is `prometheus` — every dashboard in
+# backend/app/dashboards/grafana/*.json references exactly this uid
+# (datasource: { type: prometheus, uid: prometheus }), so the uid must not
+# change.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: 15s

@@ -1,0 +1,31 @@
+name: contract
+
+on:
+  pull_request:
+    paths:
+      - backend/API-CONTRACT.yaml
+      - packages/contract/**
+  push:
+    branches:
+      - main
+    paths:
+      - backend/API-CONTRACT.yaml
+      - packages/contract/**
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Regenerate client from contract
+        run: npm run generate:contract
+      - name: Fail if generated output is not committed
+        run: git diff --exit-code -- packages/contract
+      - name: Typecheck generated client
+        run: npm run build:contract

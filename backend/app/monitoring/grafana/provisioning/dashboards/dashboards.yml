@@ -1,0 +1,22 @@
+# Hudumika Grafana dashboard provider provisioning.
+#
+# Path note: `providers[].options.path` is the path where the dashboard JSON
+# files live on the Grafana host. The dashboard artifacts are kept in the
+# repo at backend/app/dashboards/grafana/ (api-overview.json, errors.json,
+# dispatch.json, money.json, mobile-otp.json) — mount or copy that directory
+# to the path below on the Grafana host (e.g. volume mount
+# ./dashboards/grafana:/var/lib/grafana/dashboards/hudumika). All five
+# dashboards use datasource uid `prometheus` (provisioned by
+# ../datasources/prometheus.yml) and land in folder `Hudumika`.
+apiVersion: 1
+
+providers:
+  - name: Hudumika
+    orgId: 1
+    folder: Hudumika
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 30
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards/hudumika

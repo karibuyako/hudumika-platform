@@ -1,0 +1,8 @@
+=== selfcheck report: start=2026-08-16T09:35:56Z end=2026-08-16T09:38:56Z base=http://127.0.0.1:8092 interval=300s window=3m prometheus=skipped ===
+cycle 1: time=2026-08-16T09:35:57Z checks=8 ok=6 failures=2
+cycle 2: time=2026-08-16T09:38:56Z checks=9 ok=7 failures=2
+FINAL: SELFCHECK FAIL: checks=17 ok=13 failures=4 window=3m
+=== selfcheck report: start=2026-08-16T09:39:14Z end=2026-08-16T09:42:15Z base=http://127.0.0.1:8092 interval=300s window=3m prometheus=skipped ===
+cycle 1: time=2026-08-16T09:39:15Z checks=8 ok=8 failures=0
+cycle 2: time=2026-08-16T09:42:15Z checks=9 ok=9 failures=0
+FINAL: SELFCHECK PASS: checks=17 ok=17 failures=0 window=3m

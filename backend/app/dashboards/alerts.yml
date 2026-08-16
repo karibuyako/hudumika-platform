@@ -1,0 +1,105 @@
+# Hudumika Prometheus alerting rules (LIVE).
+#
+# Load via prometheus rule_files: [ "dashboards/alerts.yml" ].
+# Thresholds/severities match docs/MONITORING.md (alert rules table) and
+# docs/RUNBOOKS.md section 4.2 (key metrics). Metric names must stay in sync
+# with backend/app/internal/api/metrics.go — the drift-pin test
+# (backend/app/internal/api/alerts_test.go) enforces exactly that.
+
+groups:
+  - name: hudumika_api
+    rules:
+      - alert: HighLatency
+        expr: 'histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, path)) > 1'
+        for: 5m
+        labels:
+          severity: SEV2
+          team: backend
+        annotations:
+          summary: 'p99 latency above 1s for 5m (path {{ $labels.path }})'
+          runbook: 'docs/RUNBOOKS.md#42-key-metrics'
+          description: 'p99 > 1 s for 5 min — identify the slow path, rollback if a regression. MONITORING.md alert rules, RUNBOOKS 4.2.'
+
+      - alert: ErrorRate
+        expr: 'sum(rate(http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(http_requests_total[5m])), 1) > 0.01'
+        for: 5m
+        labels:
+          severity: SEV2
+          team: backend
+        annotations:
+          summary: '5xx error rate above 1% for 5m'
+          runbook: 'docs/RUNBOOKS.md#42-key-metrics'
+          description: 'Error rate > 1% for 5 min — inspect logs by request_id, rollback if a regression. MONITORING.md alert rules, RUNBOOKS 4.2.'
+
+      - alert: ReadyzDown
+        # Prometheus-side `up` tracks scrape success; a failing /readyz makes
+        # the API unready, which the load balancer answers with 503. Modelled
+        # as up{job="hudumika-api"} == 0 per MONITORING.md (readyz 503 for 2 min).
+        expr: 'up{job="hudumika-api"} == 0'
+        for: 2m
+        labels:
+          severity: SEV1
+          team: backend
+        annotations:
+          summary: '/readyz down for 2m (503)'
+          runbook: 'docs/RUNBOOKS.md#41-endpoints-to-check'
+          description: '/readyz returns 503 for 2 min — DB/Redis check, connection pool saturation. RUNBOOKS 4.1.'
+
+      - alert: OtpRateLimitedSpike
+        expr: 'increase(otp_requests_total{outcome="rate_limited"}[5m]) > 50'
+        for: 2m
+        labels:
+          severity: SEV3
+          team: backend
+        annotations:
+          summary: 'OTP rate-limited outcomes spiked (> 50 in 5m)'
+          runbook: 'docs/RUNBOOKS.md#43-response-playbook'
+          description: '> 50 rate_limited OTP outcomes in 5 min — possible SMS abuse or provider degradation; switch SMS provider via config. RUNBOOKS 4.3 item 4.'
+
+      - alert: IdempotencyReplayRate
+        # Informational only: any idempotency-key hit means a client retried a
+        # replayed request. Watch-only, no page.
+        expr: 'rate(idempotency_hits_total[5m]) > 0'
+        for: 1m
+        labels:
+          severity: info
+          team: backend
+        annotations:
+          summary: 'Idempotency-key replays observed'
+          runbook: 'docs/RUNBOOKS.md#32-on-call-flow'
+          description: 'Informational: idempotency_hits_total > 0 indicates client retries/replays. RUNBOOKS 3.2.'
+
+  - name: hudumika_platform
+    # Placeholders only — commented until the metrics exist (queue_depth and
+    # payout_failures_total are PLANNED in MONITORING.md metrics table).
+    rules: []
+    # - alert: QueueDepthHigh
+    #   expr: 'max(queue_depth{queue="dispatch"}) > 100'
+    #   for: 5m
+    #   labels:
+    #     severity: SEV2
+    #     team: backend
+    #   annotations:
+    #     summary: 'dispatch queue depth above 100 for 5m'
+    #     runbook: 'docs/RUNBOOKS.md#43-response-playbook'
+    #     description: 'Dispatch queue > 100 for 5 min — drain, re-enqueue, verify rider pools. MONITORING.md alert rules.'
+    # - alert: PaymentWebhookBacklog
+    #   expr: 'max(payment_webhook_backlog) > 0'
+    #   for: 5m
+    #   labels:
+    #     severity: SEV1
+    #     team: backend
+    #   annotations:
+    #     summary: 'payment webhook backlog unprocessed > 5 min'
+    #     runbook: 'docs/RUNBOOKS.md#43-response-playbook'
+    #     description: 'Unprocessed payment webhooks > 5 min — replay outbox, alert finance. MONITORING.md alert rules.'
+    # - alert: PayoutFailures
+    #   expr: 'sum(rate(payout_failures_total[5m])) by (provider) > 0'
+    #   for: 5m
+    #   labels:
+    #     severity: SEV1
+    #     team: backend
+    #   annotations:
+    #     summary: 'payout batch exceptions detected'
+    #     runbook: 'docs/RUNBOOKS.md#43-response-playbook'
+    #     description: 'Payout batch exceptions — finance review workflow, manual settlement; never auto-retry money. RUNBOOKS 4.3 item 5.'

@@ -1,0 +1,83 @@
+name: admin-web-staging
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - staging
+    paths:
+      - admin-web/**
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # admin-web/app is a root workspace member with no own lockfile —
+      # install at the workspace root, run scripts in the app folder.
+      - name: Install
+        run: npm ci
+      - name: Typecheck
+        working-directory: admin-web/app
+        run: npm run typecheck
+      - name: Unit tests
+        working-directory: admin-web/app
+        run: npm test
+      # MSW parity gate: every contract client function the console consumes
+      # must resolve 200 against the mocks generated from API-CONTRACT.yaml.
+      - name: Parity
+        working-directory: admin-web/app
+        run: npm run test:parity
+
+  e2e-staging:
+    needs: gate
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
+      # Runs against the deployed staging host. The local dev server is
+      # skipped when PLAYWRIGHT_BASE_URL is set (see playwright.config.ts).
+      - name: Playwright e2e against staging
+        working-directory: admin-web/app
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ secrets.STAGING_OPS_URL }}
+        run: npx playwright test
+
+  deploy:
+    needs: e2e-staging
+    if: github.ref == 'refs/heads/staging'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Build
+        working-directory: admin-web/app
+        run: npm run build
+      # Deploy placeholder: publish admin-web/app/dist to the hosting
+      # platform (same pattern as public web). No credentials live in this
+      # repository. Configure the staging environment secrets and wire them
+      # into the deploy command:
+      #   STAGING_DEPLOY_* (e.g. STAGING_DEPLOY_TOKEN, STAGING_DEPLOY_TARGET)
+      # Example once the hosting CLI is chosen:
+      # - name: Deploy dist to staging
+      #   working-directory: admin-web/app
+      #   run: ./deploy-staging.sh
+      #   env:
+      #     STAGING_DEPLOY_TOKEN: ${{ secrets.STAGING_DEPLOY_TOKEN }}
+      #     STAGING_DEPLOY_TARGET: ${{ secrets.STAGING_DEPLOY_TARGET }}

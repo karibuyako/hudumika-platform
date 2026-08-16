@@ -1,0 +1,18 @@
+/* Typecheck scope for the Detox E2E suite only — mirrors the
+ * component-tests/tsconfig.json pattern: the app's root tsconfig keeps
+ * `types: ["node"]` and excludes this tree, so detox/jest types never leak
+ * into app code. Specs import everything explicitly:
+ *   - detox globals (device/by/element/expect/waitFor) via named imports
+ *     from 'detox' (Detox 20 style, no global exposure needed),
+ *   - describe/it/beforeAll/beforeEach from '@jest/globals'.
+ * Run `tsc -p e2e/tsconfig.json --noEmit` (part of `npm run typecheck`).
+ */
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": ["./**/*.ts"],
+  "exclude": ["node_modules"]
+}

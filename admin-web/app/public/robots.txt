@@ -1,0 +1,4 @@
+User-agent: *
+Disallow: /
+
+# The admin console is private: it must never be indexed by search engines.
