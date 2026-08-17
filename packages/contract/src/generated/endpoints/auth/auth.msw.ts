@@ -23,7 +23,10 @@ import type {
 import type {
   OtpDelivery,
   Session,
-  SessionInfo
+  SessionInfo,
+  TwoFaEnrollResult,
+  TwoFaSessionResult,
+  TwoFaVerifyResult
 } from '../../model';
 
 
@@ -32,6 +35,14 @@ export const getRequestOtpResponseMock = (overrideResponse: Partial<Extract<OtpD
 export const getVerifyOtpResponseMock = (overrideResponse: Partial<Extract<Session, object>> = {}): Session => ({accessToken: faker.string.alpha({length: {min: 10, max: 20}}), refreshToken: faker.string.alpha({length: {min: 10, max: 20}}), user: {id: faker.string.uuid(), phone: faker.string.alpha({length: {min: 10, max: 20}}), email: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), fullName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), avatarUrl: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), activeRole: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), roles: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({role: faker.helpers.arrayElement(['customer','merchant','provider','rider'] as const), merchantId: faker.helpers.arrayElement([faker.string.uuid(), null]), providerId: faker.helpers.arrayElement([faker.string.uuid(), null]), riderId: faker.helpers.arrayElement([faker.string.uuid(), null])})), locale: faker.string.alpha({length: {min: 10, max: 20}}), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z'}, ...overrideResponse})
 
 export const getRefreshTokenResponseMock = (overrideResponse: Partial<Extract<Session, object>> = {}): Session => ({accessToken: faker.string.alpha({length: {min: 10, max: 20}}), refreshToken: faker.string.alpha({length: {min: 10, max: 20}}), user: {id: faker.string.uuid(), phone: faker.string.alpha({length: {min: 10, max: 20}}), email: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), fullName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), avatarUrl: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), activeRole: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), roles: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({role: faker.helpers.arrayElement(['customer','merchant','provider','rider'] as const), merchantId: faker.helpers.arrayElement([faker.string.uuid(), null]), providerId: faker.helpers.arrayElement([faker.string.uuid(), null]), riderId: faker.helpers.arrayElement([faker.string.uuid(), null])})), locale: faker.string.alpha({length: {min: 10, max: 20}}), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z'}, ...overrideResponse})
+
+export const getTwoFaEnrollResponseMock = (overrideResponse: Partial<Extract<TwoFaEnrollResult, object>> = {}): TwoFaEnrollResult => ({secret: faker.string.alpha({length: {min: 10, max: 20}}), otpauthUrl: faker.internet.url(), qrDataUrl: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), recoveryCodes: Array.from({ length: faker.number.int({min: 10, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
+
+export const getTwoFaVerifyResponseMock = (overrideResponse: Partial<Extract<TwoFaVerifyResult, object>> = {}): TwoFaVerifyResult => ({enabled: true, recoveryCodes: Array.from({ length: faker.number.int({min: 10, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
+
+export const getTwoFaVerifyForSessionResponseMock = (overrideResponse: Partial<Extract<TwoFaSessionResult, object>> = {}): TwoFaSessionResult => ({accessToken: faker.string.alpha({length: {min: 10, max: 20}}), refreshToken: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
+
+export const getTwoFaRecoveryResponseMock = (overrideResponse: Partial<Extract<TwoFaSessionResult, object>> = {}): TwoFaSessionResult => ({accessToken: faker.string.alpha({length: {min: 10, max: 20}}), refreshToken: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 
 export const getListMySessionsResponseMock = (): SessionInfo[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.uuid(), deviceInfo: faker.string.alpha({length: {min: 10, max: 20}}), lastActiveAt: faker.date.past().toISOString().slice(0, 19) + 'Z', current: faker.datatype.boolean()})))
 
@@ -82,6 +93,64 @@ export const getLogoutMockHandler = (overrideResponse?: void | ((info: Parameter
   }, options)
 }
 
+export const getTwoFaEnrollMockHandler = (overrideResponse?: TwoFaEnrollResult | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<TwoFaEnrollResult> | TwoFaEnrollResult), options?: RequestHandlerOptions) => {
+  return http.get('*/auth/2fa/enroll', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getTwoFaEnrollResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getTwoFaVerifyMockHandler = (overrideResponse?: TwoFaVerifyResult | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<TwoFaVerifyResult> | TwoFaVerifyResult), options?: RequestHandlerOptions) => {
+  return http.post('*/auth/2fa/verify', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getTwoFaVerifyResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getTwoFaVerifyForSessionMockHandler = (overrideResponse?: TwoFaSessionResult | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<TwoFaSessionResult> | TwoFaSessionResult), options?: RequestHandlerOptions) => {
+  return http.post('*/auth/2fa/verify-for-session', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getTwoFaVerifyForSessionResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getTwoFaDisableMockHandler = (overrideResponse?: void | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
+  return http.post('*/auth/2fa/disable', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+  if (typeof overrideResponse === 'function') {await overrideResponse(info); }
+
+    return new HttpResponse(null,
+      { status: 204
+      })
+  }, options)
+}
+
+export const getTwoFaRecoveryMockHandler = (overrideResponse?: TwoFaSessionResult | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<TwoFaSessionResult> | TwoFaSessionResult), options?: RequestHandlerOptions) => {
+  return http.post('*/auth/2fa/recovery', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getTwoFaRecoveryResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
 export const getChangePasswordMockHandler = (overrideResponse?: void | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
   return http.post('*/auth/change-password', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
   if (typeof overrideResponse === 'function') {await overrideResponse(info); }
@@ -118,6 +187,11 @@ export const getAuthMock = () => [
   getVerifyOtpMockHandler(),
   getRefreshTokenMockHandler(),
   getLogoutMockHandler(),
+  getTwoFaEnrollMockHandler(),
+  getTwoFaVerifyMockHandler(),
+  getTwoFaVerifyForSessionMockHandler(),
+  getTwoFaDisableMockHandler(),
+  getTwoFaRecoveryMockHandler(),
   getChangePasswordMockHandler(),
   getListMySessionsMockHandler(),
   getRevokeSessionMockHandler()

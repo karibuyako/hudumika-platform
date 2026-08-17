@@ -9,13 +9,16 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type RequestOtpBodyPurpose = typeof RequestOtpBodyPurpose[keyof typeof RequestOtpBodyPurpose];
+/**
+ * Requested session role. Defaults to the active role (or customer). A role with no active role row answers 422 ROLE_NOT_ACTIVE.
+ */
+export type VerifyOtpBodyRole = typeof VerifyOtpBodyRole[keyof typeof VerifyOtpBodyRole];
 
 
-export const RequestOtpBodyPurpose = {
-  login: 'login',
-  signup: 'signup',
-  register: 'register',
-  password_reset: 'password_reset',
-  verify_role: 'verify_role',
+export const VerifyOtpBodyRole = {
+  customer: 'customer',
+  merchant: 'merchant',
+  provider: 'provider',
+  rider: 'rider',
+  staff: 'staff',
 } as const;

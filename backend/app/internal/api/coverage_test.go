@@ -17,7 +17,7 @@ import (
 	"github.com/hudumika/api-backend/internal/gen"
 )
 
-const contractPathCount = 503
+const contractPathCount = 508
 
 // testUUID is the substitute used for every path parameter without an enum
 // constraint: a well-formed uuid that any uuid-typed binding accepts.

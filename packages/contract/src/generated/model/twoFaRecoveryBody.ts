@@ -9,13 +9,12 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type RequestOtpBodyPurpose = typeof RequestOtpBodyPurpose[keyof typeof RequestOtpBodyPurpose];
-
-
-export const RequestOtpBodyPurpose = {
-  login: 'login',
-  signup: 'signup',
-  register: 'register',
-  password_reset: 'password_reset',
-  verify_role: 'verify_role',
-} as const;
+export interface TwoFaRecoveryBody {
+  /** Single-use recovery code */
+  code: string;
+  /**
+     * Reserved for a future password-reset extension; ignored by the current server
+     * @minLength 8
+     */
+  newPassword?: string;
+}

@@ -32,6 +32,16 @@ Clients switch on `code`, never on `message` text.
 `OTP_INVALID`, `OTP_EXPIRED`, `OTP_MAX_ATTEMPTS`, `OTP_RATE_LIMITED`,
 `SESSION_EXPIRED`, `REFRESH_TOKEN_REVOKED`, `MFA_REQUIRED`, `MFA_INVALID`.
 
+## Two-factor (MFA)
+
+`TWO_FA_NOT_ENABLED` (409 — verify-for-session/disable/recovery without an
+enabled enrollment, or verify without any enrollment),
+`TWO_FA_ALREADY_ENABLED` (409 — enroll or verify when 2FA is already on),
+`TWO_FA_CODE_INVALID` (401 — unknown or wrong TOTP/recovery code),
+`TWO_FA_RECOVERY_CODE_USED` (401 — recovery code already consumed; codes are
+single-use),
+`ROLE_NOT_ACTIVE` (422 — the requested role has no active assignment on the account).
+
 ## Users
 
 `PHONE_ALREADY_REGISTERED`, `EMAIL_ALREADY_REGISTERED`, `ROLE_NOT_AVAILABLE`,

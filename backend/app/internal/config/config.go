@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -41,6 +42,18 @@ type Config struct {
 	AccessTTL   time.Duration
 	RefreshTTL  time.Duration
 	CORSOrigins []string
+	// RateLimitPerMin is the fixed-window per-user request budget (JWT
+	// subject) applied to the authenticated tree; <= 0 disables the limiter.
+	RateLimitPerMin int
+	// MPESA_* configure the real Daraja (M-Pesa) STK push client. Without
+	// MPESA_CONSUMER_KEY the outbox worker falls back to the generic HTTP
+	// gateway (mock-gateway) — the explicit dev/staging path.
+	MPESAEnv            string
+	MPESAConsumerKey    string
+	MPESAConsumerSecret string
+	MPESAShortcode      string
+	MPESAPasskey        string
+	MPESAStkCallbackURL string
 }
 
 // Load reads the environment and validates it. Any invalid value is a hard
@@ -56,6 +69,16 @@ func Load() (Config, error) {
 		AccessTTL:   durationEnv("ACCESS_TOKEN_TTL", 15*time.Minute),
 		RefreshTTL:  durationEnv("REFRESH_TOKEN_TTL", 30*24*time.Hour),
 		CORSOrigins: splitEnv("CORS_ORIGINS", ""),
+		// The per-user rate limit defaults to 300 requests per minute and is
+		// deliberately lenient: it bounds runaway clients, never legitimate
+		// platform traffic.
+		RateLimitPerMin:     intEnv("RATE_LIMIT_PER_MIN", 300),
+		MPESAEnv:            getEnv("MPESA_ENV", "sandbox"),
+		MPESAConsumerKey:    os.Getenv("MPESA_CONSUMER_KEY"),
+		MPESAConsumerSecret: os.Getenv("MPESA_CONSUMER_SECRET"),
+		MPESAShortcode:      os.Getenv("MPESA_SHORTCODE"),
+		MPESAPasskey:        os.Getenv("MPESA_PASSKEY"),
+		MPESAStkCallbackURL: os.Getenv("MPESA_STK_CALLBACK_URL"),
 	}
 	if err := cfg.Validate(); err != nil {
 		return Config{}, err
@@ -104,6 +127,15 @@ func (c Config) Validate() error {
 		if c.OTPDevCode != "" && c.OTPDevCode == "123456" {
 			problems = append(problems, "OTP_DEV_CODE must not be the default dev code in production")
 		}
+		if c.MPESAEnv == "production" && c.MPESAConsumerKey == "" {
+			problems = append(problems, "MPESA_CONSUMER_KEY is required when MPESA_ENV=production")
+		}
+	}
+
+	switch c.MPESAEnv {
+	case "sandbox", "production":
+	default:
+		problems = append(problems, fmt.Sprintf("MPESA_ENV must be sandbox or production — got %q", c.MPESAEnv))
 	}
 
 	if len(problems) > 0 {
@@ -129,6 +161,17 @@ func durationEnv(key string, fallback time.Duration) time.Duration {
 	if v := os.Getenv(key); v != "" {
 		if d, err := time.ParseDuration(v); err == nil {
 			return d
+		}
+	}
+	return fallback
+}
+
+// intEnv parses a positive integer env var, falling back on unset or invalid
+// values so a typo can never silently zero out a limit.
+func intEnv(key string, fallback int) int {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
 		}
 	}
 	return fallback

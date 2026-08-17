@@ -10,13 +10,22 @@
  */
 import type {
   ChangePasswordBody,
+  ConflictResponse,
+  NotFoundResponse,
   OtpDelivery,
   RateLimitedResponse,
   RefreshTokenBody,
   RequestOtpBody,
   Session,
   SessionInfo,
+  TwoFaDisableBody,
+  TwoFaEnrollResult,
+  TwoFaRecoveryBody,
+  TwoFaSessionResult,
+  TwoFaVerifyBody,
+  TwoFaVerifyResult,
   UnauthorizedResponse,
+  ValidationErrorResponse,
   VerifyOtpBody
 } from '../../model';
 
@@ -207,6 +216,305 @@ export const logout = async ( options?: RequestInit): Promise<logoutResponse> =>
 
   const data: logoutResponse['data'] = body ? JSON.parse(body) : undefined
   return { data, status: res.status, headers: res.headers } as logoutResponse
+}
+
+
+export type twoFaEnrollResponse200 = {
+  data: TwoFaEnrollResult
+  status: 200
+}
+
+export type twoFaEnrollResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type twoFaEnrollResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type twoFaEnrollResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type twoFaEnrollResponseSuccess = (twoFaEnrollResponse200) & {
+  headers: Headers;
+};
+export type twoFaEnrollResponseError = (twoFaEnrollResponse401 | twoFaEnrollResponse404 | twoFaEnrollResponse409) & {
+  headers: Headers;
+};
+
+export type twoFaEnrollResponse = (twoFaEnrollResponseSuccess | twoFaEnrollResponseError)
+
+export const getTwoFaEnrollUrl = () => {
+
+
+
+
+  return `/auth/2fa/enroll`
+}
+
+/**
+ * Generates a fresh base32 TOTP secret, its otpauth URL (and recovery codes) for the calling session. Two-factor is not enabled yet: the first successful POST /auth/2fa/verify flips it on and issues a fresh recovery-code set.
+ * @summary Enroll the current session for TOTP two-factor authentication
+ */
+export const twoFaEnroll = async ( options?: RequestInit): Promise<twoFaEnrollResponse> => {
+
+  const res = await fetch(getTwoFaEnrollUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: twoFaEnrollResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as twoFaEnrollResponse
+}
+
+
+export type twoFaVerifyResponse200 = {
+  data: TwoFaVerifyResult
+  status: 200
+}
+
+export type twoFaVerifyResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type twoFaVerifyResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type twoFaVerifyResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type twoFaVerifyResponseSuccess = (twoFaVerifyResponse200) & {
+  headers: Headers;
+};
+export type twoFaVerifyResponseError = (twoFaVerifyResponse401 | twoFaVerifyResponse409 | twoFaVerifyResponse422) & {
+  headers: Headers;
+};
+
+export type twoFaVerifyResponse = (twoFaVerifyResponseSuccess | twoFaVerifyResponseError)
+
+export const getTwoFaVerifyUrl = () => {
+
+
+
+
+  return `/auth/2fa/verify`
+}
+
+/**
+ * First successful verification enables two-factor for the session and returns a fresh set of single-use recovery codes (plaintext is returned only this once). Subsequent calls fail with TWO_FA_ALREADY_ENABLED.
+ * @summary Verify a TOTP code and enable two-factor authentication
+ */
+export const twoFaVerify = async (twoFaVerifyBody: TwoFaVerifyBody, options?: RequestInit): Promise<twoFaVerifyResponse> => {
+
+  const res = await fetch(getTwoFaVerifyUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(twoFaVerifyBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: twoFaVerifyResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as twoFaVerifyResponse
+}
+
+
+export type twoFaVerifyForSessionResponse200 = {
+  data: TwoFaSessionResult
+  status: 200
+}
+
+export type twoFaVerifyForSessionResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type twoFaVerifyForSessionResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type twoFaVerifyForSessionResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type twoFaVerifyForSessionResponseSuccess = (twoFaVerifyForSessionResponse200) & {
+  headers: Headers;
+};
+export type twoFaVerifyForSessionResponseError = (twoFaVerifyForSessionResponse401 | twoFaVerifyForSessionResponse409 | twoFaVerifyForSessionResponse422) & {
+  headers: Headers;
+};
+
+export type twoFaVerifyForSessionResponse = (twoFaVerifyForSessionResponseSuccess | twoFaVerifyForSessionResponseError)
+
+export const getTwoFaVerifyForSessionUrl = () => {
+
+
+
+
+  return `/auth/2fa/verify-for-session`
+}
+
+/**
+ * Confirms an enabled TOTP secret and issues a fresh token pair whose access token carries the mfa_verified claim — the claim staff routes (/admin/*) require (AUTH.md RBAC).
+ * @summary Verify a TOTP code and mint an mfa_verified session
+ */
+export const twoFaVerifyForSession = async (twoFaVerifyBody: TwoFaVerifyBody, options?: RequestInit): Promise<twoFaVerifyForSessionResponse> => {
+
+  const res = await fetch(getTwoFaVerifyForSessionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(twoFaVerifyBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: twoFaVerifyForSessionResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as twoFaVerifyForSessionResponse
+}
+
+
+export type twoFaDisableResponse204 = {
+  data: void
+  status: 204
+}
+
+export type twoFaDisableResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type twoFaDisableResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type twoFaDisableResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type twoFaDisableResponseSuccess = (twoFaDisableResponse204) & {
+  headers: Headers;
+};
+export type twoFaDisableResponseError = (twoFaDisableResponse401 | twoFaDisableResponse409 | twoFaDisableResponse422) & {
+  headers: Headers;
+};
+
+export type twoFaDisableResponse = (twoFaDisableResponseSuccess | twoFaDisableResponseError)
+
+export const getTwoFaDisableUrl = () => {
+
+
+
+
+  return `/auth/2fa/disable`
+}
+
+/**
+ * @summary Disable two-factor authentication after a TOTP confirmation
+ */
+export const twoFaDisable = async (twoFaDisableBody: TwoFaDisableBody, options?: RequestInit): Promise<twoFaDisableResponse> => {
+
+  const res = await fetch(getTwoFaDisableUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(twoFaDisableBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: twoFaDisableResponse['data'] = body ? JSON.parse(body) : undefined
+  return { data, status: res.status, headers: res.headers } as twoFaDisableResponse
+}
+
+
+export type twoFaRecoveryResponse200 = {
+  data: TwoFaSessionResult
+  status: 200
+}
+
+export type twoFaRecoveryResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type twoFaRecoveryResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type twoFaRecoveryResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type twoFaRecoveryResponseSuccess = (twoFaRecoveryResponse200) & {
+  headers: Headers;
+};
+export type twoFaRecoveryResponseError = (twoFaRecoveryResponse401 | twoFaRecoveryResponse409 | twoFaRecoveryResponse422) & {
+  headers: Headers;
+};
+
+export type twoFaRecoveryResponse = (twoFaRecoveryResponseSuccess | twoFaRecoveryResponseError)
+
+export const getTwoFaRecoveryUrl = () => {
+
+
+
+
+  return `/auth/2fa/recovery`
+}
+
+/**
+ * Consumes one recovery code (single-use; reuse fails with TWO_FA_RECOVERY_CODE_USED) and mints an mfa_verified token pair. The optional newPassword is reserved for a future password-reset extension and is not acted on by the current server.
+ * @summary Recover a lost authenticator with a single-use recovery code
+ */
+export const twoFaRecovery = async (twoFaRecoveryBody: TwoFaRecoveryBody, options?: RequestInit): Promise<twoFaRecoveryResponse> => {
+
+  const res = await fetch(getTwoFaRecoveryUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(twoFaRecoveryBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: twoFaRecoveryResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as twoFaRecoveryResponse
 }
 
 

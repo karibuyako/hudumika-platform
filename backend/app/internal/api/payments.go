@@ -325,6 +325,27 @@ func (s *Server) PaymentWebhook(w http.ResponseWriter, r *http.Request, provider
 		return
 	}
 
+	// Daraja (M-Pesa) STK callbacks (provider "mpesa") post the standard
+	// envelope {Body:{stkCallback:{...}}} instead of the platform shape: no
+	// orderId/reference/status fields. Detect it by the empty platform fields
+	// and map it onto the same state machine: ResultCode 0 → paid, anything
+	// else → failed with ResultDesc as the reason. The CheckoutRequestID
+	// becomes the reference anchor (the delivery worker stores it on the
+	// intent when the STK response returns); the AccountReference (the order
+	// id) stays as a fallback resolution when the reference was never stored.
+	// The amount from CallbackMetadata feeds the paid event.
+	var darajaAccountRef string
+	var darajaAmountTZS int64
+	if p.Status == "" && p.Reference == "" && p.OrderID == uuid.Nil {
+		if cb, cerr := payments.ParseSTKCallback(body); cerr == nil {
+			darajaAccountRef = cb.AccountReference
+			darajaAmountTZS = cb.AmountTZS
+			p.Reference = cb.CheckoutRequestID
+			p.Status = cb.Status()
+			p.Reason = cb.ResultDesc
+		}
+	}
+
 	var intent *payments.IntentRow
 	if p.Reference != "" {
 		intent, err = st.FindIntentByProviderReference(r.Context(), p.Reference)
@@ -340,6 +361,19 @@ func (s *Server) PaymentWebhook(w http.ResponseWriter, r *http.Request, provider
 			s.logger.Error("payment webhook order lookup failed", "error", err)
 			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 			return
+		}
+	}
+	// Daraja callbacks carry the order id as AccountReference when the
+	// CheckoutRequestID was never persisted (e.g. the callback raced the
+	// outbox worker's reference write).
+	if intent == nil && darajaAccountRef != "" {
+		if refID, rerr := uuid.Parse(darajaAccountRef); rerr == nil {
+			intent, err = st.FindIntentByOrderID(r.Context(), refID)
+			if err != nil {
+				s.logger.Error("payment webhook daraja account reference lookup failed", "error", err)
+				writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+				return
+			}
 		}
 	}
 	if intent == nil {
@@ -380,7 +414,7 @@ func (s *Server) PaymentWebhook(w http.ResponseWriter, r *http.Request, provider
 				customer = customerID.String()
 			}
 			publishPaymentEvent(r.Context(), s, "payment.paid", intent.OrderID.String(), customer,
-				map[string]any{"intentId": intent.ID, "amountTZS": intent.AmountTZS})
+				map[string]any{"intentId": intent.ID, "amountTZS": darajaAmountOr(intent.AmountTZS, darajaAmountTZS)})
 		}
 	case "failed":
 		if _, err := st.MarkFailed(r.Context(), intent.ID, p.Reason); err != nil {
@@ -406,6 +440,15 @@ func (s *Server) PaymentWebhook(w http.ResponseWriter, r *http.Request, provider
 		s.logWebhook(r.Context(), provider, &intent.ID, "unhandled_status", body)
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"accepted": true})
+}
+
+// darajaAmountOr prefers the amount Daraja reported in CallbackMetadata over
+// the stored intent amount when the callback carried one.
+func darajaAmountOr(stored, callback int64) int64 {
+	if callback > 0 {
+		return callback
+	}
+	return stored
 }
 
 // logWebhook records the raw payload and verification outcome into

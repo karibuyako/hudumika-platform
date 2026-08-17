@@ -73,6 +73,19 @@ func (s *Server) Router() http.Handler {
 		r.With(s.rateLimitIP("verify-otp", verifyRateLimitIP, verifyRateWindowIP)).Post("/verify-otp", s.VerifyOtp)
 		r.Post("/refresh", s.RefreshToken)
 		r.Post("/logout", s.Logout)
+		// TOTP two-factor extension (twofa.go, API-CONTRACT.yaml /auth/2fa/*):
+		// a documented manual extension like the push-token registry and
+		// /sync/batch. Unlike the neighbouring /auth routes (tokens in body)
+		// these authenticate with the ACCESS token, so they ride the same
+		// RequireAuth wrapper the generated tree uses.
+		r.Route("/2fa", func(r chi.Router) {
+			r.Use(s.RequireAuth)
+			r.Get("/enroll", s.TwoFaEnroll)
+			r.Post("/verify", s.TwoFaVerify)
+			r.Post("/verify-for-session", s.TwoFaVerifyForSession)
+			r.Post("/disable", s.TwoFaDisable)
+			r.Post("/recovery", s.TwoFaRecovery)
+		})
 		// Contract /auth paths without a manual handler (e.g.
 		// /auth/change-password) fall through to the generated interface so
 		// they answer the NOT_IMPLEMENTED envelope instead of a blank 404.

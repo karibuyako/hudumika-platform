@@ -14,5 +14,7 @@ import type { VerificationState } from './verificationState';
 
 export type MerchantPrivate = MerchantPublic & {
   verification: VerificationState;
+  /** Effective capability set for the caller's merchant role. '*' means full access; other entries mirror the app's role capability matrix. */
+  permissions?: string[];
   commercial: MerchantPrivateCommercial;
 };

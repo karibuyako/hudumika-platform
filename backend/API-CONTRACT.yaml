@@ -62,7 +62,7 @@ paths:
                 destination: { type: string, example: "+255712345678" }
                 purpose:
                   type: string
-                  enum: [login, signup, password_reset, verify_role]
+                  enum: [login, signup, register, password_reset, verify_role]
                   default: login
       responses:
         "200":
@@ -88,6 +88,10 @@ paths:
               properties:
                 requestId: { type: string, format: uuid }
                 code: { type: string, minLength: 4, maxLength: 8 }
+                role:
+                  type: string
+                  enum: [customer, merchant, provider, rider, staff]
+                  description: Requested session role. Defaults to the active role (or customer). A role with no active role row answers 422 ROLE_NOT_ACTIVE.
       responses:
         "200":
           description: Session created. Role-scoped token; role switch requires a new verify call.
@@ -129,6 +133,133 @@ paths:
         - bearerAuth: []
       responses:
         "204": { description: Revoked }
+
+  /auth/2fa/enroll:
+    get:
+      tags: [auth]
+      summary: Enroll the current session for TOTP two-factor authentication
+      description: >
+        Generates a fresh base32 TOTP secret, its otpauth URL (and recovery
+        codes) for the calling session. Two-factor is not enabled yet: the
+        first successful POST /auth/2fa/verify flips it on and issues a fresh
+        recovery-code set.
+      operationId: twoFaEnroll
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Enrollment material (secret, otpauth URL, one-time recovery codes)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TwoFaEnrollResult"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /auth/2fa/verify:
+    post:
+      tags: [auth]
+      summary: Verify a TOTP code and enable two-factor authentication
+      description: >
+        First successful verification enables two-factor for the session and
+        returns a fresh set of single-use recovery codes (plaintext is
+        returned only this once). Subsequent calls fail with TWO_FA_ALREADY_ENABLED.
+      operationId: twoFaVerify
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TwoFaVerifyBody"
+      responses:
+        "200":
+          description: Two-factor enabled; recovery codes returned once
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TwoFaVerifyResult"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /auth/2fa/verify-for-session:
+    post:
+      tags: [auth]
+      summary: Verify a TOTP code and mint an mfa_verified session
+      description: >
+        Confirms an enabled TOTP secret and issues a fresh token pair whose
+        access token carries the mfa_verified claim — the claim staff routes
+        (/admin/*) require (AUTH.md RBAC).
+      operationId: twoFaVerifyForSession
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TwoFaVerifyBody"
+      responses:
+        "200":
+          description: mfa_verified token pair
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TwoFaSessionResult"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /auth/2fa/disable:
+    post:
+      tags: [auth]
+      summary: Disable two-factor authentication after a TOTP confirmation
+      operationId: twoFaDisable
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TwoFaDisableBody"
+      responses:
+        "204": { description: Two-factor disabled }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /auth/2fa/recovery:
+    post:
+      tags: [auth]
+      summary: Recover a lost authenticator with a single-use recovery code
+      description: >
+        Consumes one recovery code (single-use; reuse fails with
+        TWO_FA_RECOVERY_CODE_USED) and mints an mfa_verified token pair.
+        The optional newPassword is reserved for a future password-reset
+        extension and is not acted on by the current server.
+      operationId: twoFaRecovery
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TwoFaRecoveryBody"
+      responses:
+        "200":
+          description: mfa_verified token pair; the recovery code is consumed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TwoFaSessionResult"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
 
 
   /home:
@@ -12664,6 +12795,71 @@ components:
         refreshToken: { type: string }
         user: { $ref: "#/components/schemas/User" }
 
+    TwoFaEnrollResult:
+      type: object
+      required: [secret, otpauthUrl, recoveryCodes]
+      properties:
+        secret:
+          type: string
+          description: Base32 TOTP secret (SHA-1, 30s step, 6 digits)
+        otpauthUrl:
+          type: string
+          format: uri
+          description: otpauth:// URI for authenticator apps
+        qrDataUrl:
+          type: string
+          nullable: true
+          description: Base64 data URL of a QR rendering; null when the server does not render QR images
+        recoveryCodes:
+          type: array
+          minItems: 10
+          maxItems: 10
+          items: { type: string }
+          description: Single-use recovery codes (only their hashes are stored server-side)
+
+    TwoFaVerifyBody:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string, minLength: 6, maxLength: 6, example: "123456" }
+
+    TwoFaVerifyResult:
+      type: object
+      required: [enabled, recoveryCodes]
+      properties:
+        enabled: { type: boolean, const: true }
+        recoveryCodes:
+          type: array
+          minItems: 10
+          maxItems: 10
+          items: { type: string }
+          description: Fresh single-use recovery codes, returned exactly once
+
+    TwoFaSessionResult:
+      type: object
+      required: [accessToken, refreshToken]
+      properties:
+        accessToken:
+          type: string
+          description: Access token carrying the mfa_verified claim
+        refreshToken: { type: string }
+
+    TwoFaDisableBody:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string, minLength: 6, maxLength: 6, example: "123456" }
+
+    TwoFaRecoveryBody:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string, description: Single-use recovery code }
+        newPassword:
+          type: string
+          minLength: 8
+          description: Reserved for a future password-reset extension; ignored by the current server
+
     User:
       type: object
       required: [id, phone, roles, createdAt]
@@ -12826,6 +13022,10 @@ components:
           properties:
             verification:
               $ref: "#/components/schemas/VerificationState"
+            permissions:
+              type: array
+              items: { type: string }
+              description: Effective capability set for the caller's merchant role. '*' means full access; other entries mirror the app's role capability matrix.
             commercial:
               type: object
               properties:

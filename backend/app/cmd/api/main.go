@@ -16,6 +16,7 @@ import (
 	"github.com/hudumika/api-backend/internal/config"
 	"github.com/hudumika/api-backend/internal/db"
 	"github.com/hudumika/api-backend/internal/notifications"
+	"github.com/hudumika/api-backend/internal/payments"
 	"github.com/hudumika/api-backend/internal/store"
 	"github.com/hudumika/api-backend/internal/sweeper"
 	"github.com/hudumika/api-backend/internal/webhooks"
@@ -112,7 +113,29 @@ func main() {
 			chain.Add(smtpProvider)
 			logger.Info("notification provider added", "provider", "smtp-email")
 		}
-		notifWorker = notifications.NewWorker(outbox, chain, logger, 5*time.Second)
+		// M-Pesa (Daraja) STK push: when MPESA_CONSUMER_KEY is configured the
+		// delivery worker routes stk_push outbox messages to the real Daraja
+		// client (OAuth token + STK invoke), recording the returned
+		// CheckoutRequestID on the intent so the webhook can reconcile it.
+		// Without credentials the explicit fallback is the generic HTTP
+		// gateway chain (mock-gateway in dev/staging) — a logged decision so
+		// staging keeps working with the simulator.
+		provider := notifications.Provider(chain)
+		if mpesaCfg, ok := payments.DarajaConfigFromEnv(); ok {
+			darajaClient, err := payments.NewDarajaClient(mpesaCfg)
+			if err != nil {
+				logger.Warn("daraja mpesa client disabled — stk push falls back to the generic HTTP gateway (mock-gateway)", "error", err)
+			} else {
+				provider = notifications.NewSTKPushRouter(
+					notifications.NewSTKPushProvider(darajaClient, payments.NewStore(conn.Pool()), logger),
+					chain,
+				)
+				logger.Info("stk push provider active", "provider", "daraja-mpesa", "env", mpesaCfg.Env)
+			}
+		} else {
+			logger.Warn("MPESA_CONSUMER_KEY unset — stk push falls back to the generic HTTP gateway (mock-gateway)")
+		}
+		notifWorker = notifications.NewWorker(outbox, provider, logger, 5*time.Second)
 		sweep = sweeper.New(conn.Pool(), logger, 30*time.Second)
 		webhookWorker = webhooks.New(conn.Pool(), logger, 5*time.Second)
 	} else if cfg.IsProd() {
@@ -122,7 +145,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,
-		Handler:      server.Router(),
+		Handler:      server.RateLimitedRouter(),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  60 * time.Second,

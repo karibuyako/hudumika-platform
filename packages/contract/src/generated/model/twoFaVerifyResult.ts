@@ -9,13 +9,12 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type RequestOtpBodyPurpose = typeof RequestOtpBodyPurpose[keyof typeof RequestOtpBodyPurpose];
-
-
-export const RequestOtpBodyPurpose = {
-  login: 'login',
-  signup: 'signup',
-  register: 'register',
-  password_reset: 'password_reset',
-  verify_role: 'verify_role',
-} as const;
+export interface TwoFaVerifyResult {
+  enabled: true;
+  /**
+     * Fresh single-use recovery codes, returned exactly once
+     * @minItems 10
+     * @maxItems 10
+     */
+  recoveryCodes: string[];
+}

@@ -74,7 +74,8 @@ type OtpStore interface {
 // ---- Sessions ----
 
 // Session is a stored refresh session. Only the SHA-256 hash of the opaque
-// refresh token is ever persisted.
+// refresh token is ever persisted. MfaVerified records whether the session's
+// access token carried the mfa_verified claim at issue time.
 type Session struct {
 	Subject          string
 	Role             string
@@ -82,6 +83,7 @@ type Session struct {
 	AccessTokenHash  string
 	ExpiresAt        time.Time
 	RevokedAt        time.Time
+	MfaVerified      bool
 }
 
 // SessionStore persists opaque refresh-token sessions with rotation.

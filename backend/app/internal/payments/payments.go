@@ -228,6 +228,17 @@ func (s *Store) SetProviderReference(ctx context.Context, id uuid.UUID, ref stri
 	return nil
 }
 
+// RecordCheckoutRequestID persists the Daraja CheckoutRequestID returned by
+// the STK invoke as the intent's provider_reference so the callback resolves
+// it directly (notifications.CheckoutRecorder seam, bound in main.go).
+func (s *Store) RecordCheckoutRequestID(ctx context.Context, intentID, checkoutRequestID string) error {
+	id, err := uuid.Parse(intentID)
+	if err != nil {
+		return fmt.Errorf("payments: record checkout request id: %w", err)
+	}
+	return s.SetProviderReference(ctx, id, checkoutRequestID)
+}
+
 // GetOrderTotal returns the server-computed total of the order owned by
 // customerUserID, and false when no such order exists. The amount a payment
 // intent charges always comes from here, never from the client.

@@ -8,6 +8,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { VerifyOtpBodyRole } from './verifyOtpBodyRole';
 
 export type VerifyOtpBody = {
   requestId: string;
@@ -16,4 +17,6 @@ export type VerifyOtpBody = {
      * @maxLength 8
      */
   code: string;
+  /** Requested session role. Defaults to the active role (or customer). A role with no active role row answers 422 ROLE_NOT_ACTIVE. */
+  role?: VerifyOtpBodyRole;
 };

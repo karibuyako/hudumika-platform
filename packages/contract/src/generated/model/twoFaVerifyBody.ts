@@ -9,13 +9,10 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type RequestOtpBodyPurpose = typeof RequestOtpBodyPurpose[keyof typeof RequestOtpBodyPurpose];
-
-
-export const RequestOtpBodyPurpose = {
-  login: 'login',
-  signup: 'signup',
-  register: 'register',
-  password_reset: 'password_reset',
-  verify_role: 'verify_role',
-} as const;
+export interface TwoFaVerifyBody {
+  /**
+     * @minLength 6
+     * @maxLength 6
+     */
+  code: string;
+}

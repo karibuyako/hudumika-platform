@@ -29,6 +29,9 @@ func sessionFields(s Session) map[string]interface{} {
 		"access_token_hash": s.AccessTokenHash,
 		"expires_at":        s.ExpiresAt.Unix(),
 	}
+	if s.MfaVerified {
+		fields["mfa_verified"] = "1"
+	}
 	if !s.RevokedAt.IsZero() {
 		fields["revoked_at"] = s.RevokedAt.Unix()
 	}
@@ -39,6 +42,9 @@ func sessionFields(s Session) map[string]interface{} {
 // with the next one. Returns 1 on success, 0 when the old session is missing,
 // expired, or revoked. KEYS[1] = old key, KEYS[2] = next key; ARGV[1] = now
 // (unix), ARGV[2] = next TTL (s), ARGV[3..6] = next session fields.
+// NOTE: the mfa_verified flag is NOT carried across rotation — the caller
+// (token refresh) mints the next access token without the claim, so the
+// record must not advertise one.
 var rotateSessionScript = redis.NewScript(`
 local expires = redis.call('HGET', KEYS[1], 'expires_at')
 if not expires then
@@ -95,6 +101,7 @@ func (rs *sessionRedisStores) Get(ctx context.Context, refreshTokenHash string) 
 		RefreshTokenHash: refreshTokenHash,
 		AccessTokenHash:  fields["access_token_hash"],
 		ExpiresAt:        time.Unix(expiresAt, 0),
+		MfaVerified:      fields["mfa_verified"] == "1",
 	}
 	if err == nil && revokedAt > 0 {
 		sess.RevokedAt = time.Unix(revokedAt, 0)

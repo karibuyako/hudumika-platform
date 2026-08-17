@@ -9,13 +9,17 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type RequestOtpBodyPurpose = typeof RequestOtpBodyPurpose[keyof typeof RequestOtpBodyPurpose];
-
-
-export const RequestOtpBodyPurpose = {
-  login: 'login',
-  signup: 'signup',
-  register: 'register',
-  password_reset: 'password_reset',
-  verify_role: 'verify_role',
-} as const;
+export interface TwoFaEnrollResult {
+  /** Base32 TOTP secret (SHA-1, 30s step, 6 digits) */
+  secret: string;
+  /** otpauth:// URI for authenticator apps */
+  otpauthUrl: string;
+  /** Base64 data URL of a QR rendering; null when the server does not render QR images */
+  qrDataUrl?: string | null;
+  /**
+     * Single-use recovery codes (only their hashes are stored server-side)
+     * @minItems 10
+     * @maxItems 10
+     */
+  recoveryCodes: string[];
+}
