@@ -9,6 +9,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { UnifiedSearchEntityType } from './unifiedSearchEntityType';
+import type { UnifiedSearchSort } from './unifiedSearchSort';
 
 export type UnifiedSearchParams = {
 /**
@@ -21,4 +22,18 @@ entityType?: UnifiedSearchEntityType;
 category?: string;
 limit?: number;
 cursor?: string;
+/**
+ * @minimum 0
+ */
+priceMaxTZS?: number;
+/**
+ * @minimum 0
+ * @maximum 5
+ */
+minRating?: number;
+/**
+ * @minimum 0
+ */
+maxDistanceKm?: number;
+sort?: UnifiedSearchSort;
 };

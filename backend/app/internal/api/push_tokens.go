@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/hudumika/api-backend/internal/gen"
 )
 
 // Push-token registry (documented extension to the contract, which has no
@@ -118,8 +120,10 @@ func (s *Server) RegisterPushToken(w http.ResponseWriter, r *http.Request) {
 
 // DeletePushToken deregisters one device token for the session user. It is
 // idempotent: deleting an unknown token (or omitting it) still answers 204.
-func (s *Server) DeletePushToken(w http.ResponseWriter, r *http.Request) {
-	token := strings.TrimSpace(r.URL.Query().Get("token"))
+// The token rides the required `token` query parameter (contract
+// DELETE /notifications/me/push-token).
+func (s *Server) DeletePushToken(w http.ResponseWriter, r *http.Request, params gen.DeletePushTokenParams) {
+	token := strings.TrimSpace(params.Token)
 
 	user, err := s.notificationUser(r)
 	if err != nil {

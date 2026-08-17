@@ -13,8 +13,16 @@ import type { Order } from './order';
 import type { OrderDetailItemsItem } from './orderDetailItemsItem';
 import type { OrderEvent } from './orderEvent';
 
-export type OrderDetail = Order & {
+export type OrderDetail = Order & ({
   items?: OrderDetailItemsItem[];
   deliveryAddress: AddressSnapshot;
+  /** Server-computed delivery window start (ISO) */
+  deliveryWindowFrom?: string | null;
+  /** Server-computed delivery window end (ISO) */
+  deliveryWindowTo?: string | null;
+  /** Route origin city label (intercity/relay shipments) */
+  originCityName?: string | null;
+  /** Route destination city label (intercity/relay shipments) */
+  destinationCityName?: string | null;
   events: OrderEvent[];
-};
+});

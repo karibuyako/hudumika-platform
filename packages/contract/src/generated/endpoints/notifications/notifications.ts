@@ -9,13 +9,17 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
+  DeletePushTokenParams,
   GetServerEvents200,
   GetServerEventsParams,
   ListAnnouncements200Item,
   ListMyNotificationsParams,
   Notification,
   NotificationPreferences,
-  OrderAlertSettings
+  OrderAlertSettings,
+  PushToken,
+  PushTokenRegister,
+  ValidationErrorResponse
 } from '../../model';
 
 
@@ -149,6 +153,146 @@ export const updateNotificationPreferences = async (notificationPreferences: Not
 
   const data: updateNotificationPreferencesResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as updateNotificationPreferencesResponse
+}
+
+
+export type registerPushTokenResponse201 = {
+  data: PushToken
+  status: 201
+}
+
+export type registerPushTokenResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type registerPushTokenResponseSuccess = (registerPushTokenResponse201) & {
+  headers: Headers;
+};
+export type registerPushTokenResponseError = (registerPushTokenResponse422) & {
+  headers: Headers;
+};
+
+export type registerPushTokenResponse = (registerPushTokenResponseSuccess | registerPushTokenResponseError)
+
+export const getRegisterPushTokenUrl = () => {
+
+
+
+
+  return `/notifications/me/push-token`
+}
+
+/**
+ * @summary Register (or re-register) a device push token for the session user
+ */
+export const registerPushToken = async (pushTokenRegister: PushTokenRegister, options?: RequestInit): Promise<registerPushTokenResponse> => {
+
+  const res = await fetch(getRegisterPushTokenUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(pushTokenRegister)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: registerPushTokenResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as registerPushTokenResponse
+}
+
+
+export type deletePushTokenResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deletePushTokenResponseSuccess = (deletePushTokenResponse204) & {
+  headers: Headers;
+};
+;
+
+export type deletePushTokenResponse = (deletePushTokenResponseSuccess)
+
+export const getDeletePushTokenUrl = (params: DeletePushTokenParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/notifications/me/push-token?${stringifiedParams}` : `/notifications/me/push-token`
+}
+
+/**
+ * @summary Deregister a device push token for the session user (idempotent)
+ */
+export const deletePushToken = async (params: DeletePushTokenParams, options?: RequestInit): Promise<deletePushTokenResponse> => {
+
+  const res = await fetch(getDeletePushTokenUrl(params),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deletePushTokenResponse['data'] = body ? JSON.parse(body) : undefined
+  return { data, status: res.status, headers: res.headers } as deletePushTokenResponse
+}
+
+
+export type listPushTokensResponse200 = {
+  data: PushToken[]
+  status: 200
+}
+
+export type listPushTokensResponseSuccess = (listPushTokensResponse200) & {
+  headers: Headers;
+};
+;
+
+export type listPushTokensResponse = (listPushTokensResponseSuccess)
+
+export const getListPushTokensUrl = () => {
+
+
+
+
+  return `/notifications/me/push-tokens`
+}
+
+/**
+ * @summary Every registered device push token of the session user, oldest first
+ */
+export const listPushTokens = async ( options?: RequestInit): Promise<listPushTokensResponse> => {
+
+  const res = await fetch(getListPushTokensUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: listPushTokensResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as listPushTokensResponse
 }
 
 

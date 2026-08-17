@@ -22,4 +22,6 @@ export interface OrderCreate {
   note?: string;
   /** Advance (pre-scheduled) orders */
   scheduledAt?: string | null;
+  /** Optional coupon applied at checkout; server validates it and echoes the discount via totals.discountTZS */
+  couponId?: string;
 }

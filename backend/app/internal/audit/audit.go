@@ -68,6 +68,30 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 	return nil
 }
 
+// InsertReturningID appends one row exactly like Insert and additionally
+// returns the generated row id, so handlers whose contract response carries
+// an auditEntryId can surface the entry (admin-pending results, PENDING
+// audit convention). Append-only: never UPDATE/DELETE.
+func (p *PgAudit) InsertReturningID(ctx context.Context, e Entry) (uuid.UUID, error) {
+	const insert = `
+INSERT INTO audit_logs
+    (actor_id, actor_role, action, entity_type, entity_id, details, request_id, ip, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id`
+	actor, err := actorUUID(e.ActorID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("audit insert: %w", err)
+	}
+	var id uuid.UUID
+	if err := p.pool.QueryRow(ctx, insert,
+		actor, e.ActorRole, e.Action, e.EntityType, e.EntityID,
+		e.Details, e.RequestID, e.IP, e.CreatedAt,
+	).Scan(&id); err != nil {
+		return uuid.Nil, fmt.Errorf("audit insert: %w", err)
+	}
+	return id, nil
+}
+
 // actorUUID maps an actor subject to the actor_id column. Subjects that are
 // not UUIDs (phone numbers before user linkage) map to the nil UUID so the
 // row is never dropped.

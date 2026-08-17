@@ -8,6 +8,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { ReviewReply } from './reviewReply';
 import type { ReviewState } from './reviewState';
 
 export interface Review {
@@ -23,4 +24,8 @@ export interface Review {
   body?: string;
   state: ReviewState;
   createdAt: string;
+  /** Merchant/provider/rider reply to this review, when one exists */
+  reply?: ReviewReply | null;
+  /** Server-set: author completed a real transaction for this target */
+  verifiedPurchase?: boolean;
 }

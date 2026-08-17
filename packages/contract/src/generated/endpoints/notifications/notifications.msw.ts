@@ -25,7 +25,8 @@ import type {
   ListAnnouncements200Item,
   Notification,
   NotificationPreferences,
-  OrderAlertSettings
+  OrderAlertSettings,
+  PushToken
 } from '../../model';
 
 
@@ -50,6 +51,10 @@ export const getUpdateNotificationPreferencesResponseMock = (overrideResponse: P
       }, undefined]), inApp: faker.helpers.arrayElement([{
         [faker.string.alphanumeric(5)]: faker.datatype.boolean()
       }, undefined]), ...overrideResponse})
+
+export const getRegisterPushTokenResponseMock = (overrideResponse: Partial<Extract<PushToken, object>> = {}): PushToken => ({token: faker.string.alpha({length: {min: 10, max: 20}}), platform: faker.helpers.arrayElement(['expo','apns','fcm'] as const), deviceName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
+
+export const getListPushTokensResponseMock = (): PushToken[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({token: faker.string.alpha({length: {min: 10, max: 20}}), platform: faker.helpers.arrayElement(['expo','apns','fcm'] as const), deviceName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z'})))
 
 export const getGetOrderAlertSettingsResponseMock = (overrideResponse: Partial<Extract<OrderAlertSettings, object>> = {}): OrderAlertSettings => ({acceptanceMethod: faker.helpers.arrayElement([faker.helpers.arrayElement(['manual','auto'] as const), undefined]), voiceAlerts: faker.helpers.arrayElement([faker.datatype.boolean(), undefined]), channels: faker.helpers.arrayElement([faker.helpers.arrayElements(['push','sms','in_app'] as const), undefined]), quietHours: faker.helpers.arrayElement([{enabled: faker.helpers.arrayElement([faker.datatype.boolean(), undefined]), from: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), to: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])}, undefined]), autoAcceptWithinSeconds: faker.helpers.arrayElement([faker.number.int({min: 30, max: 300}), undefined]), ...overrideResponse})
 
@@ -91,6 +96,40 @@ export const getUpdateNotificationPreferencesMockHandler = (overrideResponse?: N
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
     : getUpdateNotificationPreferencesResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getRegisterPushTokenMockHandler = (overrideResponse?: PushToken | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<PushToken> | PushToken), options?: RequestHandlerOptions) => {
+  return http.post('*/notifications/me/push-token', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getRegisterPushTokenResponseMock(),
+      { status: 201
+      })
+  }, options)
+}
+
+export const getDeletePushTokenMockHandler = (overrideResponse?: void | ((info: Parameters<Parameters<typeof http.delete>[1]>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
+  return http.delete('*/notifications/me/push-token', async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
+  if (typeof overrideResponse === 'function') {await overrideResponse(info); }
+
+    return new HttpResponse(null,
+      { status: 204
+      })
+  }, options)
+}
+
+export const getListPushTokensMockHandler = (overrideResponse?: PushToken[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<PushToken[]> | PushToken[]), options?: RequestHandlerOptions) => {
+  return http.get('*/notifications/me/push-tokens', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getListPushTokensResponseMock(),
       { status: 200
       })
   }, options)
@@ -167,6 +206,9 @@ export const getNotificationsMock = () => [
   getListMyNotificationsMockHandler(),
   getGetNotificationPreferencesMockHandler(),
   getUpdateNotificationPreferencesMockHandler(),
+  getRegisterPushTokenMockHandler(),
+  getDeletePushTokenMockHandler(),
+  getListPushTokensMockHandler(),
   getMarkNotificationReadMockHandler(),
   getGetOrderAlertSettingsMockHandler(),
   getUpdateOrderAlertSettingsMockHandler(),

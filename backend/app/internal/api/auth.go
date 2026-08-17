@@ -186,6 +186,10 @@ func isPublicPath(r *http.Request) bool {
 	switch {
 	case p == "/cities", p == "/services":
 		return true
+	case p == "/leads":
+		// Public signup/feedback intake (POST /leads, no bearerAuth in the
+		// contract): unauthenticated lead submissions.
+		return r.Method == http.MethodPost
 	case p == "/promotions":
 		// Public deal discovery; merchant-owned promotion surfaces and
 		// coupons stay authenticated.

@@ -17,7 +17,7 @@ import (
 	"github.com/hudumika/api-backend/internal/gen"
 )
 
-const contractPathCount = 464
+const contractPathCount = 503
 
 // testUUID is the substitute used for every path parameter without an enum
 // constraint: a well-formed uuid that any uuid-typed binding accepts.
@@ -81,7 +81,7 @@ func isErrorEnvelope(body []byte) bool {
 }
 
 // TestAllContractPathsReturnDefinedShape proves that every one of the
-// contract's 464 paths is routed with a defined response shape: never a blank
+// contract's 503 paths is routed with a defined response shape: never a blank
 // 404 and never an empty body. Unimplemented paths return the 501
 // NOT_IMPLEMENTED envelope (counted below); implemented ones return either an
 // error envelope (code/message/requestId) or a real body (204 is the one

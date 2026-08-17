@@ -42,6 +42,7 @@ tags:
   - name: notifications
   - name: support
   - name: admin
+  - name: public
 
 paths:
   /auth/request-otp:
@@ -190,6 +191,10 @@ paths:
         - { name: category, in: query, schema: { type: string } }
         - { name: limit, in: query, schema: { type: integer, default: 20 } }
         - { name: cursor, in: query, schema: { type: string } }
+        - { name: priceMaxTZS, in: query, schema: { type: integer, minimum: 0 } }
+        - { name: minRating, in: query, schema: { type: number, format: float, minimum: 0, maximum: 5 } }
+        - { name: maxDistanceKm, in: query, schema: { type: number, format: float, minimum: 0 } }
+        - { name: sort, in: query, schema: { type: string, enum: [relevance, rating, price_asc, price_desc, distance], default: relevance } }
       responses:
         "200":
           description: OK
@@ -424,6 +429,32 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/Service" }
+
+  /leads:
+    post:
+      tags: [public]
+      summary: Submit a public signup or feedback lead (merchant, provider, rider, feedback)
+      operationId: submitLead
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadCreate"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, status, receivedAt]
+                properties:
+                  id: { type: string }
+                  status: { type: string, enum: [received] }
+                  receivedAt: { type: string, format: date-time }
+        "422": { $ref: "#/components/responses/ValidationError" }
 
   /merchants:
     get:
@@ -1435,6 +1466,51 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/NotificationPreferences"
+
+  /notifications/me/push-token:
+    post:
+      tags: [notifications]
+      summary: Register (or re-register) a device push token for the session user
+      operationId: registerPushToken
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushTokenRegister"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PushToken"
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [notifications]
+      summary: Deregister a device push token for the session user (idempotent)
+      operationId: deletePushToken
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: token, in: query, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Removed }
+
+  /notifications/me/push-tokens:
+    get:
+      tags: [notifications]
+      summary: Every registered device push token of the session user, oldest first
+      operationId: listPushTokens
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PushToken" }
 
   /notifications/{notificationId}/read:
     post:
@@ -11834,6 +11910,672 @@ paths:
                     items: { $ref: "#/components/schemas/LiveDealSession" }
                   nextCursor: { type: string, nullable: true }
 
+  /admin/riders/{riderId}/approval:
+    post:
+      tags: [admin-pending]
+      summary: Decision on a rider verification (approve or request changes)
+      operationId: adminRiderApprovalDecision
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: riderId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminRiderApprovalBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminRiderApprovalResult"
+        "403":
+          description: "FORBIDDEN — actor lacks the rider-approval permission"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: "RIDER_NOT_FOUND — no rider for riderId"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: "RIDER_ALREADY_DECIDED — rider already has a terminal verification state"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "422":
+          description: "ADMIN_REASON_REQUIRED — reason missing or empty"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /admin/providers/{providerId}/approval:
+    post:
+      tags: [admin-pending]
+      summary: Decision on a provider verification (approve or request changes)
+      operationId: adminProviderApprovalDecision
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: providerId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminProviderApprovalBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminProviderApprovalResult"
+        "403":
+          description: "FORBIDDEN — actor lacks the provider-approval permission"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: "PROVIDER_NOT_FOUND — no provider for providerId"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: "PROVIDER_ALREADY_DECIDED — provider already has a terminal verification state"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "422":
+          description: "ADMIN_REASON_REQUIRED — reason missing or empty"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /admin/disputes/{disputeId}/decision:
+    post:
+      tags: [admin-pending]
+      summary: Decide a dispute (refund, payout, or reject)
+      operationId: adminDisputeDecision
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: disputeId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminDisputeDecisionBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminDisputeDecisionResult"
+        "403":
+          description: "FORBIDDEN — actor lacks the dispute-resolution permission"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: "DISPUTE_NOT_FOUND — no dispute for disputeId"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: "DISPUTE_ALREADY_DECIDED — dispute already has a decision; TWO_PERSON_REQUIRED — decision above the finance threshold requires the two-person approval flow"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "422":
+          description: "ADMIN_REASON_REQUIRED — reason missing or empty"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /admin/payouts/{batchId}/reconcile:
+    post:
+      tags: [admin-pending]
+      summary: Reconcile a payout batch (paid, failed, or exception)
+      operationId: adminPayoutReconcile
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: batchId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminPayoutReconcileBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPayoutReconcileResult"
+        "403":
+          description: "FORBIDDEN — actor lacks the finance payout-reconciliation permission"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: "PAYOUT_BATCH_NOT_FOUND — no payout batch for batchId"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: "PAYOUT_ALREADY_RECONCILED — batch already settled"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "422":
+          description: "ADMIN_REASON_REQUIRED — note missing when required"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /admin/riders/{riderId}/cod/{shiftId}/decision:
+    post:
+      tags: [admin-pending]
+      summary: COD reconciliation decision for a rider shift (reconciled or mismatch)
+      operationId: adminRiderCodShiftDecision
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: riderId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: shiftId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminCodShiftDecisionBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminCodShiftDecisionResult"
+        "403":
+          description: "FORBIDDEN — actor lacks the COD-reconciliation permission"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: "SHIFT_NOT_FOUND — no shift for shiftId under this rider"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: "SHIFT_ALREADY_DECIDED — shift already has a decision; COD_RECONCILIATION_UNAVAILABLE — no shifts in range"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "422":
+          description: "ADMIN_REASON_REQUIRED — note missing when required"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /admin/chains/{merchantGroupId}/onboard:
+    post:
+      tags: [admin-pending]
+      summary: Onboard an enterprise chain (tier, SLA, account manager)
+      operationId: adminChainOnboard
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: merchantGroupId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminChainOnboardBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminChainOnboardResult"
+        "403":
+          description: "FORBIDDEN — actor lacks the enterprise-chain permission"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: "CHAIN_NOT_FOUND — no merchant group for merchantGroupId"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: "CHAIN_ALREADY_ACTIVE — chain already active; suspension is the only downgrade path"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "422":
+          description: "ADMIN_REASON_REQUIRED — decision reason missing"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /admin/chains/{merchantGroupId}/suspend:
+    post:
+      tags: [admin-pending]
+      summary: Suspend an enterprise chain (disables merchant-group operations)
+      operationId: adminChainSuspend
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: merchantGroupId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminChainSuspendBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminChainSuspendResult"
+        "403":
+          description: "FORBIDDEN — actor lacks the suspension permission (ops manager and above)"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: "CHAIN_NOT_FOUND — no merchant group for merchantGroupId"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: "CHAIN_ALREADY_SUSPENDED — chain already suspended; TWO_PERSON_REQUIRED — suspension requires the two-person approval flow"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "422":
+          description: "ADMIN_REASON_REQUIRED — reason missing or empty"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /admin/data-exports/{jobId}/approval:
+    post:
+      tags: [admin-pending]
+      summary: Approval decision on a data export job (approve or reject)
+      operationId: adminDataExportDecision
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: jobId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminDataExportDecisionBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminDataExportDecisionResult"
+        "403":
+          description: "FORBIDDEN — actor lacks the export-approval (compliance/finance) permission"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: "DATA_EXPORT_NOT_FOUND — no job for jobId"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: "DATA_EXPORT_ALREADY_DECIDED — job already has an approval decision"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "422":
+          description: "ADMIN_REASON_REQUIRED — reason missing or empty"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "429":
+          description: "DATA_EXPORT_RATE_LIMITED — export queue rate limit hit"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /admin/data-exports/{jobId}/rerun:
+    post:
+      tags: [admin-pending]
+      summary: Re-run a failed or expired data export job
+      operationId: adminDataExportRerun
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: jobId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminDataExportRerunBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminDataExportRerunResult"
+        "403":
+          description: "FORBIDDEN — actor lacks the export re-run permission"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: "DATA_EXPORT_NOT_FOUND — no job for jobId"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: "DATA_EXPORT_IN_PROGRESS — job already running; cannot re-run"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "422":
+          description: "ADMIN_REASON_REQUIRED — reason missing or empty"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /admin/loyalty/config:
+    put:
+      tags: [admin-pending]
+      summary: Persist reviewed merchant loyalty config (tiers and top-up rewards)
+      operationId: adminUpdateLoyaltyConfig
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminLoyaltyConfigBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminLoyaltyConfigResult"
+        "403":
+          description: "FORBIDDEN — actor lacks the loyalty-oversight permission"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "422":
+          description: "LOYALTY_CONFIG_INVALID — config fails policy validation; ADMIN_REASON_REQUIRED — review reason missing"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /admin/riders/{riderId}/safety/crash:
+    post:
+      tags: [admin-pending]
+      summary: Respond to a rider crash alert (safe or unsafe)
+      operationId: adminCrashRespond
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: riderId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminCrashRespondBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminCrashRespondResult"
+        "403":
+          description: "FORBIDDEN — actor lacks the safety-response permission"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: "RIDER_NOT_FOUND — no rider for riderId"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: "SAFETY_EVENT_ALREADY_HANDLED — crash event already has an outcome"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "422":
+          description: "ADMIN_REASON_REQUIRED — reason or note missing where required"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /admin/riders/{riderId}/rest:
+    post:
+      tags: [admin-pending]
+      summary: Override mandatory rest (enforce or relieve)
+      operationId: adminRiderRestOverride
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: riderId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminRestOverrideBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminRestOverrideResult"
+        "403":
+          description: "FORBIDDEN — actor lacks the rest-override permission (ops manager + rider ops)"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: "RIDER_NOT_FOUND — no rider for riderId"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: "REST_ALREADY_ENFORCED — enforcement already in place (or not in place for relieve)"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "422":
+          description: "ADMIN_REASON_REQUIRED — reason missing or empty"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /admin/handoffs/{handoffId}/seal:
+    post:
+      tags: [admin-pending]
+      summary: Decide a seal-broken handoff (reseal or open a damage claim)
+      operationId: adminHandoffSealDecision
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: handoffId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminHandoffSealBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminHandoffSealResult"
+        "403":
+          description: "FORBIDDEN — actor lacks the handoff-resolution permission"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: "HANDOFF_NOT_FOUND — no handoff for handoffId"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: "HANDOFF_ALREADY_DECIDED — seal incident already decided"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "422":
+          description: "ADMIN_REASON_REQUIRED — reason missing or empty"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /admin/logistics-anomalies/{anomalyId}/decision:
+    post:
+      tags: [admin-pending]
+      summary: Decide a logistics anomaly (dismiss, freeze, or block)
+      operationId: adminLogisticsAnomalyDecision
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: anomalyId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminLogisticsAnomalyDecisionBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminLogisticsAnomalyDecisionResult"
+        "403":
+          description: "FORBIDDEN — actor lacks the anomaly-resolution permission (ops manager, logistics operations, super admin)"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: "ANOMALY_NOT_FOUND — no anomaly for anomalyId"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: "ANOMALY_ALREADY_DECIDED — anomaly already decided"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "422":
+          description: "ADMIN_REASON_REQUIRED — reason missing or empty"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /admin/orders/{orderId}/cancel:
+    post:
+      tags: [admin-pending]
+      summary: Cancel an order (with optional refund) — stuck-order resolution
+      operationId: adminCancelOrder
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: orderId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminOrderCancelBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminOrderCancelResult"
+        "403":
+          description: "FORBIDDEN — actor lacks the cancellation permission"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: "ORDER_NOT_FOUND — no order for orderId"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: "ORDER_NOT_CANCELLABLE — order state forbids cancellation; TWO_PERSON_REQUIRED — cancellation with an above-threshold refund requires the two-person approval flow"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "422":
+          description: "ADMIN_REASON_REQUIRED — reason missing or empty"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /admin/consignments/{consignmentId}/missing:
+    post:
+      tags: [admin-pending]
+      summary: Resolve a missing-orders consignment exception (relocate or declare lost)
+      operationId: adminConsignmentMissingDecision
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: consignmentId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminConsignmentMissingBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminConsignmentMissingResult"
+        "403":
+          description: "FORBIDDEN — actor lacks the consignment-resolution permission"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: "CONSIGNMENT_NOT_FOUND — no consignment for consignmentId"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: "CONSIGNMENT_ALREADY_DECIDED — missing-order exception already resolved"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "422":
+          description: "ADMIN_REASON_REQUIRED — reason missing or empty"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -12035,6 +12777,31 @@ components:
         id: { type: string, format: uuid }
         status: { type: string, enum: [submitted, under_review] }
         createdAt: { type: string, format: date-time }
+
+    LeadCreate:
+      type: object
+      required: [type, name, phone, email]
+      properties:
+        type: { type: string, enum: [merchant, provider, rider, feedback] }
+        name: { type: string, maxLength: 120 }
+        phone: { type: string, maxLength: 20 }
+        email: { type: string, format: email }
+        companyName: { type: string, maxLength: 120, description: "Business name (merchant leads)" }
+        city: { type: string, maxLength: 80 }
+        message: { type: string, maxLength: 4000 }
+        source: { type: string, maxLength: 40, description: "Origin of the lead, e.g. public-frontend" }
+        topic: { type: string, maxLength: 80, description: "Feedback topic (feedback leads)" }
+        restaurant: { type: string, maxLength: 120, description: "Restaurant name (merchant leads)" }
+        owner: { type: string, maxLength: 120, description: "Owner name (merchant leads)" }
+        businessType: { type: string, maxLength: 60, description: "Business type (merchant leads)" }
+        outlets: { type: integer, minimum: 1, description: "Outlet count (merchant leads)" }
+        comment: { type: string, maxLength: 4000, description: "Merchant lead comment" }
+        trade: { type: string, maxLength: 120, description: "Trade/specialty (provider leads)" }
+        experience: { type: integer, minimum: 0, description: "Years of experience (provider leads)" }
+        bio: { type: string, maxLength: 2000, description: "Provider bio" }
+        vehicle: { type: string, maxLength: 80, description: "Vehicle type (rider leads)" }
+        availability: { type: string, maxLength: 120, description: "Availability (rider leads)" }
+        referral: { type: string, maxLength: 40, description: "Referral code" }
 
     MerchantPublic:
       type: object
@@ -12393,6 +13160,7 @@ components:
         deliveryAddress: { $ref: "#/components/schemas/AddressSnapshot" }
         note: { type: string, maxLength: 500 }
         scheduledAt: { type: string, format: date-time, nullable: true, description: "Advance (pre-scheduled) orders" }
+        couponId: { type: string, format: uuid, description: "Optional coupon applied at checkout; server validates it and echoes the discount via totals.discountTZS" }
 
     AddressSnapshot:
       type: object
@@ -12480,6 +13248,10 @@ components:
                   quantity: { type: integer }
                   unitPriceTZS: { type: integer }
             deliveryAddress: { $ref: "#/components/schemas/AddressSnapshot" }
+            deliveryWindowFrom: { type: string, format: date-time, nullable: true, description: "Server-computed delivery window start (ISO)" }
+            deliveryWindowTo: { type: string, format: date-time, nullable: true, description: "Server-computed delivery window end (ISO)" }
+            originCityName: { type: string, nullable: true, description: "Route origin city label (intercity/relay shipments)" }
+            destinationCityName: { type: string, nullable: true, description: "Route destination city label (intercity/relay shipments)" }
             events:
               type: array
               items: { $ref: "#/components/schemas/OrderEvent" }
@@ -12668,6 +13440,8 @@ components:
         body: { type: string }
         state: { type: string, enum: [pending, published, hidden, deleted] }
         createdAt: { type: string, format: date-time }
+        reply: { $ref: "#/components/schemas/ReviewReply", nullable: true, description: "Merchant/provider/rider reply to this review, when one exists" }
+        verifiedPurchase: { type: boolean, description: "Server-set: author completed a real transaction for this target" }
 
     ReviewReport:
       type: object
@@ -12726,6 +13500,23 @@ components:
         inApp:
           type: object
           additionalProperties: { type: boolean }
+
+    PushTokenRegister:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string, minLength: 10, maxLength: 512 }
+        platform: { type: string, enum: [expo, apns, fcm], default: expo }
+        deviceName: { type: string, maxLength: 120, nullable: true }
+
+    PushToken:
+      type: object
+      required: [token, platform, createdAt]
+      properties:
+        token: { type: string }
+        platform: { type: string, enum: [expo, apns, fcm] }
+        deviceName: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
 
     TicketCreate:
       type: object
@@ -15934,3 +16725,285 @@ components:
               priceTZS: { type: integer }
               originalPriceTZS: { type: integer }
               quantityLimit: { type: integer }
+
+    AdminRiderApprovalBody:
+      type: object
+      required: [decision, reason]
+      properties:
+        decision: { type: string, enum: [approve, request_changes] }
+        reason: { type: string, maxLength: 1000 }
+
+    AdminRiderApprovalResult:
+      type: object
+      required: [riderId, status, auditEntryId]
+      properties:
+        riderId: { type: string, format: uuid }
+        status: { type: string, enum: [approved, changes_requested] }
+        auditEntryId: { type: string, format: uuid, description: "Audit entry (rider.* prefix) recording the decision" }
+
+    AdminProviderApprovalBody:
+      type: object
+      required: [decision, reason]
+      properties:
+        decision: { type: string, enum: [approve, request_changes] }
+        reason: { type: string, maxLength: 1000 }
+
+    AdminProviderApprovalResult:
+      type: object
+      required: [providerId, status, auditEntryId]
+      properties:
+        providerId: { type: string, format: uuid }
+        status: { type: string, enum: [approved, changes_requested] }
+        auditEntryId: { type: string, format: uuid, description: "Audit entry (provider.* prefix) recording the decision" }
+
+    AdminDisputeDecisionBody:
+      type: object
+      required: [decision, reason]
+      properties:
+        decision: { type: string, enum: [refund, payout, reject] }
+        amountTZS: { type: integer, description: "Required when decision is refund or payout (TZS)" }
+        reason: { type: string, maxLength: 1000 }
+
+    AdminDisputeDecisionResult:
+      type: object
+      required: [disputeId, decision, status, auditEntryId]
+      properties:
+        disputeId: { type: string, format: uuid }
+        decision: { type: string, enum: [refund, payout, reject] }
+        status: { type: string, enum: [decided] }
+        auditEntryId: { type: string, format: uuid, description: "Audit entry (dispute.* prefix) recording the decision" }
+
+    AdminPayoutReconcileBody:
+      type: object
+      required: [outcome]
+      properties:
+        outcome: { type: string, enum: [paid, failed, exception] }
+        note: { type: string, maxLength: 1000, description: "Required when outcome is exception (variance explanation)" }
+
+    AdminPayoutReconcileResult:
+      type: object
+      required: [batchId, outcome, settledAt, auditEntryId]
+      properties:
+        batchId: { type: string, format: uuid }
+        outcome: { type: string, enum: [paid, failed, exception] }
+        settledAt: { type: string, format: date-time }
+        auditEntryId: { type: string, format: uuid, description: "Audit entry (payout.* prefix) recording the reconciliation" }
+
+    AdminCodShiftDecisionBody:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [reconciled, mismatch] }
+        note: { type: string, maxLength: 1000, description: "Required when status is mismatch (variance explanation)" }
+
+    AdminCodShiftDecisionResult:
+      type: object
+      required: [shiftId, status, auditEntryId]
+      properties:
+        shiftId: { type: string, format: uuid }
+        status: { type: string, enum: [reconciled, mismatch] }
+        auditEntryId: { type: string, format: uuid, description: "Audit entry (cod.* prefix) recording the decision" }
+
+    AdminChainOnboardBody:
+      type: object
+      required: [tier, reason]
+      properties:
+        tier: { type: string, enum: [standard, enterprise] }
+        slaLevel: { type: string, nullable: true }
+        accountManager: { type: string, nullable: true }
+        reason: { type: string, maxLength: 1000, description: "Decision reason (chain.* audit)" }
+
+    AdminChainOnboardResult:
+      type: object
+      required: [merchantGroupId, tier, status, auditEntryId]
+      properties:
+        merchantGroupId: { type: string, format: uuid }
+        tier: { type: string, enum: [standard, enterprise] }
+        slaLevel: { type: string, nullable: true }
+        accountManager: { type: string, nullable: true }
+        status: { type: string, enum: [active] }
+        auditEntryId: { type: string, format: uuid, description: "Audit entry (chain.* prefix) recording the onboarding" }
+
+    AdminChainSuspendBody:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, maxLength: 1000 }
+
+    AdminChainSuspendResult:
+      type: object
+      required: [merchantGroupId, status, auditEntryId]
+      properties:
+        merchantGroupId: { type: string, format: uuid }
+        status: { type: string, enum: [suspended] }
+        auditEntryId: { type: string, format: uuid, description: "Audit entry (chain.* prefix) recording the suspension" }
+
+    AdminDataExportDecisionBody:
+      type: object
+      required: [decision, reason]
+      properties:
+        decision: { type: string, enum: [approve, reject] }
+        reason: { type: string, maxLength: 1000 }
+
+    AdminDataExportDecisionResult:
+      type: object
+      required: [jobId, decision, status, auditEntryId]
+      properties:
+        jobId: { type: string, format: uuid }
+        decision: { type: string, enum: [approve, reject] }
+        status: { type: string, enum: [queued, processing, rejected] }
+        auditEntryId: { type: string, format: uuid, description: "Audit entry (export.* prefix) recording the approval decision" }
+
+    AdminDataExportRerunBody:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, maxLength: 1000 }
+
+    AdminDataExportRerunResult:
+      type: object
+      required: [jobId, status, auditEntryId]
+      properties:
+        jobId: { type: string, format: uuid }
+        status: { type: string, enum: [queued] }
+        auditEntryId: { type: string, format: uuid, description: "Audit entry (export.* prefix) recording the re-run" }
+
+    LoyaltyTierConfig:
+      type: object
+      required: [name, discountBps, thresholdTZS, perks]
+      properties:
+        name: { type: string }
+        discountBps: { type: integer, description: "Discount in basis points, validated against policy limits" }
+        thresholdTZS: { type: integer }
+        perks: { type: array, items: { type: string } }
+
+    LoyaltyTopUpReward:
+      type: object
+      required: [thresholdTZS, bonusTZS]
+      properties:
+        thresholdTZS: { type: integer }
+        bonusTZS: { type: integer }
+
+    AdminLoyaltyConfigBody:
+      type: object
+      required: [tiers, topUpRewards]
+      properties:
+        tiers:
+          type: array
+          items: { $ref: "#/components/schemas/LoyaltyTierConfig" }
+        topUpRewards:
+          type: array
+          items: { $ref: "#/components/schemas/LoyaltyTopUpReward" }
+        reason: { type: string, maxLength: 1000, description: "Review reason (loyalty.* audit)" }
+
+    AdminLoyaltyConfigResult:
+      type: object
+      required: [config, updatedAt, auditEntryId]
+      properties:
+        config:
+          type: object
+          required: [tiers, topUpRewards]
+          properties:
+            tiers:
+              type: array
+              items: { $ref: "#/components/schemas/LoyaltyTierConfig" }
+            topUpRewards:
+              type: array
+              items: { $ref: "#/components/schemas/LoyaltyTopUpReward" }
+        updatedAt: { type: string, format: date-time }
+        auditEntryId: { type: string, format: uuid, description: "Audit entry (loyalty.* prefix) recording the config change" }
+
+    AdminCrashRespondBody:
+      type: object
+      required: [outcome]
+      properties:
+        outcome: { type: string, enum: [safe, unsafe] }
+        note: { type: string, maxLength: 1000, description: "Follow-up note (linked support ticket)" }
+
+    AdminCrashRespondResult:
+      type: object
+      required: [riderId, outcome, auditEntryId]
+      properties:
+        riderId: { type: string, format: uuid }
+        outcome: { type: string, enum: [safe, unsafe] }
+        auditEntryId: { type: string, format: uuid, description: "Audit entry (safety.* prefix) recording the crash response" }
+
+    AdminRestOverrideBody:
+      type: object
+      required: [action, reason]
+      properties:
+        action: { type: string, enum: [enforce, relieve] }
+        reason: { type: string, maxLength: 1000 }
+
+    AdminRestOverrideResult:
+      type: object
+      required: [riderId, forcedRestUntil, auditEntryId]
+      properties:
+        riderId: { type: string, format: uuid }
+        forcedRestUntil: { type: string, format: date-time, nullable: true, description: "Enforce sets the rest window; relieve clears it" }
+        auditEntryId: { type: string, format: uuid, description: "Audit entry (rider.* prefix) recording the rest action" }
+
+    AdminHandoffSealBody:
+      type: object
+      required: [outcome, reason]
+      properties:
+        outcome: { type: string, enum: [resealed, damage_claim] }
+        reason: { type: string, maxLength: 1000 }
+
+    AdminHandoffSealResult:
+      type: object
+      required: [handoffId, outcome, sealIntact, auditEntryId]
+      properties:
+        handoffId: { type: string, format: uuid }
+        outcome: { type: string, enum: [resealed, damage_claim] }
+        sealIntact: { type: boolean }
+        auditEntryId: { type: string, format: uuid, description: "Audit entry (handoff.* prefix) recording the seal decision" }
+
+    AdminLogisticsAnomalyDecisionBody:
+      type: object
+      required: [decision, reason]
+      properties:
+        decision: { type: string, enum: [dismiss, freeze, block] }
+        reason: { type: string, maxLength: 1000 }
+        note: { type: string, maxLength: 1000, description: "False-positive note when dismissing (GPS drift, clock skew)" }
+
+    AdminLogisticsAnomalyDecisionResult:
+      type: object
+      required: [anomalyId, decision, resolved, auditEntryId]
+      properties:
+        anomalyId: { type: string, format: uuid }
+        decision: { type: string, enum: [dismiss, freeze, block] }
+        resolved: { type: boolean }
+        auditEntryId: { type: string, format: uuid, description: "Audit entry (anomaly.* prefix) recording the decision" }
+
+    AdminOrderCancelBody:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, maxLength: 1000 }
+        refundTZS: { type: integer, description: "Included when a refund is part of the cancellation" }
+
+    AdminOrderCancelResult:
+      type: object
+      required: [orderId, status, auditEntryId]
+      properties:
+        orderId: { type: string, format: uuid }
+        status: { type: string, enum: [cancelled] }
+        refundTZS: { type: integer, nullable: true }
+        auditEntryId: { type: string, format: uuid, description: "Audit entry (order.* prefix) recording the cancellation" }
+
+    AdminConsignmentMissingBody:
+      type: object
+      required: [decision, reason]
+      properties:
+        decision: { type: string, enum: [relocate, declare_lost] }
+        reason: { type: string, maxLength: 1000 }
+
+    AdminConsignmentMissingResult:
+      type: object
+      required: [consignmentId, decision, status, auditEntryId]
+      properties:
+        consignmentId: { type: string, format: uuid }
+        decision: { type: string, enum: [relocate, declare_lost] }
+        status: { type: string, enum: [exception_cleared] }
+        auditEntryId: { type: string, format: uuid, description: "Audit entry (consignment.* prefix) recording the resolution" }

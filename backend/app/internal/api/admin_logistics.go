@@ -736,7 +736,7 @@ func (s *Server) AdminReviewRiskCase(w http.ResponseWriter, r *http.Request, cas
 	}
 
 	status := "resolved"
-	if body.Action == gen.Dismiss {
+	if body.Action == gen.AdminReviewRiskCaseJSONBodyActionDismiss {
 		status = "dismissed"
 	}
 	var row riskRow

@@ -100,12 +100,11 @@ func (s *Server) Router() http.Handler {
 			}).Handler)
 		}
 		// Push-token registry (NOTIFICATIONS.md documented extension): the
-		// generated contract tree has no push-token endpoint, so these mount
-		// HERE in the authed tree, BEFORE the generated fallback — a missing
-		// contract route must not shadow them.
-		r.Post("/notifications/me/push-token", s.RegisterPushToken)
-		r.Delete("/notifications/me/push-token", s.DeletePushToken)
-		r.Get("/notifications/me/push-tokens", s.ListPushTokens)
+		// contract now declares the three push-token endpoints
+		// (/notifications/me/push-token POST/DELETE,
+		// /notifications/me/push-tokens GET), so they mount through the
+		// generated tree below (gen.HandlerFromMux) like every other
+		// contract route.
 		// Admin webhook ops extension (webhook_admin.go): the contract only
 		// defines GET /admin/webhooks; the delivery list + manual retry are
 		// documented extensions mounted before the generated surface so they

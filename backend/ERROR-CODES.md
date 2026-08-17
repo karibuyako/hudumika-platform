@@ -71,7 +71,22 @@ Clients switch on `code`, never on `message` text.
 ## Loyalty
 
 `MEMBER_NOT_FOUND`, `MEMBER_PHONE_EXISTS`, `TIER_NOT_FOUND`,
-`TOP_UP_BELOW_THRESHOLD`, `MEMBER_INSUFFICIENT_BALANCE`, `TIER_NAME_EXISTS`.
+`TOP_UP_BELOW_THRESHOLD`, `MEMBER_INSUFFICIENT_BALANCE`, `TIER_NAME_EXISTS`,
+`LOYALTY_CONFIG_INVALID` (config fails policy validation).
+
+## Riders and providers (verification)
+
+`RIDER_NOT_FOUND`, `RIDER_ALREADY_DECIDED` (terminal verification state),
+`PROVIDER_NOT_FOUND`, `PROVIDER_ALREADY_DECIDED`.
+
+## Disputes
+
+`DISPUTE_NOT_FOUND`, `DISPUTE_ALREADY_DECIDED`.
+
+## Chains (enterprise)
+
+`CHAIN_NOT_FOUND`, `CHAIN_ALREADY_ACTIVE` (suspension is the only downgrade
+path), `CHAIN_ALREADY_SUSPENDED`.
 
 ## Merchant staff and devices
 
@@ -122,7 +137,8 @@ Clients switch on `code`, never on `message` text.
 `REPORT_NOT_FOUND`, `REPORT_SCHEDULE_INVALID`, `REPORT_RECIPIENT_INVALID`,
 `SEGMENT_RULES_INVALID`, `JOURNEY_TRIGGER_INVALID`,
 `DATA_EXPORT_IN_PROGRESS`, `DATA_EXPORT_SCOPE_INVALID`,
-`DATA_EXPORT_RATE_LIMITED`, `BULK_OPERATION_INVALID`,
+`DATA_EXPORT_RATE_LIMITED`, `DATA_EXPORT_NOT_FOUND`,
+`DATA_EXPORT_ALREADY_DECIDED`, `BULK_OPERATION_INVALID`,
 `BULK_OPERATION_REQUIRES_APPROVAL`.
 
 ## Print jobs and categories
@@ -151,6 +167,7 @@ Clients switch on `code`, never on `message` text.
 `TIP_NOT_ALLOWED` (order not completed), `TIP_EXCEEDS_LIMIT`,
 `SHIFT_NOT_FOUND`, `SHIFT_ALREADY_ACTIVE`, `SHIFT_CLOCKOUT_WITHOUT_CLOCKIN`,
 `SHIFT_CASH_MISMATCH` (COD cash reconciliation required),
+`SHIFT_ALREADY_DECIDED` (COD shift already reconciled/mismatch),
 `OFFER_NOT_FOUND` (grab offer expired), `FARE_NOT_AVAILABLE` (order not assigned to this rider),
 `HOLD_NOT_ALLOWED` (status gate), `HOLD_ALREADY_ACTIVE`, `HEATMAP_INVALID`,
 `LEADERBOARD_UNAVAILABLE`, `PERFORMANCE_UNAVAILABLE`,
@@ -164,7 +181,9 @@ Clients switch on `code`, never on `message` text.
 `MEDIA_TYPE_INVALID` (chat attachment type), `COD_RECONCILIATION_UNAVAILABLE`,
 `FORECAST_UNAVAILABLE` (model not ready), `SYNC_BATCH_INVALID` (malformed events),
 `SYNC_SEQUENCE_GAP` (server asks for missing span), `SAFETY_EVENT_INVALID`,
-`SAFETY_EVENT_RATE_LIMITED`, `CONTROL_TOWER_UNAVAILABLE`, `REST_ENFORCED` (assignment blocked during mandatory rest),
+`SAFETY_EVENT_RATE_LIMITED`, `SAFETY_EVENT_ALREADY_HANDLED` (crash event already has an outcome),
+`CONTROL_TOWER_UNAVAILABLE`, `REST_ENFORCED` (assignment blocked during mandatory rest),
+`REST_ALREADY_ENFORCED` (rest override conflict),
 `DEST_FILTER_INVALID` (bad area/coords), `MASKED_CALL_NOT_ALLOWED` (order not assigned to this rider),
 `MASKED_CALL_EXPIRED` (session expired), `RATING_FILTER_INVALID`, `MAINTENANCE_INVALID`,
 `GOALS_INVALID`, `EXPENSE_INVALID`, `CONTACT_LIMIT_REACHED` (max trusted contacts),
@@ -189,7 +208,10 @@ Clients switch on `code`, never on `message` text.
 `BOOKING_NOTE_INVALID`, `PROVIDER_EXPORT_IN_PROGRESS`,
 `HUB_NOT_FOUND`, `HUB_FULL`, `LEG_NOT_FOUND`, `LEG_ALREADY_COMPLETED`,
 `HANDOFF_INVALID`, `HANDOFF_SEAL_BROKEN` (tamper-evident seal failed),
-`HANDOFF_SCAN_MISMATCH` (waybill scan mismatch),
+`HANDOFF_SCAN_MISMATCH` (waybill scan mismatch), `HANDOFF_NOT_FOUND`,
+`HANDOFF_ALREADY_DECIDED` (seal incident already decided),
+`ANOMALY_NOT_FOUND`, `ANOMALY_ALREADY_DECIDED`,
+`CONSIGNMENT_ALREADY_DECIDED` (missing-order exception already resolved),
 `CONSIGNMENT_NOT_FOUND`, `CONSIGNMENT_FULL`, `CONSIGNMENT_ALREADY_DEPARTED`,
 `CONSIGNMENT_ORDER_MISMATCH` (arrival scan ≠ manifest), `CONSIGNMENT_MISSING_ORDERS`,
 `WAYBILL_INVALID`, `INTERCITY_UNAVAILABLE` (route not configured),
@@ -306,7 +328,8 @@ Clients switch on `code`, never on `message` text.
 ## Payouts
 
 `PAYOUT_NOT_FOUND`, `PAYOUT_BATCH_EXCEPTION`, `PAYOUT_ACCOUNT_MISSING`,
-`LEDGER_IMMUTABLE`, `LEDGER_INSUFFICIENT_BALANCE`.
+`LEDGER_IMMUTABLE`, `LEDGER_INSUFFICIENT_BALANCE`,
+`PAYOUT_BATCH_NOT_FOUND`, `PAYOUT_ALREADY_RECONCILED` (batch already settled).
 
 ## Dispatch
 
@@ -318,6 +341,12 @@ Clients switch on `code`, never on `message` text.
 `ITEM_NOT_FOUND`, `ITEM_SOFT_DELETED`, `ITEM_PRICE_CHANGED`,
 `CATALOGUE_NOT_PUBLISHED`, `CATALOGUE_MERCHANT_MISMATCH`,
 `BULK_EXCEEDS_LIMIT`.
+
+## Hotels, travel and events
+
+`HOTEL_NOT_FOUND`, `HOTEL_ROOM_NOT_FOUND`, `HOTEL_BOOKING_CONFLICT`,
+`TRAVEL_OPTION_NOT_FOUND`, `TRAVEL_BOOKING_CONFLICT`,
+`EVENT_NOT_FOUND`, `EVENT_SOLD_OUT`, `EVENT_TICKET_CONFLICT`.
 
 ## Reviews
 
