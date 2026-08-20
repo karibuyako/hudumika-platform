@@ -120,18 +120,22 @@ export default function HomeScreen() {
   const load = useCallback(async (silent = false) => {
     if (!silent) setError('');
     try {
-      // Feed + flash-deal source in one pass: the flash rail needs live
-      // group-buy deals (src/lib/flash.ts — the contract's FlashSale resource
-      // has no repo surface yet), so both load together. Live-deals sessions
-      // (GET /marketing/live-deals) feed the "Live now" banner below.
-      const [data, deals, live] = await Promise.all([
-        getHomeRepository().getHomeFeed(),
-        getGroupBuyRepository().list(),
-        getMarketingRepository().listLiveDeals(),
-      ]);
+      const data = await getHomeRepository().getHomeFeed();
+      // Empty categories [] is honest-empty — not an error; the grid renders its empty state.
       setFeed(data);
-      setFlashDeals(deals);
-      setLiveSessions(live.sessions.filter((s) => s.status === LiveDealSessionStatus.live));
+      // Flash deals and live sessions are secondary — their failure must not blank the whole feed.
+      try {
+        const deals = await getGroupBuyRepository().list();
+        setFlashDeals(deals);
+      } catch {
+        setFlashDeals([]);
+      }
+      try {
+        const live = await getMarketingRepository().listLiveDeals();
+        setLiveSessions(live.sessions.filter((s) => s.status === LiveDealSessionStatus.live));
+      } catch {
+        setLiveSessions([]);
+      }
     } catch {
       if (!silent) setError(t('home.error'));
     }
