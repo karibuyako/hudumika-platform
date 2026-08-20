@@ -48,17 +48,15 @@ type PgAudit struct {
 func NewPg(pool *pgxpool.Pool) *PgAudit { return &PgAudit{pool: pool} }
 
 // Insert appends one row to audit_logs. Subjects that are not UUIDs (phone
-// numbers before user linkage) are recorded with the nil UUID so the row is
-// never dropped.
+// numbers before user linkage) are resolved via users.phone lookup so the
+// row carries the real actor UUID; unresolvable subjects fall back to the
+// nil UUID so the row is never dropped.
 func (p *PgAudit) Insert(ctx context.Context, e Entry) error {
 	const insert = `
 INSERT INTO audit_logs
     (actor_id, actor_role, action, entity_type, entity_id, details, request_id, ip, created_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
-	actor, err := actorUUID(e.ActorID)
-	if err != nil {
-		return fmt.Errorf("audit insert: %w", err)
-	}
+	actor := p.resolveActorID(ctx, e.ActorID)
 	if _, err := p.pool.Exec(ctx, insert,
 		actor, e.ActorRole, e.Action, e.EntityType, e.EntityID,
 		e.Details, e.RequestID, e.IP, e.CreatedAt,
@@ -78,10 +76,7 @@ INSERT INTO audit_logs
     (actor_id, actor_role, action, entity_type, entity_id, details, request_id, ip, created_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING id`
-	actor, err := actorUUID(e.ActorID)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("audit insert: %w", err)
-	}
+	actor := p.resolveActorID(ctx, e.ActorID)
 	var id uuid.UUID
 	if err := p.pool.QueryRow(ctx, insert,
 		actor, e.ActorRole, e.Action, e.EntityType, e.EntityID,
@@ -101,6 +96,28 @@ func actorUUID(subject string) (uuid.UUID, error) {
 		return uuid.Nil, nil
 	}
 	return actor, nil
+}
+
+// resolveActorID maps an actor subject to the actor_id column, resolving
+// phone subjects via users.phone → users.id lookup when the subject is not a
+// UUID (the session subject is the phone, not the user UUID). Unresolvable
+// subjects fall back to uuid.Nil so the row is never dropped; callers that
+// have a logger (router.go audit middleware) log a warning on lookup failure.
+func (p *PgAudit) resolveActorID(ctx context.Context, subject string) uuid.UUID {
+	if subject == "" {
+		return uuid.Nil
+	}
+	if id, err := uuid.Parse(subject); err == nil {
+		return id
+	}
+	if p.pool == nil {
+		return uuid.Nil
+	}
+	var id uuid.UUID
+	if err := p.pool.QueryRow(ctx, `SELECT id FROM users WHERE phone = $1`, subject).Scan(&id); err != nil {
+		return uuid.Nil
+	}
+	return id
 }
 
 // MemoryAudit is an in-memory AuditStore for tests.

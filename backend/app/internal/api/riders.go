@@ -188,8 +188,11 @@ func (s *Server) ReportRiderLocation(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.logger.Warn("location rate limit store failed", "error", err)
 	} else if !decision.Allowed {
+		writeRateLimitHeaders(w, 12, 0, decision.RetryAfter)
 		writeErrorWithRetry(w, http.StatusTooManyRequests, "LOCATION_RATE_LIMITED", "Location updates are throttled", int(decision.RetryAfter.Seconds()))
 		return
+	} else {
+		writeRateLimitHeaders(w, 12, rateLimitRemaining(decision, 12), time.Minute)
 	}
 
 	reg := s.riderRegistry()
