@@ -240,7 +240,7 @@ func (s *Server) ListIntegrations(w http.ResponseWriter, r *http.Request) {
 // surface 422 VALIDATION_FAILED instead of a 500 constraint violation) and
 // inserts the row. Invalid scope surfaces 422 VALIDATION_FAILED.
 func (s *Server) CreateIntegration(w http.ResponseWriter, r *http.Request) {
-	merchantID, ok := s.integrationsMerchantID(w, r)
+	claims, ok := integrationClaims(w, r)
 	if !ok {
 		return
 	}
@@ -264,6 +264,10 @@ func (s *Server) CreateIntegration(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", err.Error())
 			return
 		}
+	}
+	merchantID, ok := s.integrationUserID(w, r, claims)
+	if !ok {
+		return
 	}
 	var scopeJSON []byte
 	if body.Scope != nil {

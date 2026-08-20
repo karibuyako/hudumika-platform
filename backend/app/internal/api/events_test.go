@@ -64,8 +64,8 @@ func TestServerEventsRequiresAuth(t *testing.T) {
 func TestServerEventsMissingAfterRejected(t *testing.T) {
 	s := newTestServer()
 	rec := eventsAuthedRequest(t, s, http.MethodGet, "/events", "")
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("events without after = %d, want 400 (%s)", rec.Code, rec.Body)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("events without after = %d, want 422 (%s)", rec.Code, rec.Body)
 	}
 }
 

@@ -20,9 +20,13 @@ import (
 // MEDIA-CATALOGUE bounded context (migration 00035, backend/DATA-MODEL.md
 // §barcode, combo, menu, video; backend/ERROR-CODES.md §print jobs and
 // categories and §barcodes, combos, menus, videos): barcodes, combos, menus,
-// videos, categories and print jobs. Like the catalogues context, the
-// media-catalogue merchant id is the authenticated merchant's users row id
-// (the real merchant entity does not exist yet).
+// videos, categories and print jobs. Like the catalogues context, barcode
+// merchant identity uses the authenticated merchant's real merchants row id
+// (merchants.owner_user_id links the row to the session's users row; see
+// merchant_linkage.go / catalogueMerchantID) so generation and lookup share
+// the same resolver. Other media entities (combos, menus, videos,
+// categories, print jobs) remain on the legacy users-row merchant id via
+// mediaMerchantID.
 
 // Limits enforced by the media handlers (contract + ERROR-CODES.md).
 const (
@@ -100,7 +104,7 @@ func (s *Server) ListBarcodeFormats(w http.ResponseWriter, r *http.Request) {
 // /barcodes/{code}). Only the caller's own barcodes resolve; an unknown,
 // foreign or item-less code surfaces BARCODE_NOT_FOUND.
 func (s *Server) LookupBarcode(w http.ResponseWriter, r *http.Request, code string) {
-	merchantID, ok := s.mediaMerchantID(w, r)
+	merchantID, ok := s.catalogueMerchantID(w, r)
 	if !ok {
 		return
 	}
@@ -145,7 +149,7 @@ type barcodeHistoryEntry struct {
 // history is the barcode row's own created_at as a single "generated" entry;
 // an unknown code surfaces BARCODE_NOT_FOUND.
 func (s *Server) GetBarcodeHistory(w http.ResponseWriter, r *http.Request, code string) {
-	merchantID, ok := s.mediaMerchantID(w, r)
+	merchantID, ok := s.catalogueMerchantID(w, r)
 	if !ok {
 		return
 	}
@@ -181,7 +185,7 @@ type batchImportResult struct {
 // (unknown item, code already taken, in-batch duplicates) are counted as
 // rejected rather than failing the whole batch.
 func (s *Server) BatchImportBarcodes(w http.ResponseWriter, r *http.Request) {
-	merchantID, ok := s.mediaMerchantID(w, r)
+	merchantID, ok := s.catalogueMerchantID(w, r)
 	if !ok {
 		return
 	}

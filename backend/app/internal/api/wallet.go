@@ -489,6 +489,11 @@ func (w *walletStore) createWithdrawal(ctx context.Context, ownerID uuid.UUID, a
 		entryID, batchID, ownerID, amountTZS, withdrawalDefaultMethod).Scan(&createdAt); err != nil {
 		return walletWithdrawal{}, fmt.Errorf("wallet: insert payout entry for %s: %w", ownerID, err)
 	}
+	if _, err := tx.Exec(ctx,
+		`UPDATE payout_batches SET total_tzs = total_tzs + $1, count = count + 1 WHERE id = $2`,
+		amountTZS, batchID); err != nil {
+		return walletWithdrawal{}, fmt.Errorf("wallet: bump batch %s: %w", batchID, err)
+	}
 
 	if err := tx.Commit(ctx); err != nil {
 		return walletWithdrawal{}, fmt.Errorf("wallet: commit withdrawal for %s: %w", ownerID, err)

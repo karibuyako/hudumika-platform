@@ -265,7 +265,7 @@ func TestTiersCRUD(t *testing.T) {
 	st := NewStore(pool)
 	ctx := context.Background()
 
-	tier, err := st.CreateTier(ctx, merchant, "gold", 50000)
+	tier, err := st.CreateTier(ctx, merchant, "gold", 50000, 0, "[]")
 	if err != nil {
 		t.Fatalf("create tier: %v", err)
 	}
@@ -279,7 +279,7 @@ func TestTiersCRUD(t *testing.T) {
 	if got.Name != "gold" || got.DiscountBps != 0 {
 		t.Fatalf("unexpected tier: %+v", got)
 	}
-	if _, err := st.CreateTier(ctx, merchant, "gold", 1000); !errors.Is(err, ErrTierNameExists) {
+	if _, err := st.CreateTier(ctx, merchant, "gold", 1000, 0, "[]"); !errors.Is(err, ErrTierNameExists) {
 		t.Fatalf("duplicate tier name error = %v, want ErrTierNameExists", err)
 	}
 	if _, err := st.GetTier(ctx, uuid.New()); !errors.Is(err, ErrTierNotFound) {

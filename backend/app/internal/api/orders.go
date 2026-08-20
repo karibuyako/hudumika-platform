@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/hudumika/api-backend/internal/auth"
@@ -218,6 +220,13 @@ func (s *Server) CreateOrder(w http.ResponseWriter, r *http.Request, params gen.
 		Source:          "app",
 	})
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" && strings.Contains(pgErr.ConstraintName, "idempotency") {
+			if existing, err2 := orders.NewStore(s.db.Pool()).GetByIdempotencyKey(r.Context(), userID, params.IdempotencyKey); err2 == nil {
+				writeJSON(w, http.StatusOK, toGenOrder(*existing))
+				return
+			}
+		}
 		s.logger.Error("create order failed", "error", err)
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return

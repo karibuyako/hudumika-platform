@@ -92,6 +92,10 @@ func (s *Server) AdminModerateReview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := s.reviewStore().RecomputeRating(r.Context(), review.TargetType, review.TargetID); err != nil {
+		s.logger.Error("recompute rating failed after moderation", "targetType", review.TargetType, "target", review.TargetID, "error", err)
+	}
+
 	updated, err := s.reviewStore().Get(r.Context(), review.ID)
 	if err != nil || updated == nil {
 		s.logger.Error("review reload failed after moderation", "review", review.ID, "error", err)

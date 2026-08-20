@@ -147,10 +147,10 @@ func TestAdminGlobalSearchEmptyQuery(t *testing.T) {
 	}
 
 	// The missing-parameter case is enforced by the generated wrapper before
-	// the handler: 400, still before any database access.
+	// the handler: 422 VALIDATION_FAILED via ErrorHandlerFunc.
 	rec := authedGET(t, s.Router(), "/admin/search", token)
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("missing q status = %d, want 400 (%s)", rec.Code, rec.Body)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("missing q status = %d, want 422 (%s)", rec.Code, rec.Body)
 	}
 }
 

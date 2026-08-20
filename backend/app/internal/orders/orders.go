@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -225,6 +226,11 @@ func (s *Store) CreateOrder(ctx context.Context, in CreateOrderInput) (OrderRow,
 		total, address, in.Note, in.IdempotencyKey, in.Source)
 	row, err = scanOrderRow(scanner)
 	if err != nil {
+		if isIdempotencyViolation(err) {
+			if existing, err2 := s.GetByIdempotencyKey(ctx, in.CustomerUserID, in.IdempotencyKey); err2 == nil {
+				return *existing, nil
+			}
+		}
 		return OrderRow{}, fmt.Errorf("orders: insert order: %w", err)
 	}
 
@@ -265,6 +271,20 @@ func (s *Store) GetOrderRow(ctx context.Context, id uuid.UUID) (*OrderRow, error
 	}
 	if err != nil {
 		return nil, fmt.Errorf("orders: get order %s: %w", id, err)
+	}
+	return &row, nil
+}
+
+// GetByIdempotencyKey loads the order for a (customer, idempotency key) pair
+// created by CreateOrder; ErrNotFound when absent.
+func (s *Store) GetByIdempotencyKey(ctx context.Context, customerUserID uuid.UUID, idempotencyKey string) (*OrderRow, error) {
+	row, err := scanOrderRow(s.pool.QueryRow(ctx,
+		`SELECT `+orderColumns+` FROM orders WHERE customer_user_id = $1 AND idempotency_key = $2`, customerUserID, idempotencyKey))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("orders: get by idempotency %s: %w", idempotencyKey, ErrNotFound)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("orders: get by idempotency %s: %w", idempotencyKey, err)
 	}
 	return &row, nil
 }
@@ -992,4 +1012,12 @@ func (s *Store) ListAdvanceOrders(ctx context.Context, userID uuid.UUID, from, t
 		return nil, fmt.Errorf("orders: iterate advance orders: %w", err)
 	}
 	return ids, nil
+}
+
+func isIdempotencyViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.Code != "23505" {
+		return false
+	}
+	return strings.Contains(pgErr.ConstraintName, "idempotency")
 }

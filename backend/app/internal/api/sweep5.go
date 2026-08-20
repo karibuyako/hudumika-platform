@@ -592,6 +592,10 @@ func (s *Server) VerifyStorePaymentAccount(w http.ResponseWriter, r *http.Reques
 // GetHourlyTrends answers the per-hour order/revenue trend for a date (GET
 // /analytics/hourly-trends?date=) as one aggregate over the orders table.
 func (s *Server) GetHourlyTrends(w http.ResponseWriter, r *http.Request, params gen.GetHourlyTrendsParams) {
+	if params.Date.Time.IsZero() {
+		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "date is required")
+		return
+	}
 	if s.db == nil {
 		s.logger.Error("hourly trends failed: database not configured")
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")

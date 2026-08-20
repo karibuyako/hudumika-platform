@@ -15,9 +15,10 @@ type memoryIdempotencyStore struct {
 }
 
 type memoryIdemRecord struct {
-	resp IdempotentResponse
-	ttl  time.Duration
-	at   time.Time
+	resp    IdempotentResponse
+	ttl     time.Duration
+	at      time.Time
+	pending bool
 }
 
 func NewMemoryIdempotencyStore() IdempotencyStore {
@@ -30,7 +31,7 @@ func (s *memoryIdempotencyStore) Begin(ctx context.Context, key string, ttl time
 	if rec, ok := s.records[key]; ok && time.Since(rec.at) < rec.ttl {
 		return false, nil
 	}
-	s.records[key] = memoryIdemRecord{ttl: ttl, at: time.Now()}
+	s.records[key] = memoryIdemRecord{ttl: ttl, at: time.Now(), pending: true}
 	return true, nil
 }
 
@@ -39,6 +40,7 @@ func (s *memoryIdempotencyStore) Store(ctx context.Context, key string, resp Ide
 	defer s.mu.Unlock()
 	if rec, ok := s.records[key]; ok {
 		rec.resp = resp
+		rec.pending = false
 		s.records[key] = rec
 	}
 	return nil
@@ -49,6 +51,9 @@ func (s *memoryIdempotencyStore) Get(ctx context.Context, key string) (*Idempote
 	defer s.mu.Unlock()
 	rec, ok := s.records[key]
 	if !ok || time.Since(rec.at) >= rec.ttl {
+		return nil, nil
+	}
+	if rec.pending {
 		return nil, nil
 	}
 	return &rec.resp, nil

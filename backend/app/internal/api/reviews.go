@@ -1,11 +1,14 @@
 package api
 
 import (
+	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"github.com/hudumika/api-backend/internal/auth"
@@ -68,11 +71,123 @@ func (s *Server) CreateReview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var body gen.CreateReviewJSONRequestBody
-	if err := decodeJSON(r, &body); err != nil {
+	raw, err := io.ReadAll(io.LimitReader(r.Body, maxBodyBytes+1))
+	if err != nil {
 		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Invalid request body")
 		return
 	}
+	if len(raw) > maxBodyBytes {
+		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Invalid request body")
+		return
+	}
+	var body gen.CreateReviewJSONRequestBody
+	if err := json.Unmarshal(raw, &body); err != nil {
+		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Invalid request body")
+		return
+	}
+	// Extract optional orderId/bookingId from raw JSON (gen.ReviewCreate may not have them).
+	var orderID *uuid.UUID
+	var bookingID *uuid.UUID
+	{
+		var extra map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &extra); err == nil {
+			for _, k := range []string{"orderId", "order_id", "orderID"} {
+				if v, ok := extra[k]; ok {
+					var s string
+					if err := json.Unmarshal(v, &s); err != nil {
+						continue
+					}
+					if s == "" {
+						continue
+					}
+					id, err := uuid.Parse(s)
+					if err != nil {
+						writeError(w, http.StatusUnprocessableEntity, "REVIEW_NOT_ELIGIBLE", "Invalid orderId")
+						return
+					}
+					u := id
+					orderID = &u
+					break
+				}
+			}
+			for _, k := range []string{"bookingId", "booking_id", "bookingID"} {
+				if v, ok := extra[k]; ok {
+					var s string
+					if err := json.Unmarshal(v, &s); err != nil {
+						continue
+					}
+					if s == "" {
+						continue
+					}
+					id, err := uuid.Parse(s)
+					if err != nil {
+						writeError(w, http.StatusUnprocessableEntity, "REVIEW_NOT_ELIGIBLE", "Invalid bookingId")
+						return
+					}
+					u := id
+					bookingID = &u
+					break
+				}
+			}
+		}
+	}
+
+	// Eligibility verification when extra IDs are present.
+	if orderID != nil {
+		if s.db == nil {
+			s.logger.Error("reviews eligibility check failed: database not configured")
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+			return
+		}
+		var status string
+		var cust uuid.UUID
+		err := s.db.Pool().QueryRow(r.Context(), `SELECT status, customer_user_id FROM orders WHERE id = $1`, *orderID).Scan(&status, &cust)
+		if errors.Is(err, pgx.ErrNoRows) {
+			writeError(w, http.StatusNotFound, "REVIEW_NOT_FOUND", "Order not found")
+			return
+		}
+		if err != nil {
+			s.logger.Error("order eligibility lookup failed", "order", *orderID, "error", err)
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+			return
+		}
+		if cust != user.ID {
+			writeError(w, http.StatusUnprocessableEntity, "REVIEW_NOT_ELIGIBLE", "Not eligible to review this order")
+			return
+		}
+		if status != "completed" && status != "delivered" {
+			writeError(w, http.StatusUnprocessableEntity, "REVIEW_NOT_ELIGIBLE", "Order is not eligible for review")
+			return
+		}
+	}
+	if bookingID != nil {
+		if s.db == nil {
+			s.logger.Error("reviews eligibility check failed: database not configured")
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+			return
+		}
+		var status string
+		var cust uuid.UUID
+		err := s.db.Pool().QueryRow(r.Context(), `SELECT status, customer_user_id FROM bookings WHERE id = $1`, *bookingID).Scan(&status, &cust)
+		if errors.Is(err, pgx.ErrNoRows) {
+			writeError(w, http.StatusNotFound, "REVIEW_NOT_FOUND", "Booking not found")
+			return
+		}
+		if err != nil {
+			s.logger.Error("booking eligibility lookup failed", "booking", *bookingID, "error", err)
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+			return
+		}
+		if cust != user.ID {
+			writeError(w, http.StatusUnprocessableEntity, "REVIEW_NOT_ELIGIBLE", "Not eligible to review this booking")
+			return
+		}
+		if status != "completed" {
+			writeError(w, http.StatusUnprocessableEntity, "REVIEW_NOT_ELIGIBLE", "Booking is not eligible for review")
+			return
+		}
+	}
+
 	if !body.TargetType.Valid() {
 		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "targetType must be one of merchant, provider, rider, customer")
 		return
@@ -94,6 +209,8 @@ func (s *Server) CreateReview(w http.ResponseWriter, r *http.Request) {
 		TargetType:   string(body.TargetType),
 		TargetID:     body.TargetId,
 		AuthorUserID: user.ID,
+		OrderID:      orderID,
+		BookingID:    bookingID,
 		Rating:       body.Rating,
 		Body:         body.Body,
 		// The store defaults the row to pending; the explicit field documents
@@ -211,11 +328,11 @@ func (s *Server) ReplyToReview(w http.ResponseWriter, r *http.Request, reviewId 
 
 // VoteReviewHelpful records a helpful vote on a published review (POST
 // /reviews/{reviewId}/helpful). The store supports only the one-way upvote
-// (BumpHelpful), so helpful=false is rejected. ErrNotEligible covers both a
-// non-published and a missing review (the store conflates them in a single
-// UPDATE), hence 409 REVIEW_HELPFUL_VOTE_INVALID in both cases.
+// (VoteHelpful with dedup), so helpful=false is rejected. ErrAlreadyVoted
+// yields 409 REVIEW_HELPFUL_ALREADY_VOTED without increment; ErrNotEligible
+// covers both a non-published and a missing review, hence 409 REVIEW_HELPFUL_VOTE_INVALID.
 func (s *Server) VoteReviewHelpful(w http.ResponseWriter, r *http.Request, reviewId openapi_types.UUID) {
-	_, err := s.reviewUser(r)
+	user, err := s.reviewUser(r)
 	if err != nil {
 		s.writeReviewUserError(w, err)
 		return
@@ -231,7 +348,11 @@ func (s *Server) VoteReviewHelpful(w http.ResponseWriter, r *http.Request, revie
 		return
 	}
 
-	if err := s.reviewStore().BumpHelpful(r.Context(), reviewId); err != nil {
+	if err := s.reviewStore().VoteHelpful(r.Context(), reviewId, user.ID); err != nil {
+		if errors.Is(err, reviews.ErrAlreadyVoted) {
+			writeError(w, http.StatusConflict, "REVIEW_HELPFUL_ALREADY_VOTED", "Already voted helpful on this review")
+			return
+		}
 		if errors.Is(err, reviews.ErrNotEligible) {
 			writeError(w, http.StatusConflict, "REVIEW_HELPFUL_VOTE_INVALID", "Review is not published or does not exist")
 			return

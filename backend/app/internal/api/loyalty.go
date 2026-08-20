@@ -321,7 +321,11 @@ func (s *Server) PutMembershipTiers(w http.ResponseWriter, r *http.Request) {
 			}
 			continue
 		}
-		if _, err := st.CreateTier(r.Context(), actor, name, threshold); errors.Is(err, loyalty.ErrTierNameExists) {
+		perksCreate := "[]"
+		if tier.Perks != nil {
+			perksCreate = perksJSON(*tier.Perks)
+		}
+		if _, err := st.CreateTier(r.Context(), actor, name, threshold, tier.DiscountBps, perksCreate); errors.Is(err, loyalty.ErrTierNameExists) {
 			writeError(w, http.StatusConflict, "TIER_NAME_EXISTS", "A tier with this name already exists")
 			return
 		} else if err != nil {
@@ -472,6 +476,15 @@ func toGenMemberTier(row loyalty.TierRow) gen.MemberTier {
 	id := newUUID(row.ID.String())
 	threshold := int(row.ThresholdTZS)
 	perks := []string{}
+	if len(row.Perks) > 0 && string(row.Perks) != "null" {
+		var decoded []string
+		if err := json.Unmarshal(row.Perks, &decoded); err == nil {
+			perks = decoded
+		}
+	}
+	if perks == nil {
+		perks = []string{}
+	}
 	return gen.MemberTier{
 		Id:           &id,
 		Name:         row.Name,

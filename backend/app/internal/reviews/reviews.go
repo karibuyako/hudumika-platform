@@ -38,6 +38,9 @@ var (
 	// ErrNotFound is returned when a moderation transition cannot run
 	// because the review is missing or already in a terminal state.
 	ErrNotFound = errors.New("review not found")
+	// ErrAlreadyVoted is returned by VoteHelpful when the user already voted
+	// helpful on the review.
+	ErrAlreadyVoted = errors.New("already voted helpful")
 )
 
 // Review is the persisted projection of one review row.
@@ -213,6 +216,74 @@ func (s *Store) BumpHelpful(ctx context.Context, reviewID uuid.UUID) error {
 	}
 	if tag.RowsAffected() == 0 {
 		return fmt.Errorf("reviews: bump helpful on %s: %w", reviewID, ErrNotEligible)
+	}
+	return nil
+}
+
+// VoteHelpful records a helpful vote by a user on a published review. It
+// inserts into review_helpful_votes with ON CONFLICT DO NOTHING; a duplicate
+// yields ErrAlreadyVoted without incrementing, and a non-published or missing
+// review yields ErrNotEligible.
+func (s *Store) VoteHelpful(ctx context.Context, reviewID, userID uuid.UUID) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("reviews: begin vote helpful tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	// Insert dedup row first; ON CONFLICT DO NOTHING detects duplicate.
+	tag, err := tx.Exec(ctx,
+		`INSERT INTO review_helpful_votes (review_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+		reviewID, userID)
+	if err != nil {
+		return fmt.Errorf("reviews: vote helpful insert %s: %w", reviewID, err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("reviews: vote helpful on %s: %w", reviewID, ErrAlreadyVoted)
+	}
+
+	tag, err = tx.Exec(ctx,
+		`UPDATE reviews SET helpful_count = helpful_count + 1 WHERE id = $1 AND state = 'published'`,
+		reviewID)
+	if err != nil {
+		return fmt.Errorf("reviews: vote helpful bump %s: %w", reviewID, err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("reviews: vote helpful on %s: %w", reviewID, ErrNotEligible)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("reviews: commit vote helpful %s: %w", reviewID, err)
+	}
+	return nil
+}
+
+// RecomputeRating updates merchants/providers/riders rating and review_count
+// from the average of published reviews for the target. Target types other
+// than merchant/provider/rider are no-ops.
+func (s *Store) RecomputeRating(ctx context.Context, targetType string, targetID uuid.UUID) error {
+	var avg *float64
+	var cnt int
+	if err := s.pool.QueryRow(ctx,
+		`SELECT AVG(rating)::float8, COUNT(*) FROM reviews WHERE target_type = $1 AND target_id = $2 AND state = 'published'`,
+		targetType, targetID).Scan(&avg, &cnt); err != nil {
+		return fmt.Errorf("reviews: recompute rating avg for %s %s: %w", targetType, targetID, err)
+	}
+	switch targetType {
+	case "merchant":
+		if _, err := s.pool.Exec(ctx, `UPDATE merchants SET rating = $1, review_count = $2, updated_at = now() WHERE id = $3`, avg, cnt, targetID); err != nil {
+			return fmt.Errorf("reviews: recompute merchant %s: %w", targetID, err)
+		}
+	case "provider":
+		if _, err := s.pool.Exec(ctx, `UPDATE providers SET rating = $1, review_count = $2, updated_at = now() WHERE id = $3`, avg, cnt, targetID); err != nil {
+			return fmt.Errorf("reviews: recompute provider %s: %w", targetID, err)
+		}
+	case "rider":
+		if _, err := s.pool.Exec(ctx, `UPDATE riders SET rating = $1, review_count = $2, updated_at = now() WHERE id = $3`, avg, cnt, targetID); err != nil {
+			return fmt.Errorf("reviews: recompute rider %s: %w", targetID, err)
+		}
+	default:
+		return nil
 	}
 	return nil
 }

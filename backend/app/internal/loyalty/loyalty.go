@@ -326,12 +326,15 @@ func (s *Store) listTransactionsQuery(ctx context.Context, baseQuery string, bas
 // CreateTier creates a tier for the merchant; thresholdTZS is the minimum
 // member balance the tier requires. A duplicate (merchant_id, name) yields
 // ErrTierNameExists.
-func (s *Store) CreateTier(ctx context.Context, merchantID uuid.UUID, name string, thresholdTZS int64) (TierRow, error) {
+func (s *Store) CreateTier(ctx context.Context, merchantID uuid.UUID, name string, thresholdTZS int64, discountBps int, perks string) (TierRow, error) {
+	if perks == "" {
+		perks = "[]"
+	}
 	row, err := scanTierRow(s.pool.QueryRow(ctx,
-		`INSERT INTO membership_tiers (merchant_id, name, threshold_tzs)
-		 VALUES ($1, $2, $3)
+		`INSERT INTO membership_tiers (merchant_id, name, threshold_tzs, discount_bps, perks)
+		 VALUES ($1, $2, $3, $4, $5::jsonb)
 		 RETURNING id, merchant_id, name, discount_bps, threshold_tzs, perks, created_at`,
-		merchantID, name, thresholdTZS))
+		merchantID, name, thresholdTZS, discountBps, perks))
 	if isUniqueViolation(err, "membership_tiers_merchant_id_name_key") {
 		return TierRow{}, fmt.Errorf("loyalty: create tier %q for %s: %w", name, merchantID, ErrTierNameExists)
 	}
