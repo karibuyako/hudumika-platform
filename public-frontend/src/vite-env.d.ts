@@ -18,6 +18,9 @@ interface ImportMetaEnv {
   readonly VITE_SUPPORT_RIDER_PHONE?: string
   readonly VITE_SUPPORT_RIDER_EMAIL?: string
   readonly VITE_COMPANY_LOCATION?: string
+  readonly VITE_USE_MOCKS?: string
+  readonly VITE_MOCK_MERCHANTS?: string
+  readonly VITE_MOCK_SERVICES?: string
 }
 
 interface ImportMeta {

@@ -9,6 +9,10 @@
 -- registry that backs the reviewed loyalty config (no admin_config table
 -- existed before).
 
+-- 00068 created a logistics_anomalies with a different shape (type/severity/resolved);
+-- staging and fresh databases must end up with the 00071 shape. Dropping the
+-- earlier table if it exists makes the migration idempotent on both paths.
+DROP TABLE IF EXISTS logistics_anomalies CASCADE;
 CREATE TABLE logistics_anomalies (
     id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     shipment_id  uuid REFERENCES shipments(id) ON DELETE CASCADE,
