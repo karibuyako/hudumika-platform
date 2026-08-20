@@ -13,7 +13,7 @@ import { cn } from '@/utils/cn'
 
 export const EASE = [0.16, 1, 0.3, 1] as const
 
-/* ── Reveal: scroll-triggered fade-up ─────────────────────────── */
+/* ── Reveal: scroll-triggered fade-up — triggers on mount for above-fold, whileInView for below-fold; falls back to visible for SSR/print */
 export function Reveal({
   children,
   delay = 0,
@@ -37,6 +37,7 @@ export function Reveal({
       initial={{ opacity: 0, y, filter: blur ? 'blur(8px)' : 'blur(0px)' }}
       whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
       viewport={{ once, margin: '-80px' }}
+      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
       transition={{ duration: 0.8, delay, ease: EASE }}
     >
       {children}
@@ -44,7 +45,7 @@ export function Reveal({
   )
 }
 
-/* ── Stagger: cascading children entrance ─────────────────────── */
+/* ── Stagger: cascading children — animates on mount for above-fold; whileInView keeps below-fold reveal */
 export function Stagger({
   children,
   className,
@@ -61,6 +62,7 @@ export function Stagger({
       className={className}
       initial="hidden"
       whileInView="show"
+      animate="show"
       viewport={{ once: true, margin: '-70px' }}
       variants={{
         hidden: {},
