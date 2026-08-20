@@ -196,7 +196,7 @@ export default function SearchResultsScreen() {
   const listFooter = loadingMore ? (
     <Row style={{ justifyContent: 'center', paddingVertical: Spacing.md }} gap={Spacing.sm}>
       <ActivityIndicator size="small" color={Colors.primary} />
-      <Text style={{ color: Colors.textFaint, fontSize: FontSize.xs, fontFamily: Fonts.sans }}>
+      <Text style={{ color: Colors.textTertiary, fontSize: FontSize.xs, fontFamily: Fonts.sans }}>
         {t('search.loadMore')}
       </Text>
     </Row>
@@ -413,9 +413,9 @@ const styles = StyleSheet.create({
   headerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: Spacing.xs + 2,
     paddingHorizontal: Spacing.md,
-    paddingVertical: 8,
+    paddingVertical: Spacing.sm,
     borderRadius: Radius.pill,
     borderWidth: 1,
     borderColor: Colors.borderStrong,

@@ -19,7 +19,7 @@ import { track } from '@/lib/analytics';
 import { formatTZS } from '@/lib/format';
 import { idempotencyKey } from '@/lib/idempotency';
 import { getGroupOrdersRepository } from '@/repos';
-import { groupSubtotal, useCartStore } from '@/store/cart';
+import { cartItemKey, groupSubtotal, useCartStore } from '@/store/cart';
 import { useSessionStore } from '@/store/session';
 import { toast } from '@/store/ui';
 import type { CartGroup } from '@/store/cart';
@@ -101,8 +101,10 @@ export default function CartScreen() {
         </Row>
         <Divider style={{ marginVertical: Spacing.md }} />
         {item.items.map((line) => {
-          // Mirror cart store itemKey so variant lines don't collide on catalogueItemId.
-          const lineKey = `${line.catalogueItemId}|${JSON.stringify(line.options ?? [])}|${JSON.stringify(line.addons ?? [])}`;
+          // Line identity mirrors the cart store cartItemKey so the stepper/
+          // remove actions below target THIS variant line only (same item with
+          // different options/addons is a separate line).
+          const lineKey = cartItemKey(line);
           return (
           <Row key={lineKey} style={{ justifyContent: 'space-between', marginBottom: Spacing.md, alignItems: 'center' }}>
             <View style={{ flex: 1, paddingRight: Spacing.sm }}>
@@ -118,7 +120,7 @@ export default function CartScreen() {
             </View>
             <Row gap={Spacing.sm} style={{ flexShrink: 0 }}>
               <Pressable
-                onPress={() => updateQuantity(item.merchantId, line.catalogueItemId, -1)}
+                onPress={() => updateQuantity(item.merchantId, lineKey, -1)}
                 disabled={line.quantity <= 1}
                 hitSlop={8}
                 accessibilityRole="button"
@@ -129,7 +131,7 @@ export default function CartScreen() {
               </Pressable>
               <Text style={styles.qty} accessibilityLabel={`${line.quantity} items`}>{line.quantity}</Text>
               <Pressable
-                onPress={() => updateQuantity(item.merchantId, line.catalogueItemId, 1)}
+                onPress={() => updateQuantity(item.merchantId, lineKey, 1)}
                 disabled={line.quantity >= 99}
                 hitSlop={8}
                 accessibilityRole="button"
@@ -139,7 +141,7 @@ export default function CartScreen() {
                 <Icon name="add" size={16} color={Colors.text} />
               </Pressable>
               <Pressable
-                onPress={() => removeItem(item.merchantId, line.catalogueItemId)}
+                onPress={() => removeItem(item.merchantId, lineKey)}
                 hitSlop={8}
                 accessibilityRole="button"
                 accessibilityLabel={`${line.name} remove from cart`}

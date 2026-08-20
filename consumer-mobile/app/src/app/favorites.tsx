@@ -174,7 +174,7 @@ export default function FavoritesScreen() {
         <View style={styles.icon}>
           <Icon name="storefront" size={18} color={Colors.textSecondary} />
         </View>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, paddingRight: 56 }}>
           <Text style={styles.name} numberOfLines={1}>{item.businessName}</Text>
           <Row gap={Spacing.sm} style={{ marginTop: 4 }}>
             <Rating rating={item.rating} reviewCount={item.reviewCount} />
@@ -510,7 +510,7 @@ export default function FavoritesScreen() {
 const styles = StyleSheet.create({
   title: { fontSize: FontSize.xxl, fontFamily: Fonts.displayBold, color: Colors.text, marginBottom: Spacing.md },
   segmentRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.lg },
-  card: { marginBottom: Spacing.md },
+  card: { marginBottom: Spacing.md, paddingRight: Spacing.xl },
   icon: {
     width: 40,
     height: 40,

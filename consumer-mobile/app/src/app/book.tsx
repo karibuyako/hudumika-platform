@@ -422,7 +422,7 @@ export default function BookScreen() {
                   onPress={() => setPhotosByKey((prev) => ({ ...prev, [q.key]: (prev[q.key] ?? []).filter((u) => u !== uri) }))}
                   accessibilityRole="button"
                   accessibilityLabel={t('booking.photos.remove')}
-                  hitSlop={8}
+                  hitSlop={12}
                   style={styles.thumbRemove}>
                   <Icon name="close" size={12} color={Colors.white} />
                 </Pressable>
@@ -470,6 +470,7 @@ export default function BookScreen() {
       <Row style={{ justifyContent: 'space-between', marginBottom: Spacing.md }}>
         <Btn label={t('common.back')} onPress={() => router.back()} variant="subtle" size="sm" icon="arrow-back" />
         <Text style={styles.title}>{t('booking.title')}</Text>
+        <View style={{ width: 40 }} />
       </Row>
 
       <Card style={{ gap: Spacing.md }}>
@@ -494,7 +495,7 @@ export default function BookScreen() {
                 <Chip
                   key={d.toISOString()}
                   label={`${weekdayLabelISO(d.toISOString())}, ${dayLabelISO(d.toISOString())}`}
-                  selected={pickDay?.getTime() === d.getTime()}
+                  selected={pickDay?.toDateString() === d.toDateString()}
                   onPress={() => setPickDay(d)}
                 />
               ))}
@@ -557,9 +558,9 @@ export default function BookScreen() {
         <SkeletonCard rows={2} />
       ) : (
         <Card style={{ gap: Spacing.sm }}>
-          <Row style={{ justifyContent: 'space-between' }}>
-            <Text style={styles.value}>{t('booking.estimate.range', { low: formatTZS(estimate.lowTZS), high: formatTZS(estimate.highTZS) })}</Text>
-            {estimate.estimatedDurationMinutes ? <Text style={styles.meta}>{t('booking.estimate.duration', { m: estimate.estimatedDurationMinutes })}</Text> : null}
+          <Row style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: Spacing.sm }}>
+            <Text style={[styles.value, { flex: 1 }]} numberOfLines={2}>{t('booking.estimate.range', { low: formatTZS(estimate.lowTZS), high: formatTZS(estimate.highTZS) })}</Text>
+            {estimate.estimatedDurationMinutes ? <Text style={styles.meta} numberOfLines={1}>{t('booking.estimate.duration', { m: estimate.estimatedDurationMinutes })}</Text> : null}
           </Row>
           <Text style={styles.meta}>{t('booking.estimate.tripFee', { amount: formatTZS(estimate.tripFeeTZS) })}</Text>
           {estimate.disclaimer ? <Text style={styles.note}>{estimate.disclaimer}</Text> : null}
@@ -584,9 +585,9 @@ const styles = StyleSheet.create({
   title: { fontSize: FontSize.lg, fontFamily: Fonts.sansBold, color: Colors.text, flex: 1, textAlign: 'center' },
   section: { fontSize: FontSize.sm, color: Colors.textTertiary, fontFamily: Fonts.sansSemibold, marginBottom: Spacing.sm },
   questionLabel: { fontSize: FontSize.sm, color: Colors.text, fontFamily: Fonts.sansSemibold },
-  meta: { fontSize: FontSize.xs, color: Colors.textTertiary, fontFamily: Fonts.sans },
+  meta: { fontSize: FontSize.xs, color: Colors.textSecondary, fontFamily: Fonts.sans },
   value: { fontSize: FontSize.sm, color: Colors.text, fontFamily: Fonts.sansMedium },
-  note: { fontSize: FontSize.xs, color: Colors.textFaint, fontFamily: Fonts.sans, marginTop: Spacing.sm },
+  note: { fontSize: FontSize.xs, color: Colors.textTertiary, fontFamily: Fonts.sans, marginTop: Spacing.sm },
   error: { color: Colors.danger, fontSize: FontSize.sm, fontFamily: Fonts.sansSemibold },
   thumbWrap: { width: 64, height: 64 },
   thumb: { width: 64, height: 64, borderRadius: Radius.md, backgroundColor: Colors.surface },
@@ -594,9 +595,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -6,
     right: -6,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: Colors.danger,
     alignItems: 'center',
     justifyContent: 'center',

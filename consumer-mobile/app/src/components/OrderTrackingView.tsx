@@ -172,7 +172,9 @@ export function OrderTrackingView({
                   <Text style={styles.eta}>
                     {eta !== undefined ? t('order.estimated', { m: eta }) : '—'}
                   </Text>
-                  <Text style={styles.meta}>{t('track.stale', { t: clockISO(tracking.updatedAt) })}</Text>
+                  {/* Fresh: timestamp inline; stale: the warning line below
+                      renders it once instead of stacking the same copy twice. */}
+                  {!stale ? <Text style={styles.meta}>{t('track.stale', { t: clockISO(tracking.updatedAt) })}</Text> : null}
                 </>
               ) : (
                 <Text style={styles.meta}>{t('track.locationUnavailable')}</Text>

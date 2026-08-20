@@ -46,9 +46,8 @@ import { useSessionStore } from '@/store/session';
 import { useCartStore } from '@/store/cart';
 import { useConsentStore } from '@/store/consent';
 import { toast } from '@/store/ui';
-import { PromotionType } from '@hudumika/contract';
+import { LiveDealSessionStatus, PromotionType } from '@hudumika/contract';
 import type { GetConsumerHome200, GroupBuyDeal, LiveDealSession, MerchantPublic, OrderDetail } from '@hudumika/contract';
-import { LiveDealSessionStatus } from '@hudumika/contract';
 
 const CATEGORY_ICONS: Record<string, IconName> = {
   Food: 'restaurant',
@@ -450,7 +449,7 @@ export default function HomeScreen() {
                   accessibilityState={qa.disabled ? { disabled: true } : undefined}
                   style={({ pressed }) => [styles.quickAction, qa.disabled && styles.quickActionDisabled, pressed && !qa.disabled && { opacity: 0.8 }]}>
                   <View style={[styles.quickActionIcon, qa.disabled && styles.quickActionIconDisabled]}>
-                    <Icon name={qa.icon} size={20} color={qa.disabled ? Colors.textFaint : Colors.primaryDeep} />
+                    <Icon name={qa.icon} size={20} color={qa.disabled ? Colors.textTertiary : Colors.primaryDeep} />
                   </View>
                   <Text style={[styles.quickActionLabel, qa.disabled && styles.quickActionLabelDisabled]}>{qa.label}</Text>
                 </Pressable>

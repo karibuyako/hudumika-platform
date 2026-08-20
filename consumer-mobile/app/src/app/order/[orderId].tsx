@@ -417,8 +417,8 @@ export default function OrderDetailScreen() {
         {/* Items */}
         <Text style={styles.section}>{t('cart.title')}</Text>
         <Card style={{ gap: Spacing.sm }}>
-          {(order.items ?? []).map((item) => (
-            <Row key={item.catalogueItemId} style={{ justifyContent: 'space-between' }}>
+          {(order.items ?? []).map((item, index) => (
+            <Row key={`${item.catalogueItemId}-${index}`} style={{ justifyContent: 'space-between' }}>
               <Text style={styles.value} numberOfLines={1}>
                 {item.quantity}× {item.name}
               </Text>

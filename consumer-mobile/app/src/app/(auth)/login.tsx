@@ -116,7 +116,7 @@ export default function LoginScreen() {
 
   return (
     <Screen scroll contentStyle={{ justifyContent: 'center', flexGrow: 1 }}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={12}>
         <View style={styles.hero}>
           <View style={styles.logoBox}>
             <Icon name="leaf" size={34} color={Colors.white} />

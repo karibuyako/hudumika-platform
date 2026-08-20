@@ -174,6 +174,7 @@ export function Chip({
     <Pressable
       onPress={onPress}
       accessibilityRole={onPress ? 'button' : undefined}
+      hitSlop={8}
       style={({ pressed }) => [
         styles.chip,
         selected && { backgroundColor: Colors.ink, borderColor: Colors.ink },
@@ -267,7 +268,7 @@ export function Field({
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={Colors.textFaint}
+        placeholderTextColor={Colors.textTertiary}
         keyboardType={keyboardType}
         multiline={multiline}
         maxLength={maxLength}
@@ -535,11 +536,14 @@ const styles = StyleSheet.create({
   btnInner: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   chip: {
     paddingHorizontal: Spacing.md,
-    paddingVertical: 8,
+    paddingVertical: 10,
+    minHeight: 44,
     borderRadius: Radius.pill,
     backgroundColor: Colors.card,
     borderWidth: 1,
     borderColor: Colors.borderStrong,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   chipText: { fontSize: FontSize.sm, color: Colors.textSecondary, fontFamily: Fonts.sansMedium },
   sectionTitle: {
@@ -553,7 +557,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontFamily: Fonts.sansSemibold,
   },
-  fieldHint: { fontSize: FontSize.xs, color: Colors.textFaint, fontFamily: Fonts.sans },
+  fieldHint: { fontSize: FontSize.xs, color: Colors.textTertiary, fontFamily: Fonts.sans },
   input: {
     borderWidth: 1,
     borderColor: Colors.borderStrong,
@@ -574,10 +578,12 @@ const styles = StyleSheet.create({
   },
   segmentItem: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: 10,
+    minHeight: 44,
     paddingHorizontal: 4,
     borderRadius: Radius.sm,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   segmentItemActive: { backgroundColor: Colors.card, shadowColor: Colors.black, shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
   segmentText: { fontSize: FontSize.sm, color: Colors.textSecondary, fontFamily: Fonts.sansMedium },

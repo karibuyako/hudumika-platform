@@ -15,7 +15,7 @@ import {
   SheetModal,
   SkeletonCard,
 } from '@/components/ui';
-import { Colors, Fonts, FontSize, Radius, Spacing } from '@/constants/theme';
+import { Colors, Fonts, FontSize, NumberStyle, Radius, Spacing } from '@/constants/theme';
 import { t } from '@/i18n';
 import { ApiError } from '@/api/client';
 import { getRedPacketRepository, getWalletRepository } from '@/repos';
@@ -241,17 +241,17 @@ export default function WalletScreen() {
             <Text style={styles.title}>{t('wallet.title')}</Text>
             <Card style={[styles.balanceCard, { backgroundColor: Colors.primaryDeep }]}>
               <Text style={{ color: Colors.gold, fontSize: FontSize.xs, fontFamily: Fonts.sansSemibold }}>{t('wallet.balance')}</Text>
-              <Text style={{ color: Colors.white, fontSize: 30, fontFamily: Fonts.displayBold, marginTop: 4 }}>
+              <Text style={{ color: Colors.white, fontSize: 30, fontFamily: Fonts.displayBold, marginTop: 4, fontVariant: NumberStyle.fontVariant }}>
                 {formatTZS(wallet.totalTZS)}
               </Text>
               <Row gap={Spacing.md} style={{ marginTop: Spacing.md }}>
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: Colors.white, fontSize: FontSize.xs, fontFamily: Fonts.sans, opacity: 0.75 }}>{t('wallet.withdrawAvailable')}</Text>
-                  <Text style={{ color: Colors.white, fontSize: FontSize.md, fontFamily: Fonts.sansBold, marginTop: 2 }}>{formatTZS(wallet.withdrawableTZS)}</Text>
+                  <Text style={{ color: Colors.white, fontSize: FontSize.md, fontFamily: Fonts.sansBold, marginTop: 2, fontVariant: NumberStyle.fontVariant }}>{formatTZS(wallet.withdrawableTZS)}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: Colors.white, fontSize: FontSize.xs, fontFamily: Fonts.sans, opacity: 0.75 }}>Pending</Text>
-                  <Text style={{ color: Colors.white, fontSize: FontSize.md, fontFamily: Fonts.sansBold, marginTop: 2 }}>{formatTZS(wallet.pendingTZS ?? 0)}</Text>
+                  <Text style={{ color: Colors.white, fontSize: FontSize.xs, fontFamily: Fonts.sans, opacity: 0.75 }}>{t('status.pending')}</Text>
+                  <Text style={{ color: Colors.white, fontSize: FontSize.md, fontFamily: Fonts.sansBold, marginTop: 2, fontVariant: NumberStyle.fontVariant }}>{formatTZS(wallet.pendingTZS ?? 0)}</Text>
                 </View>
               </Row>
               <Row style={{ justifyContent: 'flex-end', marginTop: Spacing.md }} gap={Spacing.sm}>
@@ -353,7 +353,7 @@ export default function WalletScreen() {
               style={({ pressed }) => [styles.reportBtn, pressed && { opacity: 0.6 }]}>
               <Icon name="flag-outline" size={16} color={Colors.textTertiary} />
             </Pressable>
-            <Text style={[styles.txAmount, item.amountTZS < 0 ? { color: Colors.danger } : { color: Colors.success }]}>
+            <Text style={[styles.txAmount, item.amountTZS < 0 ? { color: Colors.danger } : { color: Colors.success }, { fontVariant: NumberStyle.fontVariant, textAlign: 'right', minWidth: 110 }]}>
               {item.amountTZS < 0 ? '−' : '+'}{formatTZS(Math.abs(item.amountTZS))}
             </Text>
           </Row>
@@ -511,10 +511,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   section: { fontSize: FontSize.lg, fontFamily: Fonts.sansExtraBold, color: Colors.text, marginTop: Spacing.lg, marginBottom: Spacing.sm },
-  txRow: { paddingVertical: Spacing.md },
+  txRow: { paddingVertical: Spacing.md, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Colors.border },
   txType: { fontSize: FontSize.sm, color: Colors.text, fontFamily: Fonts.sansSemibold },
   txMeta: { fontSize: FontSize.xs, color: Colors.textFaint, fontFamily: Fonts.sans, marginTop: 2 },
-  txAmount: { fontSize: FontSize.sm, fontFamily: Fonts.displayBold },
+  txAmount: { fontSize: FontSize.sm, fontFamily: Fonts.displayBold, fontVariant: NumberStyle.fontVariant },
   reportBtn: {
     width: 32,
     height: 32,

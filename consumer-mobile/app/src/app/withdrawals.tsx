@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { Btn, Card, EmptyState, ErrorState, Row, Screen, SkeletonCard, StatusPill } from '@/components/ui';
-import { Colors, Fonts, FontSize, Spacing } from '@/constants/theme';
+import { Colors, Fonts, FontSize, NumberStyle, Spacing } from '@/constants/theme';
 import { t } from '@/i18n';
 import { getWalletRepository } from '@/repos';
 import type { WithdrawalRecord } from '@/repos';
@@ -93,6 +93,6 @@ export default function WithdrawalsScreen() {
 const styles = StyleSheet.create({
   title: { fontSize: FontSize.lg, fontFamily: Fonts.sansBold, color: Colors.text, flex: 1, textAlign: 'center' },
   row: { marginBottom: Spacing.md },
-  amount: { fontSize: FontSize.lg, fontFamily: Fonts.displayBold, color: Colors.text },
+  amount: { fontSize: FontSize.lg, fontFamily: Fonts.displayBold, color: Colors.text, fontVariant: NumberStyle.fontVariant },
   meta: { fontSize: FontSize.xs, color: Colors.textTertiary, fontFamily: Fonts.sans, marginTop: 2 },
 });

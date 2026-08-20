@@ -197,8 +197,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   name: { fontSize: FontSize.xl, fontFamily: Fonts.sansExtraBold, color: Colors.text, flex: 1 },
-  meta: { fontSize: FontSize.xs, color: Colors.textTertiary, fontFamily: Fonts.sans, marginTop: 2 },
-  note: { fontSize: FontSize.xs, color: Colors.textFaint, fontFamily: Fonts.sans, textAlign: 'center', marginTop: Spacing.lg },
+  meta: { fontSize: FontSize.xs, color: Colors.textSecondary, fontFamily: Fonts.sans, marginTop: 2 },
+  note: { fontSize: FontSize.xs, color: Colors.textSecondary, fontFamily: Fonts.sans, textAlign: 'center', marginTop: Spacing.lg },
   preferenceDivider: {
     marginTop: Spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,

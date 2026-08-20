@@ -392,7 +392,7 @@ function AddressStep({ onDone }: { onDone: () => void }) {
         />
         <Field label={t('addresses.phone')} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
 
-        <Btn label={t('address.useCurrentLocation')} onPress={() => setSheetVisible(true)} variant="outline" icon="locate" />
+        <Btn label={t('address.useCurrentLocation')} onPress={() => setSheetVisible(true)} variant="outline" icon="locate" size="lg" style={{ minHeight: 44 }} />
         {locationSet ? <Text style={styles.hint}>{t('address.locationSet')}</Text> : null}
         {geoError ? <Text style={styles.error}>{geoError}</Text> : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -562,8 +562,8 @@ function CityStep({
     <Screen scroll contentStyle={{ justifyContent: 'center', flexGrow: 1 }}>
       <Text style={styles.title}>{t('onboard.title')}</Text>
       <Text style={styles.sub}>{t('onboard.sub')}</Text>
-      <Btn label={t('location.useMyLocation')} onPress={() => setSheetVisible(true)} variant="ghost" icon="locate" style={{ marginBottom: Spacing.md }} />
-      {detectError ? <Text style={styles.error}>{detectError}</Text> : null}
+      <Btn label={t('location.useMyLocation')} onPress={() => setSheetVisible(true)} variant="ghost" icon="locate" size="lg" style={{ marginBottom: Spacing.md, minHeight: 44 }} />
+      {detectError ? <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="polite">{detectError}</Text> : null}
       <View style={{ gap: Spacing.md }}>
         {cities.map((city) => {
           const active = selected === city.id;
@@ -575,10 +575,10 @@ function CityStep({
               </View>
               <View style={{ flex: 1 }}>
                 <Row gap={Spacing.sm}>
-                  <Text style={styles.cityName}>{city.name}</Text>
+                  <Text style={styles.cityName} numberOfLines={1} ellipsizeMode="tail">{city.name}</Text>
                   {active && detected ? <Pill label={t('location.detectedArea', { area: detected })} tone="success" /> : null}
                 </Row>
-                <Text style={styles.cityAreas}>{(city.serviceAreas ?? []).map((a) => a.name).join(' · ') || city.country}</Text>
+                <Text style={styles.cityAreas} numberOfLines={2} ellipsizeMode="tail">{(city.serviceAreas ?? []).map((a) => a.name).join(' · ') || city.country}</Text>
               </View>
               {active ? <Icon name="checkmark-circle" size={22} color={Colors.primary} /> : null}
             </Card>

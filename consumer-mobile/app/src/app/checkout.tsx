@@ -521,7 +521,7 @@ export default function CheckoutScreen() {
     { label: t('breakdown.delivery'), amountTZS: preview.deliveryFeeTZS },
     { label: t('breakdown.platform'), amountTZS: preview.platformFeeTZS },
     { label: t('breakdown.tax'), amountTZS: preview.taxTZS },
-    { label: t('breakdown.discount'), amountTZS: preview.discountTZS, signed: true },
+    ...(preview.discountTZS > 0 ? [{ label: t('breakdown.discount'), amountTZS: preview.discountTZS, signed: true as const }] : []),
   ];
 
   return (
@@ -1146,10 +1146,13 @@ const styles = StyleSheet.create({
   slotChip: {
     paddingHorizontal: Spacing.md,
     paddingVertical: 8,
+    minHeight: 44,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.borderStrong,
     backgroundColor: Colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   slotChipSelected: { borderColor: Colors.ink, backgroundColor: Colors.ink },
   slotChipText: { fontSize: FontSize.sm, color: Colors.textSecondary, fontFamily: Fonts.sansMedium },

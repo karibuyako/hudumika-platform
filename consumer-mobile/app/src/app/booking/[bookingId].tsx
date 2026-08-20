@@ -594,12 +594,12 @@ export default function BookingDetailScreen() {
           ) : (
             [...booking.events].reverse().map((ev, i) => (
               <View key={i}>
-                <Row style={{ justifyContent: 'space-between' }}>
-                  <Row gap={Spacing.sm}>
-                    <Pill label={ev.status} tone={statusTone[ev.status] ?? 'neutral'} />
-                    <Text style={styles.value}>{ev.by}</Text>
+                <Row style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: Spacing.sm }}>
+                  <Row gap={Spacing.sm} style={{ flex: 1, flexWrap: 'wrap' }}>
+                    <Pill label={t(`status.${ev.status}` as I18nKey)} tone={statusTone[ev.status] ?? 'neutral'} />
+                    <Text style={styles.value} numberOfLines={1}>{ev.by}</Text>
                   </Row>
-                  <Text style={styles.meta}>{fullDateISO(ev.at)}</Text>
+                  <Text style={[styles.meta, { flexShrink: 0 }]}>{fullDateISO(ev.at)}</Text>
                 </Row>
                 {ev.note ? <Text style={[styles.meta, { marginTop: 2 }]}>{ev.note}</Text> : null}
                 {i < booking.events.length - 1 ? <Divider style={{ marginTop: Spacing.sm }} /> : null}
@@ -669,6 +669,6 @@ const styles = StyleSheet.create({
   section: { fontSize: FontSize.lg, fontFamily: Fonts.sansExtraBold, color: Colors.text, marginTop: Spacing.lg, marginBottom: Spacing.sm },
   avatar: { width: 48, height: 48, borderRadius: Radius.md, backgroundColor: Colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
   value: { fontSize: FontSize.sm, color: Colors.text, fontFamily: Fonts.sansMedium },
-  meta: { fontSize: FontSize.xs, color: Colors.textTertiary, fontFamily: Fonts.sans, marginTop: 2 },
-  revisedBanner: { borderWidth: 1, borderColor: Colors.warning, paddingVertical: Spacing.sm },
+  meta: { fontSize: FontSize.xs, color: Colors.textSecondary, fontFamily: Fonts.sans, marginTop: 2 },
+  revisedBanner: { borderWidth: 1, borderColor: Colors.warning, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md, borderRadius: Radius.md, overflow: 'hidden' },
 });

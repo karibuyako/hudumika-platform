@@ -5,10 +5,10 @@
  * via /reservations?merchantId={id}. */
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Btn, Card, EmptyState, ErrorState, Field, Icon, Row, Screen, SheetModal, SkeletonCard, StatusPill } from '@/components/ui';
-import { Colors, Fonts, FontSize, Spacing } from '@/constants/theme';
+import { Colors, Fonts, FontSize, Radius, Spacing } from '@/constants/theme';
 import { t } from '@/i18n';
 import { toast } from '@/store/ui';
 import { getMerchantsRepository, getReservationsRepository } from '@/repos';
@@ -175,7 +175,7 @@ export default function ReservationsScreen() {
         {merchants.length === 0 ? (
           <Text style={styles.meta}>{t('common.error')}</Text>
         ) : (
-          <View style={{ gap: Spacing.md }}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.md, paddingBottom: Spacing.md }}>
             <Text style={styles.sectionLabel}>{t('reservation.restaurant')}</Text>
             {merchants.slice(0, 6).map((m) => (
               <Pressable
@@ -183,8 +183,9 @@ export default function ReservationsScreen() {
                 onPress={() => setMerchantId(m.id)}
                 accessibilityRole="button"
                 accessibilityState={{ selected: merchantId === m.id }}
+                hitSlop={4}
                 style={[styles.optionRow, merchantId === m.id && styles.optionSelected]}>
-                <Text style={[styles.value, { flex: 1 }]}>{m.businessName}</Text>
+                <Text style={[styles.value, { flex: 1 }]} numberOfLines={1}>{m.businessName}</Text>
                 <Icon name={merchantId === m.id ? 'radio-button-on' : 'radio-button-off'} size={17} color={merchantId === m.id ? Colors.primary : Colors.borderStrong} />
               </Pressable>
             ))}
@@ -197,16 +198,17 @@ export default function ReservationsScreen() {
                   onPress={() => setSlot(s.iso)}
                   accessibilityRole="button"
                   accessibilityState={{ selected: slot === s.iso }}
+                  hitSlop={6}
                   style={[styles.slotChip, slot === s.iso && styles.slotChipSelected]}>
                   <Text style={[styles.slotText, slot === s.iso && { color: Colors.white, fontFamily: Fonts.sansBold }]}>{s.label}</Text>
                 </Pressable>
               ))}
             </View>
             {slot ? <Text style={styles.meta}>{t('reservation.picked', { t: fullTimeISO(slot) })}</Text> : null}
-            <Field label={t('reservation.note')} value={note} onChangeText={setNote} placeholder={t('reservation.notePlaceholder')} maxLength={300} />
-            {formError ? <Text style={styles.errorText}>{formError}</Text> : null}
+            <Field label={t('reservation.note')} value={note} onChangeText={setNote} placeholder={t('reservation.notePlaceholder')} maxLength={300} multiline />
+            {formError ? <Text style={[styles.errorText, { marginTop: Spacing.xs }]} accessibilityRole="alert">{formError}</Text> : null}
             <Btn label={t('reservation.confirm')} onPress={create} loading={busy} />
-          </View>
+          </ScrollView>
         )}
       </SheetModal>
     </Screen>
@@ -217,13 +219,13 @@ const styles = StyleSheet.create({
   title: { fontSize: FontSize.lg, fontFamily: Fonts.sansBold, color: Colors.text, flex: 1, textAlign: 'center' },
   card: { marginBottom: Spacing.md },
   name: { fontSize: FontSize.md, fontFamily: Fonts.sansSemibold, color: Colors.text, flex: 1, paddingRight: Spacing.md },
-  meta: { fontSize: FontSize.xs, color: Colors.textTertiary, fontFamily: Fonts.sans, marginTop: 2 },
+  meta: { fontSize: FontSize.xs, color: Colors.textSecondary, fontFamily: Fonts.sans, marginTop: 2 },
   sectionLabel: { fontSize: FontSize.sm, color: Colors.textTertiary, fontFamily: Fonts.sansSemibold },
   value: { fontSize: FontSize.sm, color: Colors.text, fontFamily: Fonts.sansMedium },
-  optionRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.card },
+  optionRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.md, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.card, minHeight: 44 },
   optionSelected: { borderColor: Colors.primary, backgroundColor: Colors.primarySoft },
-  slotChip: { paddingHorizontal: Spacing.md, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: Colors.borderStrong, backgroundColor: Colors.card },
+  slotChip: { paddingHorizontal: Spacing.md, paddingVertical: 10, minHeight: 44, justifyContent: 'center', borderRadius: 12, borderWidth: 1, borderColor: Colors.borderStrong, backgroundColor: Colors.card },
   slotChipSelected: { borderColor: Colors.ink, backgroundColor: Colors.ink },
   slotText: { fontSize: FontSize.sm, color: Colors.textSecondary, fontFamily: Fonts.sansMedium },
-  errorText: { color: Colors.danger, fontSize: FontSize.xs, fontFamily: Fonts.sansSemibold },
+  errorText: { color: Colors.danger, fontSize: FontSize.sm, fontFamily: Fonts.sansSemibold, backgroundColor: Colors.dangerSoft, paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs, borderRadius: Radius.sm, overflow: 'hidden' },
 });

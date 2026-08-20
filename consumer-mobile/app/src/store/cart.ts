@@ -35,14 +35,21 @@ export interface CartGroup {
 interface CartState {
   groups: CartGroup[];
   addItem: (group: { merchantId: string; merchantName: string }, item: CartItem) => void;
-  updateQuantity: (merchantId: string, catalogueItemId: string, delta: number) => void;
-  setNote: (merchantId: string, catalogueItemId: string, note: string) => void;
-  removeItem: (merchantId: string, catalogueItemId: string) => void;
+  updateQuantity: (merchantId: string, lineKey: string, delta: number) => void;
+  setNote: (merchantId: string, lineKey: string, note: string) => void;
+  removeItem: (merchantId: string, lineKey: string) => void;
   clearGroup: (merchantId: string) => void;
   clear: () => void;
 }
 
 const clampQty = (q: number) => Math.min(99, Math.max(1, Math.round(q)));
+
+/** Stable line identity — variant lines of the same catalogue item (different
+ * options/addons) are DISTINCT lines: every line-scoped action targets exactly
+ * the line whose key matches, never all variants of the item. */
+export function cartItemKey(i: CartItem): string {
+  return `${i.catalogueItemId}|${JSON.stringify(i.options ?? [])}|${JSON.stringify(i.addons ?? [])}`;
+}
 
 export const useCartStore = create<CartState>()((set) => ({
   groups: [],
@@ -50,29 +57,30 @@ export const useCartStore = create<CartState>()((set) => ({
   addItem: (group, item) =>
     set((s) => {
       const existing = s.groups.find((g) => g.merchantId === group.merchantId);
-      const itemKey = (i: CartItem) => `${i.catalogueItemId}|${JSON.stringify(i.options ?? [])}|${JSON.stringify(i.addons ?? [])}`;
       if (!existing) {
         return { groups: [...s.groups, { merchantId: group.merchantId, merchantName: group.merchantName, items: [{ ...item, quantity: clampQty(item.quantity) }] }] };
       }
       const groups = s.groups.map((g) => {
         if (g.merchantId !== group.merchantId) return g;
-        const found = g.items.find((i) => itemKey(i) === itemKey(item));
+        const found = g.items.find((i) => cartItemKey(i) === cartItemKey(item));
         const items = found
-          ? g.items.map((i) => (itemKey(i) === itemKey(item) ? { ...i, quantity: clampQty(i.quantity + item.quantity) } : i))
+          ? g.items.map((i) => (cartItemKey(i) === cartItemKey(item) ? { ...i, quantity: clampQty(i.quantity + item.quantity) } : i))
           : [...g.items, { ...item, quantity: clampQty(item.quantity) }];
         return { ...g, items };
       });
       return { groups };
     }),
 
-  updateQuantity: (merchantId, catalogueItemId, delta) =>
+  updateQuantity: (merchantId, lineKey, delta) =>
     set((s) => ({
       groups: s.groups
         .map((g) => {
           if (g.merchantId !== merchantId) return g;
+          const isKey = lineKey.includes('|');
           const items = g.items
             .map((i) => {
-              if (i.catalogueItemId !== catalogueItemId) return i;
+              const match = isKey ? cartItemKey(i) === lineKey : i.catalogueItemId === lineKey;
+              if (!match) return i;
               const next = i.quantity + delta;
               return next <= 0 ? { ...i, quantity: 0 } : { ...i, quantity: clampQty(next) };
             })
@@ -82,21 +90,31 @@ export const useCartStore = create<CartState>()((set) => ({
         .filter((g) => g.items.length > 0),
     })),
 
-  setNote: (merchantId, catalogueItemId, note) =>
-    set((s) => ({
-      groups: s.groups.map((g) =>
-        g.merchantId === merchantId
-          ? { ...g, items: g.items.map((i) => (i.catalogueItemId === catalogueItemId ? { ...i, note } : i)) }
-          : g,
-      ),
-    })),
+  setNote: (merchantId, lineKey, note) =>
+    set((s) => {
+      const isKey = lineKey.includes('|');
+      return {
+        groups: s.groups.map((g) =>
+          g.merchantId === merchantId
+            ? { ...g, items: g.items.map((i) => ((isKey ? cartItemKey(i) === lineKey : i.catalogueItemId === lineKey) ? { ...i, note } : i)) }
+            : g,
+        ),
+      };
+    }),
 
-  removeItem: (merchantId, catalogueItemId) =>
-    set((s) => ({
-      groups: s.groups
-        .map((g) => (g.merchantId === merchantId ? { ...g, items: g.items.filter((i) => i.catalogueItemId !== catalogueItemId) } : g))
-        .filter((g) => g.items.length > 0),
-    })),
+  removeItem: (merchantId, lineKey) =>
+    set((s) => {
+      const isKey = lineKey.includes('|');
+      return {
+        groups: s.groups
+          .map((g) =>
+            g.merchantId === merchantId
+              ? { ...g, items: g.items.filter((i) => (isKey ? cartItemKey(i) !== lineKey : i.catalogueItemId !== lineKey)) }
+              : g,
+          )
+          .filter((g) => g.items.length > 0),
+      };
+    }),
 
   clearGroup: (merchantId) =>
     set((s) => ({ groups: s.groups.filter((g) => g.merchantId !== merchantId) })),

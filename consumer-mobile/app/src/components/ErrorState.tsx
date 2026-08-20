@@ -32,7 +32,7 @@ export function ErrorState({ message, onRetry, requestId }: {
         {requestId ? <Text style={{ color: Colors.textFaint, fontSize: FontSize.xs, fontFamily: Fonts.sans }}>{t('error.requestId', { id: requestId })}</Text> : null}
       </View>
       {onRetry ? (
-        <Pressable onPress={onRetry} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('common.retry')}>
+        <Pressable onPress={onRetry} hitSlop={12} accessibilityRole="button" accessibilityLabel={t('common.retry')} style={{ minHeight: 44, minWidth: 44, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 8 }}>
           <Text style={{ color: Colors.primaryDeep, fontSize: FontSize.sm, fontFamily: Fonts.sansBold }}>{t('common.retry')}</Text>
         </Pressable>
       ) : null}

@@ -158,7 +158,7 @@ export default function CouponsScreen() {
 const styles = StyleSheet.create({
   title: { fontSize: FontSize.xxl, fontFamily: Fonts.displayBold, color: Colors.text, marginBottom: Spacing.md },
   coupon: { marginBottom: Spacing.md },
-  code: { fontSize: FontSize.lg, fontFamily: Fonts.displayBold, color: Colors.text, letterSpacing: 1 },
+  code: { fontSize: FontSize.lg, fontFamily: Fonts.displayBold, color: Colors.text, letterSpacing: 1, fontVariant: ['tabular-nums'] },
   desc: { fontSize: FontSize.sm, color: Colors.textSecondary, fontFamily: Fonts.sansMedium, marginTop: 2 },
   meta: { fontSize: FontSize.xs, color: Colors.textFaint, fontFamily: Fonts.sans, marginTop: 4 },
   promoLink: {

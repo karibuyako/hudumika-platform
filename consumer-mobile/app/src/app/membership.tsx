@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Btn, Card, EmptyState, ErrorState, Icon, Row, Screen, SheetModal, SkeletonCard } from '@/components/ui';
-import { Colors, Fonts, FontSize, Radius, Spacing } from '@/constants/theme';
+import { Colors, Fonts, FontSize, NumberStyle, Radius, Spacing } from '@/constants/theme';
 import { t } from '@/i18n';
 import { getMembershipsRepository, getWalletRepository, REDEMPTION_CATALOG } from '@/repos';
 import type { RedemptionReward } from '@/repos';
@@ -79,6 +79,10 @@ function typeLabel(type: string): string {
     default:
       return type;
   }
+}
+
+function prettyLevel(level: string): string {
+  return level.charAt(0).toUpperCase() + level.slice(1);
 }
 
 function signedPoints(points: number): string {
@@ -222,12 +226,12 @@ export default function MembershipScreen() {
       <Text style={styles.title}>{t('membership.title')}</Text>
       <Card style={[styles.card, { backgroundColor: Colors.primaryDeep }]}>
         <Row style={{ justifyContent: 'space-between' }}>
-          <Text style={{ color: Colors.gold, fontSize: FontSize.xs, fontFamily: Fonts.sansSemibold }}>{t('membership.level', { level: membership.level })}</Text>
+          <Text style={{ color: Colors.gold, fontSize: FontSize.xs, fontFamily: Fonts.sansSemibold }}>{t('membership.level', { level: prettyLevel(membership.level) })}</Text>
           <Text style={{ color: Colors.white, fontSize: FontSize.xs, fontFamily: Fonts.sans }}>
             {membership.memberSince ? t('membership.since', { t: dateISO(membership.memberSince) }) : ''}
           </Text>
         </Row>
-        <Text style={{ color: Colors.white, fontSize: 30, fontFamily: Fonts.displayBold, marginTop: Spacing.md }}>
+        <Text style={{ color: Colors.white, fontSize: 30, fontFamily: Fonts.displayBold, marginTop: Spacing.md, fontVariant: NumberStyle.fontVariant }}>
           {t('membership.points', { n: membership.points.toLocaleString('en-US') })}
         </Text>
       </Card>
@@ -447,7 +451,7 @@ const styles = StyleSheet.create({
   ledgerRow: { marginBottom: Spacing.sm, paddingVertical: Spacing.md },
   ledgerType: { fontSize: FontSize.sm, color: Colors.text, fontFamily: Fonts.sansSemibold },
   ledgerMeta: { fontSize: FontSize.xs, color: Colors.textTertiary, fontFamily: Fonts.sans, marginTop: 2 },
-  ledgerPoints: { fontSize: FontSize.md, fontFamily: Fonts.sansExtraBold },
+  ledgerPoints: { fontSize: FontSize.md, fontFamily: Fonts.sansExtraBold, fontVariant: NumberStyle.fontVariant },
   redeemWalletLine: { fontSize: FontSize.xs, color: Colors.textSecondary, fontFamily: Fonts.sansMedium, marginBottom: Spacing.sm },
   rewardRow: {
     justifyContent: 'space-between',

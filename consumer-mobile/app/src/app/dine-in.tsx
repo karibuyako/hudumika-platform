@@ -494,10 +494,10 @@ export default function DineInScreen() {
                       <Text style={styles.meta}>{t('dineIn.qty', { n: l.quantity })}</Text>
                     </View>
                     <Row gap={Spacing.sm}>
-                      <Pressable onPress={() => adjustItem(l.catalogueItemId, -1)} accessibilityRole="button" style={styles.qtyBtn}>
+                      <Pressable onPress={() => adjustItem(l.catalogueItemId, -1)} accessibilityRole="button" hitSlop={12} style={styles.qtyBtn}>
                         <Icon name="remove" size={14} color={Colors.text} />
                       </Pressable>
-                      <Pressable onPress={() => adjustItem(l.catalogueItemId, 1)} accessibilityRole="button" style={styles.qtyBtn}>
+                      <Pressable onPress={() => adjustItem(l.catalogueItemId, 1)} accessibilityRole="button" hitSlop={12} style={styles.qtyBtn}>
                         <Icon name="add" size={14} color={Colors.text} />
                       </Pressable>
                       <MoneyText amountTZS={l.unitPriceTZS * l.quantity} size={FontSize.sm} />
@@ -519,13 +519,13 @@ export default function DineInScreen() {
           renderItem={({ item }) => {
             const unavailable = item.available === false;
             return (
-              <Card style={[styles.menuItem, unavailable && { opacity: 0.55 }]} flat>
+              <Card style={[styles.menuItem, unavailable && { opacity: 0.88 }]} flat>
                 <Row style={{ justifyContent: 'space-between' }}>
                   <View style={{ flex: 1, paddingRight: Spacing.md }}>
                     <Text style={[styles.name, unavailable && { color: Colors.textTertiary }]} numberOfLines={1}>{item.name}</Text>
-                    {item.description ? <Text style={styles.meta} numberOfLines={2}>{item.description}</Text> : null}
+                    {item.description ? <Text style={[styles.meta, unavailable && { color: Colors.textSecondary }]} numberOfLines={2}>{item.description}</Text> : null}
                     <MoneyText amountTZS={item.priceTZS} size={FontSize.sm} bold />
-                    {unavailable ? <Text style={[styles.meta, { color: Colors.textTertiary, fontFamily: Fonts.sansSemibold }]}>{t('dineIn.itemUnavailable')}</Text> : null}
+                    {unavailable ? <Text style={[styles.meta, { color: Colors.textSecondary, fontFamily: Fonts.sansSemibold }]}>{t('dineIn.itemUnavailable')}</Text> : null}
                   </View>
                   {unavailable ? null : (
                     <Btn label={t('dineIn.add')} size="sm" onPress={() => addItem({ catalogueItemId: item.id!, name: item.name, unitPriceTZS: item.priceTZS })} icon="add" />
@@ -549,7 +549,7 @@ export default function DineInScreen() {
         </Row>
         <Card style={{ gap: Spacing.md, marginBottom: Spacing.lg }}>
           <Text style={styles.sectionLabel}>{t('dineIn.qrLabel')}</Text>
-          <Row gap={Spacing.sm} style={{ alignItems: 'flex-start' }}>
+          <Row gap={Spacing.sm} style={{ alignItems: 'flex-end' }}>
             <View style={{ flex: 1 }}>
               <Field label={t('dineIn.qrField')} value={qr} onChangeText={(v) => { setQr(v); setQrError(''); }} placeholder={DINE_IN_QR_EXAMPLE} autoCapitalize="none" />
               {qrError ? <Text style={styles.errorText}>{qrError}</Text> : null}
@@ -558,7 +558,7 @@ export default function DineInScreen() {
               label={t('dineIn.scan')}
               onPress={() => { setScannerOpen(true); }}
               icon="scan-outline"
-              style={{ marginTop: 22 }}
+              style={{ marginBottom: 2 }}
             />
           </Row>
           <Btn label={t('dineIn.open')} onPress={() => resolveQr()} loading={resolving} icon="scan-outline" />
@@ -625,11 +625,11 @@ const styles = StyleSheet.create({
   sectionLabel: { fontSize: FontSize.sm, color: Colors.textTertiary, fontFamily: Fonts.sansSemibold },
   name: { fontSize: FontSize.md, fontFamily: Fonts.sansSemibold, color: Colors.text },
   value: { fontSize: FontSize.sm, color: Colors.text, fontFamily: Fonts.sansMedium },
-  meta: { fontSize: FontSize.xs, color: Colors.textTertiary, fontFamily: Fonts.sans, marginTop: 2 },
+  meta: { fontSize: FontSize.xs, color: Colors.textSecondary, fontFamily: Fonts.sans, marginTop: 2 },
   errorText: { color: Colors.danger, fontSize: FontSize.xs, fontFamily: Fonts.sansSemibold },
-  bannerCard: { marginBottom: Spacing.lg },
+  bannerCard: { marginBottom: Spacing.lg, borderWidth: 1, borderColor: Colors.warning },
   historyCard: { marginBottom: Spacing.md },
   menuItem: { marginBottom: Spacing.md, backgroundColor: Colors.card },
   basketCard: { marginTop: Spacing.md, gap: Spacing.sm },
-  qtyBtn: { width: 28, height: 28, borderRadius: 14, borderWidth: 1, borderColor: Colors.borderStrong, alignItems: 'center', justifyContent: 'center' },
+  qtyBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: Colors.borderStrong, alignItems: 'center', justifyContent: 'center', minWidth: 36, minHeight: 36 },
 });

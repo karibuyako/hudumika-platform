@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
   title: { fontSize: FontSize.lg, fontFamily: Fonts.sansBold, color: Colors.text, flex: 1, textAlign: 'center' },
   name: { fontSize: FontSize.md, fontFamily: Fonts.sansBold, color: Colors.text },
   value: { fontSize: FontSize.sm, color: Colors.text, fontFamily: Fonts.sansMedium },
-  meta: { fontSize: FontSize.xs, color: Colors.textTertiary, fontFamily: Fonts.sans },
+  meta: { fontSize: FontSize.xs, color: Colors.textSecondary, fontFamily: Fonts.sans },
   note: { fontSize: FontSize.xs, color: Colors.textSecondary, fontFamily: Fonts.sans, flex: 1, lineHeight: 16 },
   sectionLabel: { fontSize: FontSize.sm, color: Colors.textTertiary, fontFamily: Fonts.sansSemibold, marginVertical: Spacing.sm },
 });
