@@ -132,7 +132,7 @@ export default function RootLayout() {
           const target = pushResponseDeepLink(last);
           if (target) setPendingDeepLink(target);
         }
-        subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+        subscription = Notifications.addNotificationResponseReceivedListener((response: unknown) => {
           const target = pushResponseDeepLink(response);
           if (target) setPendingDeepLink(target);
         });

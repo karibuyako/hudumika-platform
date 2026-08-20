@@ -1,4 +1,5 @@
 {
+  "_comment": "Push creds: APNS p8 + FCM google-services.json provisioned via 'eas credentials' (never committed). See docs/NOTIFICATIONS.md steps 2-4 and docs/DEPLOYMENT.md. Set EXPO_PUBLIC_EAS_PROJECT_ID from the EAS projectId below.",
   "cli": {
     "version": ">= 5.0.0"
   },

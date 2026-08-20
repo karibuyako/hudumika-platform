@@ -45,7 +45,7 @@ async function pickImages(max: number): Promise<string[] | null> {
       quality: 0.7,
     });
     if (result.canceled) return null;
-    return result.assets.map((a) => a.uri);
+    return result.assets.map((a: { uri: string }) => a.uri);
   } catch {
     return null;
   }

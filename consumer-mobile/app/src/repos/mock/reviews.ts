@@ -26,7 +26,7 @@ const ELIGIBLE_ORDER_STATUSES = ['delivered', 'completed'];
 type StoredReview = Review & {
   dimensions?: ReviewCreate['dimensions'];
   verified?: boolean;
-  reply?: ReviewReply;
+  reply?: ReviewReply | null;
 };
 
 /** POST /reviews/{id}/helpful toggle state (no GET endpoint in the contract). */
