@@ -1,4 +1,5 @@
 import * as Haptics from 'expo-haptics';
+import { useFocusEffect } from 'expo-router';
 import { memo, useCallback, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import type { ListRenderItemInfo } from 'react-native';
@@ -121,6 +122,12 @@ export default function EarningsScreen() {
     }
   }, []);
 
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
+
   const loadPayouts = useCallback(async () => {
     try {
       const [wallet, payouts] = await Promise.all([
@@ -227,6 +234,7 @@ export default function EarningsScreen() {
       {error ? (
         <View style={styles.errorBox}>
           <Text style={styles.error}>{error}</Text>
+          <Btn label={t('common.retry')} variant="ghost" size="sm" onPress={load} style={{ marginTop: Spacing.sm }} />
         </View>
       ) : null}
 

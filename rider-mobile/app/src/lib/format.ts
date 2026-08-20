@@ -1,5 +1,8 @@
 /* Time/format helpers. Money is formatted by the single shared formatter
- * formatTZS in src/i18n — never inline toLocaleString. */
+ * formatTZS in src/i18n — never inline toLocaleString.
+ * This module re-exports that formatter as `tzs` for legacy call-sites that
+ * imported from lib/format; new code should import formatTZS from '@/i18n'. */
+export { formatTZS, formatTZS as tzs } from '@/i18n';
 export function clock(ts: number): string {
   const d = new Date(ts);
   const p = (n: number) => String(n).padStart(2, '0');

@@ -110,12 +110,10 @@ export default function HotelBookingDetailScreen() {
         </Card>
 
         {booking.status === 'pending_payment' ? (
-          /* Universal checkout shell entry — the mock creates hotel bookings
-             pending_payment; the shell resolves it and (until a payment
-             endpoint ships) points back at this detail screen. */
+          /* Vertical checkout shell — hotel booking paid from /hotel/checkout. */
           <Btn
             label={t('booking.payViaCheckout')}
-            onPress={() => router.push({ pathname: '/checkout', params: { transactionType: 'hotel', hotelBookingId: bookingId } })}
+            onPress={() => router.push({ pathname: '/hotel/checkout', params: { hotelBookingId: bookingId } })}
             variant="outline"
             style={{ marginTop: Spacing.lg }}
           />

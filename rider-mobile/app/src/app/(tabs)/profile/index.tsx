@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { ApiError } from '@/api/client';
-import { Avatar, Btn, Card, Icon, ListRow, Pill, Row, Screen, SectionTitle, Segmented, Spinner, Stars, ToggleRow } from '@/components/ui';
+import { Avatar, Btn, Card, Icon, ListRow, Pill, Row, Screen, SectionTitle, Segmented, SheetModal, Spinner, Stars, ToggleRow } from '@/components/ui';
 import { Colors, FontSize, Radius, Spacing } from '@/constants/theme';
 import { getLocale, setLocale, t } from '@/i18n';
 import { getRiderRepository } from '@/repos';
@@ -30,6 +30,7 @@ export default function ProfileScreen() {
   const [prefs, setPrefs] = useState<RiderPreferences | null>(null);
   const [prefsError, setPrefsError] = useState('');
   const [signingOut, setSigningOut] = useState(false);
+  const [logoutVisible, setLogoutVisible] = useState(false);
   const [filterDraft, setFilterDraft] = useState('');
 
   useEffect(() => {
@@ -101,6 +102,7 @@ export default function ProfileScreen() {
   };
 
   const onLogout = async () => {
+    setLogoutVisible(false);
     setSigningOut(true);
     await useSessionStore.getState().logout();
     router.replace('/login');
@@ -206,7 +208,7 @@ export default function ProfileScreen() {
         <ListRow title={t('profile.safety')} sub={t('profile.safetySub')} icon="shield-checkmark-outline" onPress={() => router.push('/profile/safety')} />
         <ListRow title={t('profile.vehicle')} sub={t('profile.vehicleSub')} icon="construct-outline" onPress={() => router.push('/profile/vehicle')} />
         <ListRow title={t('profile.penalties')} sub={t('profile.penaltiesSub')} icon="alert-circle-outline" onPress={() => router.push('/profile/penalties')} />
-        <ListRow title={t('profile.logout')} icon="log-out-outline" danger onPress={onLogout} />
+        <ListRow title={t('profile.logout')} icon="log-out-outline" danger onPress={() => setLogoutVisible(true)} />
       </Card>
 
       {signingOut ? (
@@ -218,6 +220,14 @@ export default function ProfileScreen() {
       <View style={styles.versionBox}>
         <Text style={styles.versionText}>{t('profile.version', { version: '0.1.0' })}</Text>
       </View>
+
+      <SheetModal visible={logoutVisible} onClose={() => setLogoutVisible(false)} title={t('profile.logoutConfirmTitle')}>
+        <Text style={styles.confirmBody}>{t('profile.logoutConfirmBody')}</Text>
+        <Row gap={Spacing.md}>
+          <Btn label={t('common.cancel')} variant="outline" onPress={() => setLogoutVisible(false)} style={{ flex: 1 }} />
+          <Btn label={t('profile.logout')} variant="danger" onPress={onLogout} style={{ flex: 1 }} />
+        </Row>
+      </SheetModal>
     </Screen>
   );
 }
@@ -284,4 +294,5 @@ const styles = StyleSheet.create({
   },
   versionBox: { alignItems: 'center', marginTop: Spacing.xl },
   versionText: { color: Colors.textFaint, fontSize: FontSize.xs },
+  confirmBody: { color: Colors.textSecondary, fontSize: FontSize.sm, lineHeight: 20 },
 });

@@ -18,15 +18,14 @@ import {
   SkeletonCard,
 } from '@/components/ui';
 import { Colors, Fonts, FontSize, Spacing } from '@/constants/theme';
-import { t, type I18nKey } from '@/i18n';
-import { getBookingsRepository, getCouponsRepository, getHotelsRepository, getOrdersRepository, getPaymentsRepository, getSplitPaymentsRepository, type PaymentMethodRecord } from '@/repos';
+import { t } from '@/i18n';
+import { getCouponsRepository, getOrdersRepository, getPaymentsRepository, getSplitPaymentsRepository, type PaymentMethodRecord } from '@/repos';
 import { useAddressesStore } from '@/store/addresses';
 import { useCartStore } from '@/store/cart';
 import { useSessionStore } from '@/store/session';
 import { toast } from '@/store/ui';
-import type { BookingDetail, Coupon, HotelBooking, Order, OrderCreatePaymentMethod, PaymentIntentCreateMethod } from '@hudumika/contract';
+import type { Coupon, Order, OrderCreatePaymentMethod, PaymentIntentCreateMethod } from '@hudumika/contract';
 import { ApiError } from '@/api/client';
-import { getTransactionType, type TransactionType } from '@/lib/checkout';
 import { dateISO, fullTimeISO } from '@/lib/dates';
 import { idempotencyKey } from '@/lib/idempotency';
 import { pickDefaultMethod } from '@/lib/payments';
@@ -69,24 +68,6 @@ function scheduleSlots(): { key: string; label: string; iso: string }[] {
 
 type MethodKey = PaymentIntentCreateMethod | OrderCreatePaymentMethod;
 
-// Universal checkout shell (MASTER-BLUEPRINT §12): the header chip labels the
-// dispatched transaction type; non-commerce shells render below it.
-const TYPE_LABEL: Record<TransactionType, I18nKey> = {
-  commerce: 'checkout.type.commerce',
-  delivery: 'checkout.type.delivery',
-  service: 'checkout.type.service',
-  booking: 'checkout.type.booking',
-  reservation: 'checkout.type.reservation',
-  hotel: 'checkout.type.hotel',
-};
-
-// Booking detail on the mock wire may carry the linked payment intent
-// id/method (contract types only expose status) — live responses omit them.
-type BookingWithPayment = BookingDetail & {
-  intentId?: string;
-  paymentMethod?: string;
-};
-
 // WALLET-COUPONS.md: the checkout coupon selector ships behind a feature flag.
 // Mock-first (docs/CONTRACT-ADDITIONS.md #10): the mock now honors couponId on
 // order create (server-side validation + discount), so the selector is ON by
@@ -109,16 +90,9 @@ function evenShares(totalTZS: number, n: number): { label: string; amountTZS: nu
 
 export default function CheckoutScreen() {
   const router = useRouter();
-  const { merchantId, transactionType: transactionTypeParam, bookingId, hotelBookingId } = useLocalSearchParams<{
+  const { merchantId } = useLocalSearchParams<{
     merchantId?: string;
-    transactionType?: string;
-    bookingId?: string;
-    hotelBookingId?: string;
   }>();
-  // Universal checkout shell: the transactionType query param (blueprint §2
-  // typed route /checkout/:transactionType) dispatches the shell; absent or
-  // unknown values default to the commerce order flow below, unchanged.
-  const transactionType = getTransactionType(transactionTypeParam);
   const groups = useCartStore((s) => s.groups);
   const clearGroup = useCartStore((s) => s.clearGroup);
   const addresses = useAddressesStore((s) => s.addresses);
@@ -472,41 +446,6 @@ export default function CheckoutScreen() {
       }
     }
   };
-
-  // UNIVERSAL CHECKOUT SHELL (MASTER-BLUEPRINT §12): non-commerce transaction
-  // types dispatch here — the shared header + a thin per-type shell. Each
-  // shell reuses the entity's existing pay path (or honestly defers to the
-  // entity detail when no pay path exists); the order flow below is untouched.
-  if (transactionType !== 'commerce') {
-    return (
-      <Screen scroll>
-        <Row style={{ justifyContent: 'space-between', marginBottom: Spacing.md }}>
-          <Btn label={t('common.back')} onPress={() => router.back()} variant="subtle" size="sm" icon="arrow-back" />
-          <Text style={styles.title}>{t('checkout.title')}</Text>
-        </Row>
-        <View style={{ alignItems: 'center', marginBottom: Spacing.md }}>
-          <View style={styles.typeChip}>
-            <Text style={styles.typeChipText}>{t(TYPE_LABEL[transactionType])}</Text>
-          </View>
-        </View>
-        {transactionType === 'booking' || transactionType === 'service' ? (
-          bookingId ? (
-            <BookingCheckoutShell bookingId={bookingId} />
-          ) : (
-            <EmptyState icon="receipt-outline" title={t('checkout.fromDetail')} actionLabel={t('common.back')} onAction={() => router.back()} />
-          )
-        ) : transactionType === 'hotel' ? (
-          hotelBookingId ? (
-            <HotelCheckoutShell hotelBookingId={hotelBookingId} />
-          ) : (
-            <EmptyState icon="receipt-outline" title={t('checkout.fromDetail')} actionLabel={t('common.back')} onAction={() => router.back()} />
-          )
-        ) : (
-          <EmptyState icon="receipt-outline" title={t('checkout.fromDetail')} actionLabel={t('common.back')} onAction={() => router.back()} />
-        )}
-      </Screen>
-    );
-  }
 
   if (!merchant || merchant.items.length === 0) {
     return (
@@ -863,255 +802,6 @@ export default function CheckoutScreen() {
         />
       </SheetModal>
     </Screen>
-  );
-}
-
-/* UNIVERSAL CHECKOUT SHELL — booking/service dispatch. Renders the shared
- * payment-method section + the booking's own server-side price breakdown,
- * then pays through the same intent → confirm path as the booking detail
- * "Pay now" and book.tsx: the booking was created pending_payment with a
- * linked intent, and createIntent is idempotent (returns that intent). On
- * success we land on the booking detail, where the server state shows. */
-function BookingCheckoutShell({ bookingId }: { bookingId: string }) {
-  const router = useRouter();
-  const user = useSessionStore((s) => s.user);
-  const [booking, setBooking] = useState<BookingWithPayment | null>(null);
-  const [loadError, setLoadError] = useState('');
-  const [methods, setMethods] = useState<PaymentMethodRecord[] | null>(null);
-  const [method, setMethod] = useState<MethodKey>('mpesa');
-  const [blockedMethods, setBlockedMethods] = useState<Set<string>>(new Set());
-  const [pendingIntentId, setPendingIntentId] = useState<string | null>(null);
-  const [paying, setPaying] = useState(false);
-  const [payError, setPayError] = useState('');
-  const [retryAfter, setRetryAfter] = useState(0);
-
-  useEffect(() => {
-    getBookingsRepository()
-      .get(bookingId)
-      .then((b) => setBooking(b as BookingWithPayment))
-      .catch((e) => setLoadError(e instanceof ApiError && e.status === 404 ? t('booking.notFound') : t('common.error')));
-    getPaymentsRepository()
-      .getPaymentMethods()
-      .then((list) => {
-        if (list.length > 0) {
-          setMethods(list);
-          // Smart default (§37): pre-select the server default (isDefault).
-          const preferred = pickDefaultMethod(list);
-          if (preferred) setMethod(preferred.method as MethodKey);
-        }
-      })
-      .catch(() => setMethods(FALLBACK_METHODS));
-  }, [bookingId]);
-
-  // PAYMENT_PROVIDER_ERROR retry countdown (PAYMENTS.md) — never an instant
-  // hammer on the provider.
-  useEffect(() => {
-    if (retryAfter <= 0) return;
-    const timer = setTimeout(() => setRetryAfter((r) => r - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [retryAfter]);
-
-  // Intent → confirm with the same recovery vocabulary as the booking detail
-  // pay: a linked intent rides the wire (mock-only); otherwise createIntent is
-  // idempotent. PAYMENT_INTENT_NOT_FOUND clears the cached id so the next
-  // attempt recreates it (PAYMENTS.md).
-  const pay = async (retryIntentId?: string) => {
-    if (!booking) return;
-    setPayError('');
-    setRetryAfter(0);
-    setPaying(true);
-    try {
-      const intent = retryIntentId
-        ? { id: retryIntentId, status: 'created' as const, amountTZS: booking.price?.totalTZS ?? 0, method }
-        : booking.intentId
-          ? { id: booking.intentId, status: 'created' as const, amountTZS: booking.price?.totalTZS ?? 0, method: (booking.paymentMethod ?? method) as MethodKey }
-          : await getPaymentsRepository().createIntent(booking.id, method, idempotencyKey(user?.id ?? 'customer', 'booking.intent'));
-      setPendingIntentId(intent.id);
-      const paid = await getPaymentsRepository().confirm(intent.id, idempotencyKey(user?.id ?? 'customer', 'booking.confirm'));
-      if (paid.status === 'paid') {
-        toast(t('checkout.paymentSuccess'));
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        router.replace(`/booking/${booking.id}`);
-        return;
-      }
-      setPayError(t('common.error'));
-    } catch (e) {
-      if (e instanceof ApiError) {
-        switch (e.code) {
-          case 'PAYMENT_PROVIDER_ERROR': {
-            const seconds = typeof e.details?.retryAfterSeconds === 'number' ? e.details.retryAfterSeconds : 10;
-            setRetryAfter(seconds);
-            setPayError(t('checkout.paymentFailed', { s: seconds }));
-            break;
-          }
-          case 'PAYMENT_ALREADY_PAID':
-            // The server says this booking is settled — land on its detail.
-            router.replace(`/booking/${booking.id}`);
-            break;
-          case 'PAYMENT_INTENT_NOT_FOUND':
-            setPendingIntentId(null);
-            setPayError(t('common.error'));
-            break;
-          case 'PAYMENT_METHOD_UNSUPPORTED':
-            setBlockedMethods((prev) => new Set(prev).add(method));
-            setPayError('');
-            break;
-          default:
-            setPayError(t('common.error'));
-        }
-      } else {
-        setPayError(t('common.error'));
-      }
-    } finally {
-      setPaying(false);
-    }
-  };
-
-  if (loadError) {
-    return <ErrorState message={loadError} onRetry={() => { setLoadError(''); setBooking(null); }} />;
-  }
-  if (!booking) {
-    return (
-      <View style={{ gap: Spacing.md }}>
-        <SkeletonCard rows={3} />
-        <SkeletonCard rows={4} />
-      </View>
-    );
-  }
-
-  const price = booking.price;
-  const priceRows = price
-    ? [
-        { label: t('breakdown.subtotal'), amountTZS: price.subtotalTZS },
-        { label: t('breakdown.delivery'), amountTZS: price.deliveryFeeTZS },
-        { label: t('breakdown.platform'), amountTZS: price.platformFeeTZS },
-        { label: t('breakdown.tax'), amountTZS: price.taxTZS },
-        { label: t('breakdown.discount'), amountTZS: price.discountTZS, signed: true },
-      ]
-    : [];
-  const totalTZS = price?.totalTZS ?? 0;
-
-  return (
-    <>
-      {/* Payment method — same list as the order flow (GET /payments/methods) */}
-      <Card style={styles.section}>
-        <Text style={styles.sectionLabel}>{t('checkout.payment')}</Text>
-        {methods === null ? (
-          <SkeletonCard rows={3} />
-        ) : (
-          <View style={{ gap: Spacing.sm }}>
-            {methods.map((m) => {
-              const blocked = blockedMethods.has(m.method);
-              return (
-                <Pressable
-                  key={m.id}
-                  onPress={blocked ? undefined : () => setMethod(m.method as MethodKey)}
-                  disabled={blocked}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: method === m.method, disabled: blocked }}
-                  style={[styles.methodRow, method === m.method && styles.methodSelected, blocked && { opacity: 0.4, borderColor: Colors.borderStrong }]}>
-                  <Text style={[styles.value, { flex: 1 }, blocked && { color: Colors.textFaint }]}>{m.label}</Text>
-                  <Icon name={method === m.method ? 'radio-button-on' : 'radio-button-off'} size={18} color={method === m.method ? Colors.primary : Colors.borderStrong} />
-                </Pressable>
-              );
-            })}
-          </View>
-        )}
-      </Card>
-
-      {/* Review total — the booking's own server-side price (advisory preview) */}
-      <Card style={styles.section}>
-        <Text style={styles.sectionLabel}>{t('checkout.reviewTotal')}</Text>
-        <PriceBreakdown rows={priceRows} totalTZS={totalTZS} totalLabel={t('breakdown.total')} />
-      </Card>
-
-      {booking.status !== 'pending_payment' ? (
-        // Not awaiting payment (paid/cancelled/…): the detail screen owns the
-        // state — point there instead of offering a stale pay button.
-        <EmptyState icon="checkmark-circle-outline" title={t('checkout.fromDetail')} actionLabel={t('common.view')} onAction={() => router.replace(`/booking/${booking.id}`)} />
-      ) : (
-        <>
-          {payError ? <ErrorState message={payError} /> : null}
-          {paying ? (
-            <Card style={[styles.section, { backgroundColor: Colors.primarySoft }]}>
-              <Text style={{ color: Colors.primaryDeep, fontSize: FontSize.sm, fontFamily: Fonts.sansSemibold, textAlign: 'center' }}>
-                {t('checkout.stkPush', { method: method.toUpperCase().replace('_', ' ') })}
-              </Text>
-            </Card>
-          ) : null}
-          <Btn
-            label={paying ? '…' : retryAfter > 0 ? t('checkout.paymentFailed', { s: retryAfter }) : t('booking.pay', { amount: formatTZS(totalTZS) })}
-            onPress={paying ? undefined : () => pay(pendingIntentId ?? undefined)}
-            size="lg"
-            loading={paying}
-            disabled={retryAfter > 0 || totalTZS <= 0}
-            style={{ marginTop: Spacing.md }}
-          />
-        </>
-      )}
-    </>
-  );
-}
-
-/* UNIVERSAL CHECKOUT SHELL — hotel dispatch. Hotel bookings have no payment
- * surface in the app yet (the contract ships no hotel payment endpoint), so
- * the shell resolves the booking and honestly points at its detail screen
- * instead of inventing a pay flow. */
-function HotelCheckoutShell({ hotelBookingId }: { hotelBookingId: string }) {
-  const router = useRouter();
-  const [booking, setBooking] = useState<HotelBooking | null>(null);
-  const [loadError, setLoadError] = useState('');
-
-  const load = useCallback(async () => {
-    setLoadError('');
-    setBooking(null);
-    try {
-      const mine = await getHotelsRepository().listMyBookings();
-      const found = mine.find((b) => b.id === hotelBookingId);
-      if (!found) {
-        setLoadError(t('hotels.bookingNotFound'));
-        return;
-      }
-      setBooking(found);
-    } catch {
-      setLoadError(t('common.error'));
-    }
-  }, [hotelBookingId]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  if (loadError) {
-    return <ErrorState message={loadError} onRetry={load} />;
-  }
-  if (!booking) {
-    return (
-      <View style={{ gap: Spacing.md }}>
-        <SkeletonCard rows={2} />
-        <SkeletonCard rows={2} />
-      </View>
-    );
-  }
-
-  return (
-    <>
-      {/* Review total — the hotel booking's server-side total */}
-      <Card style={styles.section}>
-        <Text style={styles.sectionLabel}>{t('checkout.reviewTotal')}</Text>
-        <PriceBreakdown
-          rows={[{ label: `${booking.hotelName ?? booking.hotelId} — ${t('hotels.nights', { n: booking.nights ?? 1 })}`, amountTZS: booking.totalTZS }]}
-          totalTZS={booking.totalTZS}
-          totalLabel={t('breakdown.total')}
-        />
-      </Card>
-      <EmptyState
-        icon="bed-outline"
-        title={t('checkout.fromDetail')}
-        actionLabel={t('common.view')}
-        onAction={() => router.push(`/hotel-bookings/${booking.id}`)}
-      />
-    </>
   );
 }
 

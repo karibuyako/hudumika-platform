@@ -13,6 +13,7 @@ import { advanceStepFor, capitalize, formatEta, priorityMeta, statusMeta } from 
 import { getDeliveryRepository, getPaymentRepository, getRiderRepository } from '@/repos';
 import type { PaymentQrResult, RiderAdvanceableStatus } from '@/repos';
 import { useJobsStore } from '@/store/jobs';
+import { useNetworkStore } from '@/store/network';
 import { useSessionStore } from '@/store/session';
 import type { FareBreakdown, OrderDetail, ProofOfDeliveryType, TrackingEvent } from '@hudumika/contract';
 
@@ -82,6 +83,8 @@ export default function OrderDetailScreen() {
   const [qr, setQr] = useState<PaymentQrResult | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
   const [qrError, setQrError] = useState('');
+
+  const offline = useNetworkStore((s) => !s.online);
 
   const loading = order === null && !error;
   const reasonsLoading = failVisible && reasons.length === 0 && !reasonsError;
@@ -237,14 +240,22 @@ export default function OrderDetailScreen() {
 
   const submitPOD = async () => {
     if (!order || !podType || !podValue.trim()) return;
+    if (handoff === 'leave_at_door' && podType !== 'photo') {
+      setPodError(t('orders.leaveAtDoorPhotoRequired'));
+      return;
+    }
+    const loc = rider?.lastLocation;
+    if (handoff === 'leave_at_door' && podType === 'photo' && !loc) {
+      setPodError(t('orders.leaveAtDoorGpsRequired'));
+      return;
+    }
     setPodLoading(true);
     setPodError('');
-    const loc = rider?.lastLocation;
     const pod = {
       type: podType,
       value: podValue.trim(),
       dropoffOption: handoff,
-      itemIds: order.items?.map((i) => i.catalogueItemId).filter(Boolean),
+      itemIds: order.items?.map((i) => i.catalogueItemId).filter(Boolean) as string[] | undefined,
       gpsStamp: podType === 'photo' && loc ? { lat: loc.lat, lon: loc.lon, at: loc.updatedAt } : undefined,
     };
     try {
@@ -259,9 +270,12 @@ export default function OrderDetailScreen() {
       if (err?.code === 'POD_ALREADY_SUBMITTED') {
         setPodVisible(false);
         load();
+      } else if (err?.code === 'POD_OTP_INVALID') {
+        setPodError(err.message);
       } else {
         setPodError(err ? err.message : t('orders.podFailed'));
-      }    } finally {
+      }
+    } finally {
       setPodLoading(false);
     }
   };
@@ -404,31 +418,32 @@ export default function OrderDetailScreen() {
       {/* Action bar */}
       {!done && !failed ? (
         <View style={styles.actionBar}>
+          {offline ? <Text style={styles.offlineText}>{t('orders.offlineDisabled')}</Text> : null}
           {actionError ? <Text style={styles.error}>{actionError}</Text> : null}
           <Row gap={Spacing.md}>
-            <Btn label={t('orders.call')} icon="call" variant="outline" onPress={onCall} loading={callLoading} disabled={advancing || podLoading} style={{ flex: 1 }} />
+            <Btn label={t('orders.call')} icon="call" variant="outline" onPress={onCall} loading={callLoading} disabled={advancing || podLoading || offline} style={{ flex: 1 }} />
             {advance ? (
               <Btn
                 label={t(advance.labelKey)}
                 icon="arrow-forward"
                 onPress={onAdvance}
                 loading={advancing}
-                disabled={callLoading || podLoading}
+                disabled={callLoading || podLoading || offline}
                 style={{ flex: 2 }}
               />
             ) : order.status === 'rider_arrived_dropoff' ? (
-              <Btn label={t('orders.pod')} icon="checkmark-circle" onPress={() => setPodVisible(true)} style={{ flex: 2 }} />
+              <Btn label={t('orders.pod')} icon="checkmark-circle" onPress={() => setPodVisible(true)} disabled={offline} style={{ flex: 2 }} />
             ) : null}
           </Row>
           {showQr ? (
-            <Btn label={t('payments.showQr')} icon="qr-code" variant="outline" onPress={openQr} disabled={advancing || podLoading} style={{ alignSelf: 'stretch' }} />
+            <Btn label={t('payments.showQr')} icon="qr-code" variant="outline" onPress={openQr} disabled={advancing || podLoading || offline} style={{ alignSelf: 'stretch' }} />
           ) : null}
           <Btn
             label={t('orders.failed')}
             variant="ghost"
             size="sm"
             onPress={() => setFailVisible(true)}
-            disabled={advancing || podLoading}
+            disabled={advancing || podLoading || offline}
             style={{ alignSelf: 'center', marginTop: Spacing.xs }}
           />
           <SosButton
@@ -513,7 +528,8 @@ export default function OrderDetailScreen() {
         </View>
 
         {podError ? <Text style={styles.error}>{podError}</Text> : null}
-        <Btn label={t('orders.podConfirm')} icon="checkmark-done" onPress={submitPOD} loading={podLoading} disabled={!podType || !podValue.trim()} size="lg" />
+        {offline ? <Text style={styles.offlineText}>{t('orders.offlineDisabled')}</Text> : null}
+        <Btn label={t('orders.podConfirm')} icon="checkmark-done" onPress={submitPOD} loading={podLoading} disabled={!podType || !podValue.trim() || offline} size="lg" />
       </SheetModal>
 
       {/* Fail modal */}
@@ -577,12 +593,13 @@ export default function OrderDetailScreen() {
           ) : null}
 
           {pickupError ? <Text style={styles.error}>{pickupError}</Text> : null}
+          {offline ? <Text style={styles.offlineText}>{t('orders.offlineDisabled')}</Text> : null}
           <Btn
             label={t('orders.pickupSubmit')}
             icon="checkmark-done"
             onPress={submitPickup}
             loading={pickupLoading}
-            disabled={pickupCode.trim().length !== 4 && !(pickupManual && pickupNote.trim().length > 0)}
+            disabled={offline || (pickupCode.trim().length !== 4 && !(pickupManual && pickupNote.trim().length > 0))}
             size="lg"
           />
         </View>
@@ -728,4 +745,5 @@ const styles = StyleSheet.create({
   qrLabel: { fontSize: FontSize.xs, color: Colors.textTertiary, fontWeight: '700', width: 72 },
   qrValue: { fontSize: FontSize.md, color: Colors.text, fontWeight: '800', fontVariant: NumberStyle.fontVariant },
   qrExpiry: { fontSize: FontSize.xs, color: Colors.textTertiary },
+  offlineText: { color: Colors.warning, fontSize: FontSize.xs, fontWeight: '700', textAlign: 'center' },
 });

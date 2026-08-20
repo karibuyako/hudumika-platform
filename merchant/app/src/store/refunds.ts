@@ -8,7 +8,8 @@ interface RefundState {
   loaded: boolean;
   hydrate: (status?: 'pending' | 'approved' | 'rejected') => Promise<void>;
   upsert: (refund: RefundRequestDto) => void;
-  approveRefund: (id: string, reason: string, amountTZS?: number) => Promise<void>;
+  /** Contract gap: POST /refunds/{id}/approve carries only {reason ≤500} — no amountTZS field. Partial amounts planned. */
+  approveRefund: (id: string, reason: string) => Promise<void>;
   rejectRefund: (id: string, reason: string) => Promise<void>;
 }
 
@@ -31,8 +32,9 @@ export const useRefundStore = create<RefundState>()((set, get) => ({
       return { refunds: exists ? s.refunds.map((r) => (r.id === refund.id ? refund : r)) : [refund, ...s.refunds] };
     }),
 
-  approveRefund: async (id, reason, amountTZS) => {
-    const res = await api.post<RefundRequestDto>(`/refunds/${id}/approve`, { reason, amountTZS }, { idempotencyKey: `refund-approve:${id}:${Date.now()}` });
+  approveRefund: async (id, reason) => {
+    // Honest UI: contract approve body has no amountTZS — reason only (≤500). Partial approval planned, not live.
+    const res = await api.post<RefundRequestDto>(`/refunds/${id}/approve`, { reason }, { idempotencyKey: `refund-approve:${id}:${Date.now()}` });
     get().upsert(res);
   },
 

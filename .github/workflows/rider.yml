@@ -32,3 +32,32 @@ jobs:
       - name: Lint
         working-directory: rider-mobile/app
         run: npm run lint
+      - name: Web export (production)
+        working-directory: rider-mobile/app
+        run: EXPO_PUBLIC_ENV=production EXPO_PUBLIC_MOCK_AUTH=false EXPO_PUBLIC_MOCK_JOBS=false EXPO_PUBLIC_MOCK_EARNINGS=false EXPO_PUBLIC_MOCK_SUPPORT=false EXPO_PUBLIC_MOCK_SAFETY=false EXPO_PUBLIC_MOCK_VEHICLE=false EXPO_PUBLIC_MOCK_TRIPS=false npx expo export --platform web
+      - name: Mock gate — production bundle must not reference mock fixtures
+        working-directory: rider-mobile/app
+        run: |
+          echo "Checking production bundle for mock markers…"
+          if grep -r "MockAuthRepository\|MockJobsRepository\|fixtureRider" dist/ --include='*.js'; then
+            echo "FAIL: mock repository found in production bundle"
+            exit 1
+          fi
+          # Also verify preview/production EAS profiles explicitly disable every mock switch (same as eas-mocks.test.ts)
+          node -e "
+            const eas=require('./eas.json');
+            const switches=['EXPO_PUBLIC_MOCK_AUTH','EXPO_PUBLIC_MOCK_JOBS','EXPO_PUBLIC_MOCK_EARNINGS','EXPO_PUBLIC_MOCK_SUPPORT','EXPO_PUBLIC_MOCK_SAFETY','EXPO_PUBLIC_MOCK_VEHICLE','EXPO_PUBLIC_MOCK_TRIPS'];
+            for(const p of ['preview','production']){
+              const env=eas.build?.[p]?.env||{};
+              for(const k of switches){ if(env[k]!=='false'){ console.error(p+': '+k+' must be false'); process.exit(1);} }
+            }
+            console.log('OK: EAS preview/production mock switches are off');
+          "
+      - name: Bundle budget check
+        working-directory: rider-mobile/app
+        run: node tests/bundle-budget.mjs
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: rider-web-build
+          path: rider-mobile/app/dist

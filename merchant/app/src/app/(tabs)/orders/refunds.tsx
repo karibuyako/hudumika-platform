@@ -84,6 +84,13 @@ export default function RefundsScreen() {
         ))}
       </Row>
 
+      {/* Honest UI: partial amounts planned but not in contract — amount field absent, reason only (≤500). */}
+      <View style={styles.honestyBanner}>
+        <Icon name="information-circle-outline" size={16} color={Colors.warning} />
+        <Text style={styles.honestyText}>{t('rf.partialBanner')}</Text>
+      </View>
+      <Text style={styles.honestySub}>{t('rf.partialDetail')}</Text>
+
       {conflict ? (
         <View style={styles.banner}>
           <Icon name="alert-circle-outline" size={16} color={Colors.danger} />
@@ -152,6 +159,20 @@ const styles = StyleSheet.create({
   loadFailed: { alignItems: 'center', paddingVertical: Spacing.xxl * 1.5, gap: 2 },
   banner: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: Spacing.lg, padding: 10, borderRadius: Radius.md, backgroundColor: `${Colors.danger}14`, borderWidth: 1, borderColor: `${Colors.danger}40` },
   bannerText: { flex: 1, fontSize: FontSize.xs, color: Colors.danger, fontWeight: '600' },
+  honestyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginHorizontal: Spacing.lg,
+    marginBottom: 4,
+    padding: 10,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.warningSoft,
+    borderWidth: 1,
+    borderColor: `${Colors.warning}55`,
+  },
+  honestyText: { flex: 1, fontSize: FontSize.xs, color: Colors.warning, fontWeight: '700' },
+  honestySub: { marginHorizontal: Spacing.lg, marginBottom: Spacing.sm, fontSize: FontSize.xs, color: Colors.textTertiary, textAlign: 'left' },
   card: { gap: 8, paddingVertical: 14 },
   no: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.text },
   meta: { fontSize: FontSize.xs, color: Colors.textTertiary },

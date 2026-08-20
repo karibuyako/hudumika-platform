@@ -419,11 +419,10 @@ export default function BookingDetailScreen() {
               disabled={retryAfter > 0}
               variant="success"
             />
-            {/* Universal checkout shell entry — the same pending-payment
-                booking paid from /checkout?transactionType=booking. */}
+            {/* Vertical checkout shell — pending-payment booking paid from /book/checkout. */}
             <Btn
               label={t('booking.payViaCheckout')}
-              onPress={() => router.push({ pathname: '/checkout', params: { transactionType: 'booking', bookingId } })}
+              onPress={() => router.push({ pathname: '/book/checkout', params: { bookingId } })}
               variant="outline"
             />
           </Card>

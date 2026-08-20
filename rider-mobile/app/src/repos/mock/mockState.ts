@@ -16,14 +16,18 @@ import {
   setFixturesSeed,
 } from '@hudumika/contract/fixtures';
 import type {
+  Consignment,
+  DeliveryException,
   DispatchOffer,
   ExportRiderReport202,
   FareBreakdown,
   GetRiderSecurity200,
   HeatmapZone,
   LedgerEntry,
+  LogisticsTrip,
   MaskedCallSession,
   OrderDetail,
+  Package,
   RiderExpense,
   RiderGoals,
   RiderMission,
@@ -31,17 +35,20 @@ import type {
   RiderPreferences,
   RiderPrivate,
   RiderShift,
+  RouteSegment,
   SosAlert,
   Ticket,
   TrackingEvent,
   TrainingModule,
   Trip,
   TrustedContact,
+  Vehicle,
   VehicleMaintenance,
 } from '@hudumika/contract';
 import { ApiError } from '@/api/client';
 import { uid } from '@/lib/format';
 import type { DispatchOfferFeedItem, NotificationItem, PayoutSummary } from '../index';
+import type { FacilityWhitelistEntry } from '@/lib/logistics';
 
 export const MOCK_SEED = 20260813;
 
@@ -99,6 +106,15 @@ export interface MockState {
   goals: RiderGoals;
   training: TrainingModule[];
   exportJobs: ExportRiderReport202[];
+  // ---- Logistics OS (P11b-d) ----
+  deliveryExceptions: DeliveryException[];
+  facilityWhitelist: FacilityWhitelistEntry[];
+  facilityScans: { facilityId: string; facilityName: string; at: string; result: 'granted' | 'blocked'; requestId?: string; code?: string }[];
+  logisticsTrips: LogisticsTrip[];
+  vehicles: Vehicle[];
+  packages: Package[];
+  consignments: Consignment[];
+  orderRoutes: Map<string, RouteSegment[]>;
 }
 
 export function buildFare(orderId: string, cod: boolean): FareBreakdown {
@@ -194,6 +210,7 @@ function buildState(): MockState {
     vehicle: profileFixture.vehicle as RiderPrivate['vehicle'],
     transportMode: 'local_motorcycle',
     serviceModel: 'specialized',
+    fleetAccountId: null,
     licensePlate: profileFixture.licensePlate,
     vehicleMake: profileFixture.vehicleMake,
     vehicleYear: profileFixture.vehicleYear,
@@ -449,11 +466,277 @@ function buildState(): MockState {
       ],
     },
     shareTokens: {},
+  // ---- Logistics seed ----
+  // Enrich first two feed orders with deep-logistics fields for demo
+  if (feedOrders[0]) {
+    feedOrders[0].fulfillmentSource = 'warehouse';
+    feedOrders[0].dispatchStrategy = 'warehouse';
+    feedOrders[0].routeSegments = [
+      { legId: 'leg_1', sequence: 0, type: 'first_mile', mode: 'van', fromHubId: null, toHubId: 'hub_a', handledBy: profile.id, status: 'pending', etaAt: new Date(Date.now() + 30 * 60_000).toISOString() },
+      { legId: 'leg_2', sequence: 1, type: 'linehaul', mode: 'linehaul_bus', fromHubId: 'hub_a', toHubId: 'hub_b', handledBy: 'carrier_dar_mwanza', status: 'pending', etaAt: new Date(Date.now() + 12 * 3600_000).toISOString() },
+      { legId: 'leg_3', sequence: 2, type: 'last_mile', mode: 'motorcycle', fromHubId: 'hub_b', toHubId: null, handledBy: 'rider_last_mile', status: 'pending', etaAt: new Date(Date.now() + 13 * 3600_000).toISOString() },
+    ];
+  }
+  if (feedOrders[1]) {
+    feedOrders[1].fulfillmentSource = 'merchant';
+    feedOrders[1].dispatchStrategy = 'multi_leg';
+    feedOrders[1].routeSegments = [
+      { legId: 'leg_4', sequence: 0, type: 'first_mile', mode: 'motorcycle', fromHubId: null, toHubId: 'hub_a', handledBy: profile.id, status: 'pending', etaAt: new Date(Date.now() + 20 * 60_000).toISOString() },
+      { legId: 'leg_5', sequence: 1, type: 'last_mile', mode: 'motorcycle', fromHubId: 'hub_a', toHubId: null, handledBy: profile.id, status: 'pending', etaAt: new Date(Date.now() + 50 * 60_000).toISOString() },
+    ];
+  }
+  if (feedOrders[2]) {
+    feedOrders[2].fulfillmentSource = 'warehouse';
+    feedOrders[2].dispatchStrategy = 'relay';
+  }
+
+  const vehicles: Vehicle[] = [
+    {
+      id: 'veh_bus_15',
+      vehicleType: 'linehaul_bus',
+      registration: 'T 123 XYZ',
+      operatorId: profile.id,
+      capacity: {
+        totalUnits: 327,
+        maxWeightKg: 800,
+        maxVolumeL: 6000,
+        compartments: [
+          { name: 'standard', capacity: 150, used: 120, usedWeightKg: 340, usedVolumeL: 2200 },
+          { name: 'fragile', capacity: 25, used: 24, usedWeightKg: 45, usedVolumeL: 400 },
+          { name: 'cold_chain', capacity: 20, used: 0, usedWeightKg: 0, usedVolumeL: 0 },
+          { name: 'documents', capacity: 40, used: 40, usedWeightKg: 30, usedVolumeL: 200 },
+          { name: 'high_value', capacity: 12, used: 12, usedWeightKg: 25, usedVolumeL: 150 },
+        ],
+      },
+      temperatureCapable: false,
+      securityCapability: 'lockbox',
+      permittedRoutes: ['route_dar_mwanza'],
+      status: 'active',
+      currentLocation: { lat: -6.79, lon: 39.2, updatedAt: nowIso() },
+      currentTripId: 'trip_log_1',
+    },
+    {
+      id: 'veh_van_3',
+      vehicleType: 'van',
+      registration: 'T 987 ABC',
+      operatorId: profile.id,
+      capacity: {
+        totalUnits: 50,
+        maxWeightKg: 500,
+        maxVolumeL: 3000,
+        compartments: [
+          { name: 'standard', capacity: 30, used: 10, usedWeightKg: 120, usedVolumeL: 800 },
+          { name: 'fragile', capacity: 10, used: 2, usedWeightKg: 10, usedVolumeL: 100 },
+          { name: 'cold_chain', capacity: 5, used: 0, usedWeightKg: 0, usedVolumeL: 0 },
+          { name: 'documents', capacity: 5, used: 1, usedWeightKg: 2, usedVolumeL: 10 },
+        ],
+      },
+      temperatureCapable: false,
+      securityCapability: 'none',
+      permittedRoutes: ['route_dar_mwanza'],
+      status: 'active',
+      currentLocation: { lat: -6.79, lon: 39.2, updatedAt: nowIso() },
+      currentTripId: null,
+    },
+  ];
+
+  const logisticsTrips: LogisticsTrip[] = [
+    {
+      id: 'trip_log_1',
+      tripNumber: 'TRP-9912',
+      routeId: 'route_dar_mwanza',
+      vehicleId: 'veh_bus_15',
+      consignmentIds: ['cons_1'],
+      status: 'loading',
+      manifestSummary: { expectedUnits: 327, verifiedUnits: 196, exceptions: 1 },
+      scheduledDeparture: new Date(Date.now() + 2 * 3600_000).toISOString(),
+      departedAt: null,
+      arrivedAt: null,
+      driverId: profile.id,
+      createdBy: 'dispatch_1',
+      createdAt: nowIso(),
+    },
+  ];
+
+  const consignments: Consignment[] = [
+    {
+      id: 'cons_1',
+      consignmentNumber: 'CN-2026-0001',
+      fromHubId: 'hub_a',
+      toHubId: 'hub_b',
+      transportMode: 'linehaul_bus',
+      carrierId: 'carrier_dar_mwanza',
+      orderCount: 327,
+      manifest: [
+        { orderId: feedOrders[0]?.id ?? 'order_1', waybillNumber: 'WB-0001', section: 'standard', scannedIn: true, scannedOut: false },
+        { orderId: feedOrders[1]?.id ?? 'order_2', waybillNumber: 'WB-0002', section: 'fragile', scannedIn: true, scannedOut: false },
+      ],
+      status: 'manifesting',
+      scheduledDeparture: new Date(Date.now() + 2 * 3600_000).toISOString(),
+      departedAt: null,
+      arrivedAt: null,
+      createdBy: 'dispatch_1',
+      createdAt: nowIso(),
+    },
+  ];
+
+  const packages: Package[] = [
+    {
+      id: 'pkg_1',
+      packageId: 'PKG-7F92A8',
+      shipmentId: 'sh_1',
+      containerId: null,
+      attributes: { temperature: 'ambient', fragile: false, hazardous: false, highValue: false, maxTransitHours: null, allowedModes: [], compatible: true, weightKg: 12, volumeL: 45 },
+      status: 'prepared',
+      scannedIn: false,
+      scannedOut: false,
+    },
+    {
+      id: 'pkg_heavy',
+      packageId: 'PKG-HEAVY',
+      shipmentId: 'sh_2',
+      containerId: null,
+      attributes: { temperature: 'ambient', fragile: false, hazardous: false, highValue: false, maxTransitHours: null, allowedModes: [], compatible: true, weightKg: 500, volumeL: 100 },
+      status: 'prepared',
+      scannedIn: false,
+      scannedOut: false,
+    },
+    {
+      id: 'pkg_bulky',
+      packageId: 'PKG-BULKY',
+      shipmentId: 'sh_3',
+      containerId: null,
+      attributes: { temperature: 'ambient', fragile: false, hazardous: false, highValue: false, maxTransitHours: null, allowedModes: [], compatible: true, weightKg: 5, volumeL: 4000 },
+      status: 'prepared',
+      scannedIn: false,
+      scannedOut: false,
+    },
+  ];
+
+  const orderRoutes = new Map<string, RouteSegment[]>();
+  for (const o of feedOrders) {
+    if (o.routeSegments) orderRoutes.set(o.id, o.routeSegments);
+  }
+
+  return {
+    profile,
+    feed,
+    orders,
+    pickupCodes,
+    fares: new Map(),
+    ledger,
+    ledgerBalance: balance,
+    balanceTZS: wallet.totalTZS,
+    availableTZS: wallet.withdrawableTZS,
+    payouts: [
+      { id: 'po_1', status: 'paid', amountTZS: 125000, method: 'Mobile Money', createdAt: nowIso() },
+      { id: 'po_2', status: 'processing', amountTZS: 62000, method: 'Mobile Money', createdAt: nowIso() },
+    ],
+    shifts: [],
+    missions,
+    notifications: [
+      { id: 'ntf_1', type: 'order', title: 'New order offer', body: 'Sunrise Kitchen — 2.5 km · TZS 4,200', read: false, ts: nowIso(), deepLink: `/orders/${orders[0].id}` },
+      { id: 'ntf_2', type: 'earnings', title: 'Earnings updated', body: 'Your statement is ready for this week', read: false, ts: nowIso(), deepLink: '/earnings' },
+      { id: 'ntf_3', type: 'system', title: 'Shift reminder', body: 'Clock in to start your shift', read: true, ts: nowIso() },
+      { id: 'ntf_4', type: 'warning', title: 'Low balance', body: 'Top up your wallet before the next shift', read: false, ts: nowIso(), deepLink: '/tickets/ntf_unknown' },
+      { id: 'ntf_fac_grant', type: 'system', title: 'Facility access granted', body: 'You have been whitelisted for Green View Estate (whitelist_only)', read: false, ts: nowIso(), deepLink: null },
+      { id: 'ntf_fac_revoke', type: 'system', title: 'Facility access revoked', body: 'Access revoked for Old Industrial Park', read: true, ts: new Date(Date.now() - 2 * 24 * 3600_000).toISOString(), deepLink: null },
+    ],
+    preferences: {
+      soundNotifications: true,
+      autoAccept: false,
+      longDistance: true,
+      wifiOnlyMaps: false,
+      destinationFilters: [],
+      language: 'en',
+    },
+    performance: {
+      acceptanceRate: 88,
+      onTimePct: 94,
+      ratingAverage: 4.8,
+      completedOrders: 128,
+      earningsTZS: 845000,
+      safetyScore: 92,
+      behaviorScore: 78,
+      reliabilityScore: profileFixture.reliabilityScore,
+      level: 'gold',
+      deliveryStreak: 6,
+      securityScore: 90,
+      avgPerTripTZS: 4200,
+      topHours: ['11:00-13:00', '18:00-21:00'],
+      onlineHoursWeek: 38,
+      levelBenefits: ['Priority dispatch', 'Higher fare multiplier', 'Weekend bonus'],
+      benchmarks: { teamAverage: 3.9, fleetAverage: 4.1, percentileRank: 82 },
+      trends: [
+        { label: 'Mon', value: 12 },
+        { label: 'Tue', value: 15 },
+        { label: 'Wed', value: 11 },
+        { label: 'Thu', value: 18 },
+        { label: 'Fri', value: 22 },
+        { label: 'Sat', value: 26 },
+        { label: 'Sun', value: 24 },
+      ],
+    },
+    heatmap,
+    tripSequence: null,
+    completedTrip: null,
+    rejectReasons: ['Restaurant too busy', 'Customer unreachable', 'Distance too far', 'Traffic', 'Other'],
+    issueReasons: ['Customer unavailable', 'Wrong address', 'Order damaged', 'Address inaccessible', 'Payment issue', 'Other'],
+    otpRequests: new Map(),
+    otpCounter: 0,
+    otpLastRequestAt: new Map(),
+    podSubmitted: new Set(),
+    shiftCodExpectedTZS: {},
+    tickets: [],
+    sosAlerts: [],
+    sosLastSentAt: null,
+    trustedContacts: [
+      { id: 'contact_1', name: 'Neema Mwakyusa', phone: '+255712345678', relationship: 'sibling', notifiedOnSos: true, shareLocation: true },
+      { id: 'contact_2', name: 'Baraka Joseph', phone: '+255713456789', relationship: 'friend', notifiedOnSos: true, shareLocation: false },
+    ],
+    security: {
+      securityScore: 90,
+      alerts: [
+        { type: 'unusual_location', severity: 'medium', at: nowIso() },
+        { type: 'unusual_login', severity: 'low', at: nowIso() },
+      ],
+    },
+    shareTokens: {},
     maintenance,
     expenses,
     goals,
     training,
     exportJobs: [],
+    deliveryExceptions: [],
+    facilityWhitelist: [
+      {
+        facilityId: 'fac_green_view',
+        facilityName: 'Green View Estate',
+        policy: 'whitelist_only',
+        grantedAt: nowIso(),
+        revokedAt: null,
+        status: 'granted',
+        lastScanOutcome: { at: nowIso(), scanType: 'delivery', result: 'granted', requestId: 'req_fac_1' },
+      },
+      {
+        facilityId: 'fac_old_industrial',
+        facilityName: 'Old Industrial Park',
+        policy: 'whitelist_or_otp',
+        grantedAt: new Date(Date.now() - 5 * 24 * 3600_000).toISOString(),
+        revokedAt: new Date(Date.now() - 2 * 24 * 3600_000).toISOString(),
+        status: 'revoked',
+        lastScanOutcome: { at: new Date(Date.now() - 1 * 24 * 3600_000).toISOString(), scanType: 'pickup', result: 'blocked', requestId: 'req_fac_block_1', code: 'NOT_WHITELISTED' },
+      },
+    ],
+    facilityScans: [
+      { facilityId: 'fac_green_view', facilityName: 'Green View Estate', at: nowIso(), result: 'granted', requestId: 'req_fac_1', code: undefined },
+      { facilityId: 'fac_old_industrial', facilityName: 'Old Industrial Park', at: new Date(Date.now() - 1 * 24 * 3600_000).toISOString(), result: 'blocked', requestId: 'req_fac_block_1', code: 'NOT_WHITELISTED' },
+    ],
+    logisticsTrips,
+    vehicles,
+    packages,
+    consignments,
+    orderRoutes,
   };
 }
 

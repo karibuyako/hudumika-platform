@@ -63,12 +63,28 @@ The 17 public-frontend vars above are declared in `public-frontend/src/config/*.
 | `EXPO_PUBLIC_MOCK_AUTH` | native | merchant/app | `true` (on) | **mock switch** | Auth handlers; `'false'` → live API |
 | `EXPO_PUBLIC_MOCK_ORDERS` | native | merchant/app | `true` (on) | **mock switch** | Orders handlers; `'false'` → live API |
 | `EXPO_PUBLIC_MOCK_CATALOG` | native | merchant/app | `true` (on) | **mock switch** | Products (catalog) handlers; `'false'` → live API |
+| `EXPO_PUBLIC_MOCK_CATALOGUES` | native | merchant/app | `true` (on) | **mock switch** | Catalogue export/import handlers; `'false'` → live API |
+| `EXPO_PUBLIC_MOCK_MERCHANTS` | native | merchant/app | `true` (on) | **mock switch** | Merchant profile + settings handlers; `'false'` → live API |
 | `EXPO_PUBLIC_MOCK_FINANCE` | native | merchant/app | `true` (on) | **mock switch** | Finance + finance-extra handlers; `'false'` → live API |
 | `EXPO_PUBLIC_MOCK_BI` | native | merchant/app | `true` (on) | **mock switch** | BI + analytics handlers; `'false'` → live API |
 | `EXPO_PUBLIC_MOCK_MARKETING` | native | merchant/app | `true` (on) | **mock switch** | Campaigns + redemptions handlers; `'false'` → live API |
+| `EXPO_PUBLIC_MOCK_PROMOTIONS` | native | merchant/app | `true` (on) | **mock switch** | Promotions + brand-display handlers; `'false'` → live API |
+| `EXPO_PUBLIC_MOCK_GROUP_BUY` | native | merchant/app | `true` (on) | **mock switch** | Group-buy deals + vouchers handlers; `'false'` → live API |
 | `EXPO_PUBLIC_MOCK_MESSAGING` | native | merchant/app | `true` (on) | **mock switch** | Messaging handlers; `'false'` → live API |
+| `EXPO_PUBLIC_MOCK_NOTIFICATIONS` | native | merchant/app | `true` (on) | **mock switch** | Notification preferences + order alert settings handlers; `'false'` → live API |
 | `EXPO_PUBLIC_MOCK_OPS` | native | merchant/app | `true` (on) | **mock switch** | Ops + staff + risk + reviews + announcements handlers; `'false'` → live API |
 | `EXPO_PUBLIC_MOCK_STORE` | native | merchant/app | `true` (on) | **mock switch** | Store-ops handlers; `'false'` → live API |
+| `EXPO_PUBLIC_MOCK_LOYALTY` | native | merchant/app | `true` (on) | **mock switch** | Loyalty (members + tiers + top-ups) handlers; `'false'` → live API |
+| `EXPO_PUBLIC_MOCK_DEVICES` | native | merchant/app | `true` (on) | **mock switch** | Device registry (printers/terminals) handlers; `'false'` → live API |
+| `EXPO_PUBLIC_MOCK_CATALOGUE_EXT` | native | merchant/app | `true` (on) | **mock switch** | Barcodes + combos + menus + videos + bulk-operations handlers; `'false'` → live API |
+| `EXPO_PUBLIC_MOCK_CHAIN` | native | merchant/app | `true` (on) | **mock switch** | Chain dashboard + reports handlers; `'false'` → live API |
+| `EXPO_PUBLIC_MOCK_SUPPLY_CHAIN` | native | merchant/app | `true` (on) | **mock switch** | Inventory + suppliers + purchase-orders + returns + warehouses handlers; `'false'` → live API |
+| `EXPO_PUBLIC_MOCK_WEBHOOKS` | native | merchant/app | `true` (on) | **mock switch** | Webhooks + integrations handlers; `'false'` → live API |
+| `EXPO_PUBLIC_MOCK_TASKS` | native | merchant/app | `true` (on) | **mock switch** | Tasks center (anomalies/violations/activities) handlers; `'false'` → live API |
+| `EXPO_PUBLIC_MOCK_STAFF_OPS` | native | merchant/app | `true` (on) | **mock switch** | Staff shifts + attendance + performance + commissions + approvals handlers; `'false'` → live API |
+| `EXPO_PUBLIC_MOCK_REPORTS` | native | merchant/app | `true` (on) | **mock switch** | Scheduled reports + CRM journeys + data exports handlers; `'false'` → live API |
+| `EXPO_PUBLIC_MOCK_ANALYTICS_EXT` | native | merchant/app | `true` (on) | **mock switch** | Store-score + customers + marketing analytics handlers; `'false'` → live API |
+| `EXPO_PUBLIC_MOCK_PRINT_JOBS` | native | merchant/app | `true` (on) | **mock switch** | Print jobs handlers; `'false'` → live API |
 | `EXPO_PUBLIC_MOCK_ALL` | native | merchant/app | `true` (on) | **mock switch** | Master override for all merchant mock modules; `'false'` → all live |
 | `EXPO_PUBLIC_ENVIRONMENT` | native | merchant/app | (empty) | — | `production` disables mocks entirely (merchant mock gate); unset means dev, mocks on |
 | `MOCK_PORT` | native (dev tooling) | merchant/app | `3001` | mock | Port for the dev mock gateway (`npm run mock:gateway`, `scripts/mock-gateway.ts`) |

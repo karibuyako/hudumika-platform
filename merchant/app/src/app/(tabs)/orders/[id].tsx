@@ -732,6 +732,7 @@ label={t('od.declineRefund')}
             <Text style={{ fontSize: FontSize.sm, color: Colors.success, fontWeight: '700' }}>{t('orders.rushRepliedDone')}</Text>
           ) : (
             <>
+              <Text style={{ fontSize: FontSize.xs, color: Colors.textTertiary }}>{t('orders.etaPresetHint')}</Text>
               <Row gap={6} style={{ flexWrap: 'wrap' }}>
                 {RUSH_PRESETS_MIN.map((m) => (
                   <Chip key={m} label={t('orders.rushReplyPreset', { n: m })} selected={false} onPress={() => setRushText(`ETA ${m} minutes`)} tone="info" />

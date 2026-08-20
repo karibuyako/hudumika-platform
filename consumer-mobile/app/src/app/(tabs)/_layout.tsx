@@ -98,11 +98,11 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="services"
+        name="nearby"
         options={{
-          title: t('tab.services'),
+          title: t('tab.nearby'),
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'construct' : 'construct-outline'} size={22} color={color} />
+            <Ionicons name={focused ? 'location' : 'location-outline'} size={22} color={color} />
           ),
         }}
       />

@@ -129,17 +129,24 @@ export function OfflineBanner() {
   );
 }
 
-export function Card({ children, style, onPress, flat }: PropsWithChildren<{
+export function Card({ children, style, onPress, flat, accessibilityLabel }: PropsWithChildren<{
   style?: StyleProp<ViewStyle>;
   onPress?: () => void;
   flat?: boolean;
+  accessibilityLabel?: string;
 }>) {
   const inner = (
     <View style={[styles.card, !flat && shadow.card, style]}>{children}</View>
   );
   if (onPress) {
     return (
-      <Pressable onPress={onPress} accessibilityRole="button" style={({ pressed }) => ({ opacity: pressed ? 0.88 : 1 })}>
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+        accessibilityState={{ disabled: false }}
+        hitSlop={8}
+        style={({ pressed }) => ({ opacity: pressed ? 0.88 : 1, minHeight: 48, justifyContent: 'center' })}>
         {inner}
       </Pressable>
     );
@@ -196,7 +203,7 @@ export function Btn({
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: disabled || loading, busy: loading }}
-      hitSlop={size === 'sm' ? { top: 8, bottom: 8 } : size === 'md' ? { top: 6, bottom: 6 } : undefined}
+      hitSlop={size === 'sm' ? { top: 10, bottom: 10, left: 6, right: 6 } : size === 'md' ? { top: 8, bottom: 8 } : { top: 6, bottom: 6 }}
       style={({ pressed }) => [
         styles.btn,
         {
@@ -204,6 +211,7 @@ export function Btn({
           borderWidth: variant === 'outline' ? 1 : 0,
           borderColor: Colors.borderStrong,
           paddingVertical: pad,
+          minHeight: 48,
           borderRadius: Radius.pill,
           opacity: disabled ? 0.45 : pressed ? 0.82 : 1,
         },
@@ -324,7 +332,13 @@ export function SectionTitle({ title, action, icon, onAction }: {
         <Text style={styles.sectionTitle}>{title}</Text>
       </Row>
       {action ? (
-        <Pressable onPress={onAction} accessibilityRole="button" accessibilityLabel={action} hitSlop={8}>
+        <Pressable
+          onPress={onAction}
+          accessibilityRole="button"
+          accessibilityLabel={action}
+          accessibilityState={{ disabled: false }}
+          hitSlop={8}
+          style={({ pressed }) => [{ minHeight: 48, justifyContent: 'center', opacity: pressed ? 0.7 : 1 }]}>
           <Text style={{ color: Colors.textTertiary, fontSize: FontSize.sm, fontFamily: Fonts.sansMedium }}>{action} ›</Text>
         </Pressable>
       ) : null}
@@ -530,7 +544,13 @@ export function ListRow({
   );
   if (onPress) {
     return (
-      <Pressable onPress={onPress} accessibilityRole="button" style={({ pressed }) => [{ backgroundColor: pressed ? Colors.surfacePress : 'transparent' }]}>
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={title}
+        accessibilityState={{ disabled: false }}
+        hitSlop={{ top: 4, bottom: 4 }}
+        style={({ pressed }) => [{ backgroundColor: pressed ? Colors.surfacePress : 'transparent', minHeight: 48, justifyContent: 'center' }]}>
         {content}
       </Pressable>
     );
@@ -626,6 +646,8 @@ const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: Spacing.md,
     paddingVertical: 8,
+    minHeight: 48,
+    justifyContent: 'center',
     borderRadius: Radius.pill,
     backgroundColor: Colors.card,
     borderWidth: 1,
@@ -650,6 +672,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: Platform.OS === 'ios' ? 12 : 9,
+    minHeight: 48,
     fontSize: FontSize.md,
     color: Colors.text,
     fontFamily: Fonts.sans,
@@ -664,6 +687,8 @@ const styles = StyleSheet.create({
   },
   segmentItem: {
     flex: 1,
+    minHeight: 48,
+    justifyContent: 'center',
     paddingVertical: 8,
     paddingHorizontal: 4,
     borderRadius: Radius.sm,

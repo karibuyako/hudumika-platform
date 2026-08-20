@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { PropsWithChildren, useState } from 'react';
+import React, { PropsWithChildren, useEffect, useState } from 'react';
 import {
+  AccessibilityInfo,
   ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
@@ -21,10 +22,55 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, fonts, FontSize, NumberStyle, Radius, shadow, Spacing } from '@/constants/theme';
 import { t, type I18nKey } from '@/i18n';
 
+/** Reactive reduced-motion flag. Essential animations (data) run always;
+ * decorative ones (modal slides, pulses) disable when true. */
+export function useReduceMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    let mounted = true;
+    AccessibilityInfo.isReduceMotionEnabled().then((v) => {
+      if (mounted) setReduced(v);
+    });
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', (v) => {
+      if (mounted) setReduced(v);
+    });
+    return () => {
+      mounted = false;
+      sub.remove();
+    };
+  }, []);
+  return reduced;
+}
+
 export type IconName = keyof typeof Ionicons.glyphMap;
 
-export function Icon({ name, size = 20, color = Colors.text }: { name: IconName; size?: number; color?: string }) {
-  return <Ionicons name={name} size={size} color={color} />;
+export function Icon({ name, size = 20, color = Colors.text, label }: { name: IconName; size?: number; color?: string; label?: string }) {
+  return (
+    <View
+      accessible={label != null}
+      accessibilityLabel={label}
+      accessibilityElementsHidden={label == null}
+      importantForAccessibility={label == null ? 'no-hide-descendants' : 'yes'}>
+      <Ionicons name={name} size={size} color={color} />
+    </View>
+  );
+}
+
+/** Static alternative to ActivityIndicator when reduced motion is on. */
+function Spinner({ color, size }: { color: string; size?: number | 'small' | 'large' }) {
+  const reduceMotion = useReduceMotion();
+  if (reduceMotion) {
+    const dim = size === 'large' ? 30 : size === 'small' ? 16 : 22;
+    return (
+      <View
+        accessible
+        accessibilityRole="progressbar"
+        accessibilityLabel={t('common.loading')}
+        style={{ width: dim, height: dim, borderRadius: dim / 2, borderWidth: 2, borderColor: color, opacity: 0.4 }}
+      />
+    );
+  }
+  return <ActivityIndicator color={color} size={size} />;
 }
 
 export function Screen({ children, scroll, style, contentStyle }: PropsWithChildren<{
@@ -67,7 +113,9 @@ export function Card({ children, style, onPress, flat, accessibilityLabel }: Pro
         onPress={onPress}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
-        style={({ pressed }) => ({ opacity: pressed ? 0.88 : 1 })}>
+        accessibilityState={{ disabled: false }}
+        hitSlop={8}
+        style={({ pressed }) => ({ opacity: pressed ? 0.88 : 1, minHeight: 48, justifyContent: 'center' })}>
         {inner}
       </Pressable>
     );
@@ -126,6 +174,7 @@ export function Btn({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled: disabled || loading, busy: loading }}
+      hitSlop={size === 'sm' ? { top: 10, bottom: 10, left: 6, right: 6 } : size === 'md' ? { top: 8, bottom: 8 } : undefined}
       style={({ pressed }) => [
         styles.btn,
         {
@@ -133,14 +182,14 @@ export function Btn({
           borderWidth: variant === 'outline' ? 1 : 0,
           borderColor: Colors.borderStrong,
           paddingVertical: pad,
-          minHeight: 44,
+          minHeight: 48,
           borderRadius: Radius.pill,
           opacity: disabled ? 0.45 : pressed ? 0.82 : 1,
         },
         style,
       ]}>
       {loading ? (
-        <ActivityIndicator color={fg[variant]} />
+        <Spinner color={fg[variant]} size={size === 'lg' ? 'large' : size === 'sm' ? 'small' : undefined} />
       ) : (
         <View style={styles.btnInner}>
           {icon ? <Icon name={icon} size={fs + 2} color={fg[variant]} /> : null}
@@ -173,6 +222,7 @@ export function Chip({
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ selected: !!selected }}
+      hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
       style={({ pressed }) => [
         styles.chip,
         selected && { backgroundColor: Colors.ink, borderColor: Colors.ink },
@@ -242,7 +292,13 @@ export function SectionTitle({ title, action, icon, onAction }: {
         <Text style={styles.sectionTitle}>{title}</Text>
       </Row>
       {action ? (
-        <Pressable onPress={onAction} hitSlop={15} accessibilityRole="button" accessibilityLabel={action}>
+        <Pressable
+          onPress={onAction}
+          hitSlop={15}
+          accessibilityRole="button"
+          accessibilityLabel={action}
+          accessibilityState={{ disabled: false }}
+          style={({ pressed }) => [{ minHeight: 48, justifyContent: 'center', opacity: pressed ? 0.7 : 1 }]}>
           <Text style={{ color: Colors.textTertiary, fontSize: FontSize.sm, fontFamily: fonts.body500 }}>{action} ›</Text>
         </Pressable>
       ) : null}
@@ -285,11 +341,12 @@ export function Field({
         multiline={multiline}
         maxLength={maxLength}
         accessibilityLabel={label}
+        accessibilityRole="search"
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         style={[
           styles.input,
-          focused && { borderColor: Colors.primary },
+          focused && { borderColor: Colors.primary, borderWidth: 1.5 },
           multiline && { minHeight: 76, textAlignVertical: 'top' },
         ]}
       />
@@ -345,6 +402,7 @@ export function Segmented<T extends string>({
             accessibilityRole="button"
             accessibilityLabel={opt.label}
             accessibilityState={{ selected: active }}
+            hitSlop={{ top: 6, bottom: 6 }}
             style={({ pressed }) => [styles.segmentItem, active && styles.segmentItemActive, pressed && { opacity: 0.7 }]}>
             <Text
               numberOfLines={1}
@@ -373,13 +431,14 @@ export function SheetModal({
   title,
   children,
 }: PropsWithChildren<{ visible: boolean; onClose: () => void; title?: string }>) {
+  const reduceMotion = useReduceMotion();
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType={reduceMotion ? 'none' : 'slide'} onRequestClose={onClose}>
       <KeyboardAvoidingView
         style={{ flex: 1, justifyContent: 'flex-end' }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <Pressable style={styles.backdrop} onPress={onClose} accessibilityRole="button" accessibilityLabel={t('common.close')} />
-        <View style={styles.sheet}>
+        <View style={styles.sheet} accessibilityViewIsModal>
           <View style={styles.sheetHandle} />
           {title ? <Text style={styles.sheetTitle}>{title}</Text> : null}
           {children}
@@ -445,7 +504,9 @@ export function ListRow({
         onPress={onPress}
         accessibilityRole="button"
         accessibilityLabel={title}
-        style={({ pressed }) => [{ backgroundColor: pressed ? Colors.surfacePress : 'transparent' }]}>
+        accessibilityState={{ disabled: false }}
+        hitSlop={{ top: 4, bottom: 4 }}
+        style={({ pressed }) => [{ backgroundColor: pressed ? Colors.surfacePress : 'transparent', minHeight: 48, justifyContent: 'center' }]}>
         {content}
       </Pressable>
     );
@@ -539,7 +600,7 @@ const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: Spacing.md,
     paddingVertical: 8,
-    minHeight: 44,
+    minHeight: 48,
     justifyContent: 'center',
     borderRadius: Radius.pill,
     backgroundColor: Colors.card,
@@ -565,7 +626,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: Platform.OS === 'ios' ? 12 : 9,
-    minHeight: 44,
+    minHeight: 48,
     fontSize: FontSize.md,
     color: Colors.text,
     backgroundColor: Colors.card,
@@ -579,6 +640,8 @@ const styles = StyleSheet.create({
   },
   segmentItem: {
     flex: 1,
+    minHeight: 48,
+    justifyContent: 'center',
     paddingVertical: 8,
     paddingHorizontal: 4,
     borderRadius: Radius.sm,

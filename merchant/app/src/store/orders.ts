@@ -32,7 +32,7 @@ interface OrderState {
   hydrate: (storeId?: string) => Promise<void>;
   upsert: (order: Order) => void;
   acceptOrder: (id: string) => Promise<void>;
-  acceptAllOrders: () => Promise<void>;
+  acceptAllOrders: () => Promise<BatchResultDto | null>;
   rejectOrder: (id: string, reason: string, reasonCode?: string) => Promise<void>;
   startPreparing: (id: string) => Promise<void>;
   markReady: (id: string) => Promise<void>;
@@ -224,28 +224,40 @@ export const useOrderStore = create<OrderState>()((set, get) => ({
 
   acceptAllOrders: async () => {
     const ids = get().orders.filter((o) => o.status === 'new').map((o) => o.id);
-    if (!ids.length) return;
+    if (!ids.length) return null;
     try {
-      const res = await api.post<{ accepted: { id: string; order: Order }[]; failed: { id: string; code?: string }[] }>(
+      const res = await api.post<{ accepted: { id: string; order: Order }[]; failed: { id: string; code?: string }[] } & Partial<BatchResultDto>>(
         '/orders/batch/accept',
         { ids } satisfies OrderBatchAcceptBody,
         { idempotencyKey: `batch-accept:${Date.now()}` },
       );
-      if (res.accepted?.length) {
+      // BatchResult honesty: server may return accepted as array (mock) or count (contract shape); normalize to BatchResult.
+      const acceptedCount = Array.isArray((res as any).accepted) ? (res as any).accepted.length : ((res as any).accepted as number) ?? 0;
+      const failedList: { id: string; code?: string }[] = Array.isArray((res as any).failed) ? (res as any).failed : [];
+      const failuresDto = (res as any).failures as { orderId: string; code: string }[] | undefined;
+      const failedCount = failuresDto ? failuresDto.length : failedList.length;
+      const normalized: BatchResultDto = {
+        accepted: acceptedCount,
+        failed: failedCount,
+        failures: failuresDto ?? failedList.map((f) => ({ orderId: f.id, code: f.code ?? 'error' })),
+      };
+      if (Array.isArray((res as any).accepted) && (res as any).accepted.length) {
         set((s) => {
-          const byId = new Map(res.accepted.map((a) => [a.order.id, a.order]));
+          const byId = new Map<string, Order>((res as any).accepted.map((a: { order: Order }) => [a.order.id, a.order] as [string, Order]));
           return { orders: s.orders.map((o) => byId.get(o.id) ?? o) };
         });
       }
-      if (res.failed?.length) {
+      if (normalized.failed) {
         useMessageStore
           .getState()
-          .pushSystem(`Accept all: ${res.accepted?.length ?? 0} of ${ids.length} accepted`, `Skipped ${res.failed.length}: ${res.failed[0]?.code ?? 'error'}`, 'important');
+          .pushSystem(`Accept all: ${normalized.accepted} of ${ids.length} accepted`, `Skipped ${normalized.failed}: ${normalized.failures[0]?.code ?? 'error'}`, 'important');
       }
+      return normalized;
     } catch (e) {
       if (e instanceof ApiError) {
         useMessageStore.getState().pushSystem('Accept all failed', e.message, 'important');
       }
+      return null;
     }
   },
 

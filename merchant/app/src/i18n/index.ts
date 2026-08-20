@@ -267,6 +267,11 @@ export const dict = {
     'orders.rushReplyPreset': '{n} min ETA',
     'orders.rushReplySend': 'Send reply',
     'orders.rushRepliedDone': 'Replied — the customer was notified',
+    'orders.etaPresetHint': 'Tap a preset to fill the reply (5–45 min)',
+    'orders.deadlineHint': 'mm:ss until auto-cancel — informational, server authoritative',
+    'orders.deadlineInfo': 'Server authoritative countdown — informational only',
+    'orders.batchAcceptResult': 'Accepted {n} of {m} — {f} failed',
+    'orders.batchAcceptFailures': 'Failed: {ids}',
     /* Refunds queue */
     'rf.title': 'Refunds',
     'rf.all': 'All',
@@ -286,6 +291,8 @@ export const dict = {
     'rf.approveHint': 'The money returns to the customer wallet.',
     'rf.rejectHint': 'The customer is notified of the decision.',
     'rf.decided': 'Decided {t}',
+    'rf.partialBanner': 'Approve in full or reject — partial amounts planned (contract gap: approve body has only reason, no amountTZS)',
+    'rf.partialDetail': 'Partial approval amount not in contract — approve body carries reason only (≤500), no amountTZS field. No amount input.',
     /* Order search */
     'sr.title': 'Search orders',
     'sr.ph': 'Order no., item or customer…',
@@ -3502,6 +3509,11 @@ export const dict = {
     'orders.rushReplyPreset': 'ETA {n} min',
     'orders.rushReplySend': 'Tuma jibu',
     'orders.rushRepliedDone': 'Umejibu — mteja amearifiwa',
+    'orders.etaPresetHint': 'Gusa kigezo kujaza jibu (5–45 min)',
+    'orders.deadlineHint': 'mm:ss kabla ya kughairiwa kiotomatiki — taarifa tu, seva inaamua',
+    'orders.deadlineInfo': 'Saa ya seva inaamua — taarifa tu',
+    'orders.batchAcceptResult': 'Imekubaliwa {n} kati ya {m} — {f} imeshindwa',
+    'orders.batchAcceptFailures': 'Imeshindwa: {ids}',
     /* Refunds queue */
     'rf.title': 'Marejesho',
     'rf.all': 'Yote',
@@ -3521,6 +3533,8 @@ export const dict = {
     'rf.approveHint': 'Pesa zinarudi kwenye mkoba wa mteja.',
     'rf.rejectHint': 'Mteja anataarifiwa kuhusu uamuzi.',
     'rf.decided': 'Umeamuliwa {t}',
+    'rf.partialBanner': 'Idhinisha kwa ukamilifu au kataa — kiasi cha sehemu kimepangwa (pengo la mkataba: mwili wa idhini hubeba sababu pekee, hakuna amountTZS)',
+    'rf.partialDetail': 'Kiasi cha idhini ya sehemu haipo kwenye mkataba — mwili wa idhini hubeba sababu pekee (≤500), hakuna sehemu ya amountTZS. Hakuna ingizo la kiasi.',
     /* Order search */
     'sr.title': 'Tafuta maagizo',
     'sr.ph': 'Namba ya agizo, bidhaa au mteja…',
@@ -6736,6 +6750,11 @@ export const dict = {
     'orders.rushReplyPreset': 'ETA {n} د',
     'orders.rushReplySend': 'إرسال الرد',
     'orders.rushRepliedDone': 'تم الرد — تم إشعار العميل',
+    'orders.etaPresetHint': 'انقر على الإعداد المسبق لملء الرد (5–45 دقيقة)',
+    'orders.deadlineHint': 'mm:ss حتى الإلغاء التلقائي — معلومات فقط، الخادم هو المرجع',
+    'orders.deadlineInfo': 'عد تنازلي من الخادم — للمعلومات فقط',
+    'orders.batchAcceptResult': 'تم قبول {n} من {m} — فشل {f}',
+    'orders.batchAcceptFailures': 'فشل: {ids}',
     /* Refunds queue */
     'rf.title': 'الاستردادات',
     'rf.all': 'الكل',
@@ -6755,6 +6774,8 @@ export const dict = {
     'rf.approveHint': 'يعود المبلغ إلى محفظة العميل.',
     'rf.rejectHint': 'يتم إشعار العميل بالقرار.',
     'rf.decided': 'القرار في {t}',
+    'rf.partialBanner': 'الموافقة كاملة أو الرفض — المبالغ الجزئية مخططة (فجوة العقد: جسم الموافقة يحمل السبب فقط، لا يوجد amountTZS)',
+    'rf.partialDetail': 'مبلغ الموافقة الجزئية غير موجود في العقد — جسم الموافقة يحمل السبب فقط (≤500)، لا يوجد حقل amountTZS. لا يوجد إدخال للمبلغ.',
     /* Order search */
     'sr.title': 'البحث في الطلبات',
     'sr.ph': 'رقم الطلب أو الصنف أو العميل…',

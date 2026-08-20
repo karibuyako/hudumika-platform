@@ -42,28 +42,13 @@ const RANGES: { key: Range; label: I18nKey }[] = [
   { key: '30d', label: 'orders.range30' },
 ];
 
-const RUSH_PRESETS_MIN = [5, 10, 15, 20, 30, 45];
+import { getUrgencyTier, RUSH_PRESETS_MIN, URGENCY_TONE } from '@/lib/urgency';
 
 const SOURCE_TONE: Record<string, 'neutral' | 'info' | 'warning' | 'success'> = {
   app: 'info',
   web: 'success',
   phone: 'warning',
   pos: 'neutral',
-};
-
-function urgencyOf(rushAt: number): 'low' | 'medium' | 'high' | 'critical' {
-  const dwell = Date.now() - rushAt;
-  if (dwell < 2 * 60000) return 'low';
-  if (dwell < 5 * 60000) return 'medium';
-  if (dwell < 10 * 60000) return 'high';
-  return 'critical';
-}
-
-const URGENCY_TONE: Record<string, 'neutral' | 'info' | 'warning' | 'danger'> = {
-  low: 'neutral',
-  medium: 'info',
-  high: 'warning',
-  critical: 'danger',
 };
 
 export default function OrdersScreen() {
@@ -115,6 +100,7 @@ export default function OrdersScreen() {
   const [rejectCodes, setRejectCodes] = useState<{ code: string; label: string }[]>([]);
   const [rejectBusy, setRejectBusy] = useState(false);
   const [rejectResult, setRejectResult] = useState<BatchResultDto | null>(null);
+  const [acceptResult, setAcceptResult] = useState<BatchResultDto | null>(null);
 
   useEffect(() => {
     api
@@ -377,6 +363,9 @@ export default function OrdersScreen() {
           <Text style={styles.totalNum}>{tzs(item.total)}</Text>
         </Text>
       </Row>
+      {item.status === 'new' && item.deadlineAt ? (
+        <Text style={{ fontSize: FontSize.xs, color: Colors.textTertiary }}>{t('orders.deadlineHint')}</Text>
+      ) : null}
 
       {item.rushAt && !item.rushReplied && item.status !== 'cancelled' ? (
         <View style={styles.rushBanner}>
@@ -433,7 +422,9 @@ export default function OrdersScreen() {
 
   const renderRushCard = ({ item }: { item: Order }) => {
     const rush = rushOrders.find((r) => r.orderId === item.id);
-    const urgency = rush ? urgencyOf(rush.requestedAt) : 'low';
+    // Urgency is honest UI over contract data — no urgency field; dwell = now - createdAt.
+    // Helper per spec: getUrgencyTier(createdAt) -> tier (<2m Low, <5m Medium, <10m High, >=10m Critical).
+    const urgency = getUrgencyTier(item.createdAt);
     return (
       <Card style={styles.orderCard} onPress={() => router.push(`/orders/${item.id}`)}>
         <Row style={{ justifyContent: 'space-between' }}>
@@ -613,7 +604,9 @@ export default function OrdersScreen() {
             variant="primary"
             onPress={() => {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              acceptAllOrders();
+              acceptAllOrders().then((res) => {
+                if (res && res.failed) setAcceptResult(res);
+              });
             }}
           />
           <Text style={{ fontSize: FontSize.xs, color: Colors.textTertiary, alignSelf: 'center', flex: 1 }}>
@@ -728,6 +721,7 @@ export default function OrdersScreen() {
             <Text style={{ fontSize: FontSize.sm, color: Colors.success, fontWeight: '700' }}>{t('orders.rushRepliedDone')}</Text>
           ) : (
             <>
+              <Text style={{ fontSize: FontSize.xs, color: Colors.textTertiary }}>{t('orders.etaPresetHint')}</Text>
               <Row gap={6} style={{ flexWrap: 'wrap' }}>
                 {RUSH_PRESETS_MIN.map((m) => (
                   <Chip
@@ -799,6 +793,23 @@ export default function OrdersScreen() {
             </>
           ) : null}
           <Btn label={t('common.close')} variant="outline" size="lg" onPress={() => setRejectResult(null)} />
+        </View>
+      </SheetModal>
+
+      <SheetModal visible={!!acceptResult} onClose={() => setAcceptResult(null)} title={t('orders.batchAcceptResult', { n: acceptResult?.accepted ?? 0, m: (acceptResult?.accepted ?? 0) + (acceptResult?.failed ?? 0), f: acceptResult?.failed ?? 0 })}>
+        <View style={{ gap: Spacing.sm }}>
+          <Text style={{ fontSize: FontSize.sm, color: Colors.textSecondary }}>
+            {t('orders.batchAcceptResult', { n: acceptResult?.accepted ?? 0, m: (acceptResult?.accepted ?? 0) + (acceptResult?.failed ?? 0), f: acceptResult?.failed ?? 0 })}
+          </Text>
+          {acceptResult?.failures?.length ? (
+            <>
+              <Text style={{ fontSize: FontSize.xs, color: Colors.danger, fontWeight: '700' }}>
+                {t('orders.batchAcceptFailures', { ids: acceptResult.failures.map((f) => `${f.orderId}:${f.code}`).join(', ') })}
+              </Text>
+              <Text style={{ fontSize: FontSize.xs, color: Colors.textTertiary }}>{t('orders.rejectRetry')}</Text>
+            </>
+          ) : null}
+          <Btn label={t('common.close')} variant="outline" size="lg" onPress={() => setAcceptResult(null)} />
         </View>
       </SheetModal>
     </Screen>

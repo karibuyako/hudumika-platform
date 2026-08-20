@@ -7,7 +7,7 @@ export default function OrdersLayout() {
   return (
     <Stack screenOptions={{ ...HeaderStyle }}>
       <Stack.Screen name="index" options={{ title: t('tab.orders') }} />
-      <Stack.Screen name="[orderId]" options={{ title: 'Delivery' }} />
+      <Stack.Screen name="[orderId]" options={{ title: t('orders.detailTitle') }} />
     </Stack>
   );
 }

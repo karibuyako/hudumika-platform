@@ -387,6 +387,12 @@ export default function HomeScreen() {
           <Text style={styles.noticeText}>{feedNotice}</Text>
         </View>
       ) : null}
+      {feedError && available.length > 0 ? (
+        <Card style={{ gap: Spacing.sm }}>
+          <Text style={styles.error}>{feedError}</Text>
+          <Btn label={t('common.retry')} variant="ghost" size="sm" onPress={() => useJobsStore.getState().refresh()} />
+        </Card>
+      ) : null}
       {feedLoading && available.length === 0 ? (
         <View style={{ paddingVertical: Spacing.xl }}>
           <Spinner color={Colors.primary} />

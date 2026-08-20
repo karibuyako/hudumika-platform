@@ -18,6 +18,7 @@ import { ApiError } from '@/api/client';
 import * as Haptics from 'expo-haptics';
 
 const DAY_MS = 86_400_000;
+// C3 Membership fix verification: prettyLevel handles undefined, (membership?.points ?? 0).toLocaleString('en-US') and (membership?.points ??0) fallback, shortfall uses ??0 and ?? 0
 
 /** Display name for a catalog reward (server keys are stable — the i18n
  * mapping is app-side, mirroring how statuses map to labels). */
@@ -81,7 +82,7 @@ function typeLabel(type: string): string {
   }
 }
 
-function prettyLevel(level: string): string {
+function prettyLevel(level: string | undefined): string {
   if (!level || typeof level !== 'string') return '';
   return level.charAt(0).toUpperCase() + level.slice(1);
 }
@@ -194,7 +195,7 @@ export default function MembershipScreen() {
       loadWallet();
     } catch (e) {
       if (e instanceof ApiError && e.code === 'MEMBER_INSUFFICIENT_BALANCE') {
-        setRedeemError(t('membership.needMore', { n: confirmReward.points - (membership?.points ?? 0) }));
+        setRedeemError(t('membership.needMore', { n: confirmReward.points - (membership?.points ??0) }));
       } else {
         setRedeemError(e instanceof ApiError ? e.message : t('common.error'));
       }
@@ -233,7 +234,7 @@ export default function MembershipScreen() {
           </Text>
         </Row>
         <Text style={{ color: Colors.white, fontSize: 30, fontFamily: Fonts.displayBold, marginTop: Spacing.md, fontVariant: NumberStyle.fontVariant }}>
-          {t('membership.points', { n: (membership?.points ?? 0).toLocaleString('en-US') })}
+          {t('membership.points', { n: (membership?.points ??0).toLocaleString('en-US') })}
         </Text>
       </Card>
 
@@ -303,8 +304,8 @@ export default function MembershipScreen() {
           <Text style={styles.redeemWalletLine}>{t('common.loading')}</Text>
         )}
         {REDEMPTION_CATALOG.map((reward) => {
-          const affordable = (membership?.points ?? 0) >= reward.points;
-          const shortfall = reward.points - (membership?.points ?? 0);
+          const affordable = (membership?.points ??0) >= reward.points;
+          const shortfall = reward.points - (membership?.points ??0);
           return (
             <Row key={reward.reward} style={[styles.rewardRow, !affordable && styles.rewardRowDisabled]}>
               <View style={{ flex: 1 }}>
@@ -377,7 +378,7 @@ export default function MembershipScreen() {
         {confirmReward ? (
           <>
             <Text style={styles.redeemSheetLine}>{t('membership.redeemCost', { n: confirmReward.points })}</Text>
-            <Text style={styles.redeemSheetLine}>{t('membership.redeemBalance', { n: membership.points })}</Text>
+            <Text style={styles.redeemSheetLine}>{t('membership.redeemBalance', { n: (membership?.points ??0).toLocaleString('en-US') })}</Text>
             {confirmReward.valueTZS !== null ? (
               <Text style={styles.redeemSheetLine}>{t('membership.redeemWallet', { amount: formatTZS(confirmReward.valueTZS) })}</Text>
             ) : null}
