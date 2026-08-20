@@ -11,7 +11,7 @@
 -- (contract Withdrawal.paidAt); the contract status enum projects
 -- 'completed' as 'paid'.
 
-CREATE TABLE customer_withdrawals (
+CREATE TABLE IF NOT EXISTS customer_withdrawals (
     id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id      uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     amount_tzs   bigint NOT NULL CHECK (amount_tzs > 0),
@@ -22,7 +22,7 @@ CREATE TABLE customer_withdrawals (
     completed_at timestamptz
 );
 
-CREATE INDEX idx_customer_withdrawals_user ON customer_withdrawals (user_id, created_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_customer_withdrawals_user ON customer_withdrawals (user_id, created_at DESC, id DESC);
 
 -- +goose Down
 DROP TABLE IF EXISTS customer_withdrawals;
