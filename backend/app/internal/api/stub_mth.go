@@ -847,39 +847,38 @@ func (s *Server) MthClaimRedPacket(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	packetID, ok := mthParamUUID(r, "id")
-	if !ok {
+	raw := strings.TrimSpace(chi.URLParam(r, "id"))
+	if raw == "" {
 		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "id is required")
 		return
 	}
-	// Also allow share_code lookup if id param is not uuid
-	// If param was share_code text, lookup by share_code
 	var (
-		id          uuid.UUID
-		totalTZS    int64
-		count       int
-		claimed     int
-		status      string
-		expiresAt   *time.Time
-		creatorID   uuid.UUID
+		id        uuid.UUID
+		totalTZS  int64
+		count     int
+		claimed   int
+		status    string
+		expiresAt *time.Time
+		creatorID uuid.UUID
 	)
-	err := s.db.Pool().QueryRow(r.Context(),
-		`SELECT id, total_tzs, count, claimed, status, expires_at, creator_user_id FROM red_packets WHERE id=$1`, packetID).Scan(&id, &totalTZS, &count, &claimed, &status, &expiresAt, &creatorID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		// try share_code
-		raw := chi.URLParam(r, "id")
-		err2 := s.db.Pool().QueryRow(r.Context(),
+	var err error
+	// Try uuid path first if param looks like uuid; fallback to share_code in all cases.
+	if packetID, perr := uuid.Parse(raw); perr == nil {
+		err = s.db.Pool().QueryRow(r.Context(),
+			`SELECT id, total_tzs, count, claimed, status, expires_at, creator_user_id FROM red_packets WHERE id=$1`, packetID).Scan(&id, &totalTZS, &count, &claimed, &status, &expiresAt, &creatorID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			err = s.db.Pool().QueryRow(r.Context(),
+				`SELECT id, total_tzs, count, claimed, status, expires_at, creator_user_id FROM red_packets WHERE share_code=$1`, raw).Scan(&id, &totalTZS, &count, &claimed, &status, &expiresAt, &creatorID)
+		}
+	} else {
+		err = s.db.Pool().QueryRow(r.Context(),
 			`SELECT id, total_tzs, count, claimed, status, expires_at, creator_user_id FROM red_packets WHERE share_code=$1`, raw).Scan(&id, &totalTZS, &count, &claimed, &status, &expiresAt, &creatorID)
-		if errors.Is(err2, pgx.ErrNoRows) {
-			writeError(w, http.StatusNotFound, "NOT_FOUND", "Red packet not found")
-			return
-		}
-		if err2 != nil {
-			s.logger.Error("claim red packet lookup failed", "error", err2)
-			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
-			return
-		}
-	} else if err != nil {
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "Red packet not found")
+		return
+	}
+	if err != nil {
 		s.logger.Error("claim red packet lookup failed", "error", err)
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
@@ -1137,6 +1136,87 @@ func (s *Server) MthListMyDisputes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+func (s *Server) MthGetDispute(w http.ResponseWriter, r *http.Request) {
+	if s.db == nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+		return
+	}
+	userID, ok := s.mthUserID(w, r)
+	if !ok {
+		return
+	}
+	disputeID, ok := mthParamUUID(r, "id")
+	if !ok {
+		// also accept disputeId param name
+		disputeID, ok = mthParamUUID(r, "disputeId")
+		if !ok {
+			writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "id is required")
+			return
+		}
+	}
+	var (
+		id             uuid.UUID
+		uid            uuid.UUID
+		orderID        *uuid.UUID
+		subject        string
+		description    *string
+		status         string
+		decisionReason *string
+		decidedBy      *uuid.UUID
+		decidedAt      *time.Time
+		createdAt      time.Time
+		updatedAt      *time.Time
+	)
+	err := s.db.Pool().QueryRow(r.Context(),
+		`SELECT id, user_id, order_id, subject, description, status, decision_reason, decided_by, decided_at, created_at, updated_at
+		 FROM disputes WHERE id=$1`, disputeID).Scan(&id, &uid, &orderID, &subject, &description, &status, &decisionReason, &decidedBy, &decidedAt, &createdAt, &updatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "Dispute not found")
+		return
+	}
+	if err != nil {
+		// fallback without updated_at for older migration
+		err2 := s.db.Pool().QueryRow(r.Context(),
+			`SELECT id, user_id, order_id, subject, description, status, decision_reason, decided_by, decided_at, created_at
+			 FROM disputes WHERE id=$1`, disputeID).Scan(&id, &uid, &orderID, &subject, &description, &status, &decisionReason, &decidedBy, &decidedAt, &createdAt)
+		if errors.Is(err2, pgx.ErrNoRows) {
+			writeError(w, http.StatusNotFound, "NOT_FOUND", "Dispute not found")
+			return
+		}
+		if err2 != nil {
+			s.logger.Error("get dispute failed", "error", err2)
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+			return
+		}
+	}
+	// Customer may only view own dispute; other roles pass
+	claims, _ := ClaimsFromContext(r.Context())
+	if claims != nil && claims.Role == RoleCustomer && uid != userID {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "Dispute not found")
+		return
+	}
+	m := map[string]any{"id": id.String(), "userId": uid.String(), "subject": subject, "status": status, "createdAt": createdAt}
+	if orderID != nil {
+		m["orderId"] = orderID.String()
+	}
+	if description != nil {
+		m["description"] = *description
+	}
+	if decisionReason != nil {
+		m["decisionReason"] = *decisionReason
+	}
+	if decidedBy != nil {
+		m["decidedBy"] = decidedBy.String()
+	}
+	if decidedAt != nil {
+		m["decidedAt"] = *decidedAt
+	}
+	if updatedAt != nil {
+		m["updatedAt"] = *updatedAt
+	}
+	writeJSON(w, http.StatusOK, m)
 }
 
 // ---------- FALLBACK STUBS (remain for non-DB groups) ----------

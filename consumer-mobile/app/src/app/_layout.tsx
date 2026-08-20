@@ -31,6 +31,24 @@ import { useUiStore } from '@/store/ui';
 import { useUnreadStore } from '@/store/unread';
 import { Toast } from '@/components/toast';
 
+import * as Sentry from '@sentry/react-native';
+
+// Sentry — enabled only when EXPO_PUBLIC_SENTRY_DSN is truthy (eas.json
+// staging/production placeholder is "" so local/dev builds stay silent).
+// Wrapped in try/catch so a bad DSN never breaks boot.
+const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN;
+if (SENTRY_DSN) {
+  try {
+    Sentry.init({
+      dsn: SENTRY_DSN,
+      enabled: true,
+      tracesSampleRate: 0.1,
+    });
+  } catch {
+    /* Sentry init failure is non-fatal */
+  }
+}
+
 export default function RootLayout() {
   const status = useSessionStore((s) => s.status);
   const router = useRouter();

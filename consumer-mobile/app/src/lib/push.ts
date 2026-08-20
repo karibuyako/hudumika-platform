@@ -96,7 +96,13 @@ export async function getExpoPushToken(): Promise<PushTokenResult> {
         return { token: null, error: { code: 'PERMISSION_DENIED', message: 'push permission denied' } };
       }
     }
-    const projectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
+    const rawProjectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
+    // Placeholder 000... (app.json default) must not be forwarded to
+    // expo-notifications — it would throw "Invalid projectId". Treat any
+    // all-zeros UUID as absent so the flow degrades to the SecureStore
+    // fallback (registerTokenForUser) instead of surfacing a confusing error.
+    const isPlaceholder = !rawProjectId || /^0+-0+-0+-0+-0+$/.test(rawProjectId) || rawProjectId === '00000000-0000-0000-0000-000000000000';
+    const projectId = isPlaceholder ? undefined : rawProjectId;
     const token = await notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
     return { token: token.data, error: null };
   } catch (e) {

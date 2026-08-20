@@ -37,7 +37,8 @@
         "EXPO_PUBLIC_MOCK_HOME": "false",
         "EXPO_PUBLIC_MOCK_ORDERS": "false",
         "EXPO_PUBLIC_MOCK_WALLET": "false",
-        "EXPO_PUBLIC_MOCK_ASSISTANT": "false"
+        "EXPO_PUBLIC_MOCK_ASSISTANT": "false",
+        "EXPO_PUBLIC_SENTRY_DSN": ""
       }
     },
     "production": {
@@ -52,7 +53,8 @@
         "EXPO_PUBLIC_MOCK_HOME": "false",
         "EXPO_PUBLIC_MOCK_ORDERS": "false",
         "EXPO_PUBLIC_MOCK_WALLET": "false",
-        "EXPO_PUBLIC_MOCK_ASSISTANT": "false"
+        "EXPO_PUBLIC_MOCK_ASSISTANT": "false",
+        "EXPO_PUBLIC_SENTRY_DSN": ""
       }
     }
   }

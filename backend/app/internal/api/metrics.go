@@ -74,6 +74,12 @@ func init() {
 		idempotencyHitsTotal,
 		activeSessions,
 	)
+	// Seed CounterVec families so /metrics exposes them even on a cold
+	// instance (no OTP/idempotency traffic yet). Prometheus client omits
+	// CounterVec families with zero series, which would fail the selfcheck
+	// base-metric gate and dashboard alerts until first traffic.
+	otpRequestsTotal.WithLabelValues("phone", "issued").Add(0)
+	idempotencyHitsTotal.WithLabelValues("payments").Add(0)
 }
 
 // metrics serves the Prometheus exposition format on /metrics.

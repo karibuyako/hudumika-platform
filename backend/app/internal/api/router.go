@@ -289,6 +289,7 @@ func (s *Server) Router() http.Handler {
 		r.Post("/group-orders/{id}/finalize", s.MthFinalizeGroupOrder)
 		r.Get("/disputes/me", s.MthListMyDisputes)
 		r.Post("/disputes", s.MthCreateDispute)
+		r.Get("/disputes/{id}", s.MthGetDispute)
 		r.Get("/dine-in/orders/{id}/splits", s.MthGetOrderSplits)
 		r.Post("/dine-in/orders/{id}/splits", s.MthCreateOrderSplit)
 		r.Get("/splits/{id}", s.MthGetSplit)
