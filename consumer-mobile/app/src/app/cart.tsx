@@ -100,9 +100,12 @@ export default function CartScreen() {
           </Pressable>
         </Row>
         <Divider style={{ marginVertical: Spacing.md }} />
-        {item.items.map((line) => (
-          <Row key={line.catalogueItemId} style={{ justifyContent: 'space-between', marginBottom: Spacing.md }}>
-            <View style={{ flex: 1 }}>
+        {item.items.map((line) => {
+          // Mirror cart store itemKey so variant lines don't collide on catalogueItemId.
+          const lineKey = `${line.catalogueItemId}|${JSON.stringify(line.options ?? [])}|${JSON.stringify(line.addons ?? [])}`;
+          return (
+          <Row key={lineKey} style={{ justifyContent: 'space-between', marginBottom: Spacing.md, alignItems: 'center' }}>
+            <View style={{ flex: 1, paddingRight: Spacing.sm }}>
               <Text style={styles.itemName} numberOfLines={1}>{line.name}</Text>
               {line.options && line.options.length > 0 ? (
                 <Text style={styles.itemMeta}>{line.options.map((o) => o.choice).join(' · ')}</Text>
@@ -110,23 +113,28 @@ export default function CartScreen() {
               {line.addons && line.addons.length > 0 ? (
                 <Text style={styles.itemMeta}>{line.addons.join(' · ')}</Text>
               ) : null}
+              {line.note ? <Text style={styles.itemMeta} numberOfLines={2}>{line.note}</Text> : null}
               <Text style={styles.itemMeta}>{formatTZS(line.unitPriceTZS + (line.optionsPriceTZS ?? 0))}</Text>
             </View>
-            <Row gap={Spacing.sm}>
+            <Row gap={Spacing.sm} style={{ flexShrink: 0 }}>
               <Pressable
                 onPress={() => updateQuantity(item.merchantId, line.catalogueItemId, -1)}
                 disabled={line.quantity <= 1}
+                hitSlop={8}
                 accessibilityRole="button"
-                accessibilityLabel={t('common.next')}
+                accessibilityLabel={`${line.name} decrease quantity`}
+                accessibilityState={{ disabled: line.quantity <= 1 }}
                 style={[styles.stepBtn, line.quantity <= 1 && { opacity: 0.4 }]}>
                 <Icon name="remove" size={16} color={Colors.text} />
               </Pressable>
-              <Text style={styles.qty}>{line.quantity}</Text>
+              <Text style={styles.qty} accessibilityLabel={`${line.quantity} items`}>{line.quantity}</Text>
               <Pressable
                 onPress={() => updateQuantity(item.merchantId, line.catalogueItemId, 1)}
                 disabled={line.quantity >= 99}
+                hitSlop={8}
                 accessibilityRole="button"
-                accessibilityLabel={t('common.next')}
+                accessibilityLabel={`${line.name} increase quantity`}
+                accessibilityState={{ disabled: line.quantity >= 99 }}
                 style={[styles.stepBtn, line.quantity >= 99 && { opacity: 0.4 }]}>
                 <Icon name="add" size={16} color={Colors.text} />
               </Pressable>
@@ -134,13 +142,13 @@ export default function CartScreen() {
                 onPress={() => removeItem(item.merchantId, line.catalogueItemId)}
                 hitSlop={8}
                 accessibilityRole="button"
-                accessibilityLabel={t('common.close')}
-                style={styles.stepBtn}>
+                accessibilityLabel={`${line.name} remove from cart`}
+                style={[styles.stepBtn, { backgroundColor: Colors.dangerSoft, borderWidth: 1, borderColor: Colors.dangerSoft }]}>
                 <Icon name="trash-outline" size={16} color={Colors.danger} />
               </Pressable>
             </Row>
           </Row>
-        ))}
+        );})}
         <Row style={{ justifyContent: 'space-between', marginBottom: Spacing.md }}>
           <Text style={styles.groupName}>{t('cart.subtotal')}</Text>
           <MoneyText amountTZS={subtotal} size={FontSize.md} bold />
@@ -199,5 +207,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
   },
 });

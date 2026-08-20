@@ -33,6 +33,7 @@ export default function CouponsScreen() {
   const user = useSessionStore((s) => s.user);
   const [coupons, setCoupons] = useState<Coupon[] | null>(null);
   const [error, setError] = useState('');
+  const [revealCodeFor, setRevealCodeFor] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError('');
@@ -105,29 +106,49 @@ export default function CouponsScreen() {
           refreshing={false}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ padding: Spacing.lg, paddingBottom: 60 }}
-          renderItem={({ item: c }) => (
-            <Card style={[styles.coupon, c.status === 'expired' && { opacity: 0.5 }]}>
-              <Row style={{ justifyContent: 'space-between' }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.code}>{c.code}</Text>
-                  <Text style={styles.desc}>{c.title ?? ''}</Text>
-                  <Text style={styles.meta}>
-                    {t('coupons.minSpend', { amount: formatTZS(c.minimumSpendTZS ?? 0) })}
-                    {c.expiresAt ? ` · ${t('coupons.validUntil', { t: dateISO(c.expiresAt) })}` : ''}
-                  </Text>
-                </View>
-                <MoneyText amountTZS={c.discountTZS ?? 0} size={FontSize.lg} bold />
-              </Row>
-              <Row style={{ justifyContent: 'space-between', marginTop: Spacing.md }}>
-                {pillFor(c)}
-                {c.status === 'available' ? (
-                  <Btn label={t('coupons.claim')} onPress={() => claim(c)} size="sm" />
-                ) : c.status === CouponStatus.claimed ? (
-                  <Pill label={t('coupons.claimed')} tone="success" />
-                ) : null}
-              </Row>
-            </Card>
-          )}
+            renderItem={({ item: c }) => {
+              const isClaimed = c.status === CouponStatus.claimed;
+              const revealed = revealCodeFor === c.id;
+              return (
+                <Card style={[styles.coupon, c.status === 'expired' && { opacity: 0.5 }]}>
+                  <Row style={{ justifyContent: 'space-between' }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.code}>{c.code}</Text>
+                      <Text style={styles.desc}>{c.title ?? ''}</Text>
+                      <Text style={styles.meta}>
+                        {t('coupons.minSpend', { amount: formatTZS(c.minimumSpendTZS ?? 0) })}
+                        {c.expiresAt ? ` · ${t('coupons.validUntil', { t: dateISO(c.expiresAt) })}` : ''}
+                      </Text>
+                    </View>
+                    <MoneyText amountTZS={c.discountTZS ?? 0} size={FontSize.lg} bold />
+                  </Row>
+                  <Row style={{ justifyContent: 'space-between', marginTop: Spacing.md }}>
+                    {pillFor(c)}
+                    {c.status === 'available' ? (
+                      <Btn label={t('coupons.claim')} onPress={() => claim(c)} size="sm" />
+                    ) : isClaimed ? (
+                      <Row gap={Spacing.sm}>
+                        <Pill label={t('coupons.claimed')} tone="success" />
+                        <Btn
+                          label={revealed ? 'Hide' : t('vouchers.showCode')}
+                          size="sm"
+                          variant="ghost"
+                          icon={revealed ? 'eye-off-outline' : 'qr-code-outline'}
+                          onPress={() => setRevealCodeFor(revealed ? null : c.id)}
+                        />
+                      </Row>
+                    ) : null}
+                  </Row>
+                  {isClaimed && revealed ? (
+                    <View style={styles.verifyPanel}>
+                      <Icon name="qr-code" size={36} color={Colors.primaryDeep} />
+                      <Text style={styles.verifyCode}>{c.code}</Text>
+                      <Text style={styles.verifyHint}>{t('vouchers.redeemHint')}</Text>
+                    </View>
+                  ) : null}
+                </Card>
+              );
+            }}
         />
       )}
     </Screen>
@@ -150,4 +171,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.primary,
   },
   promoLinkText: { fontSize: FontSize.sm, color: Colors.primaryDeep, fontFamily: Fonts.sansBold },
+  verifyPanel: { alignItems: 'center', gap: Spacing.sm, borderTopWidth: 1, borderTopColor: Colors.border, paddingTop: Spacing.md, marginTop: Spacing.md },
+  verifyCode: { fontSize: FontSize.xl, fontFamily: Fonts.sansExtraBold, color: Colors.text, letterSpacing: 1.2, fontVariant: ['tabular-nums'] },
+  verifyHint: { fontSize: FontSize.xs, color: Colors.textTertiary, fontFamily: Fonts.sans, textAlign: 'center' },
 });

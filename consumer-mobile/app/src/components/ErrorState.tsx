@@ -1,7 +1,7 @@
 /* Error + retry card with requestId for support (never raw INTERNAL_ERROR). */
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Colors, Fonts, FontSize } from '@/constants/theme';
+import { Colors, Fonts, FontSize, Radius, Spacing } from '@/constants/theme';
 import { t } from '@/i18n';
 import { Icon } from './ui';
 
@@ -9,11 +9,11 @@ const styles = StyleSheet.create({
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: Spacing.md,
     backgroundColor: Colors.dangerSoft,
-    borderRadius: 16,
-    padding: 16,
-    marginVertical: 12,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    marginVertical: Spacing.md,
   },
 });
 

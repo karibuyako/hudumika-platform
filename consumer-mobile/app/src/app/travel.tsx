@@ -206,7 +206,7 @@ export default function TravelScreen() {
 
             <View style={{ gap: Spacing.xs }}>
               <Text style={styles.sectionLabel}>{t('travel.date')}</Text>
-              <Row gap={Spacing.sm}>
+              <Row gap={Spacing.sm} style={{ flexWrap: 'wrap' }}>
                 {DATE_OFFSET_DAYS.map((offset, i) => (
                   <Chip
                     key={offset}
@@ -220,7 +220,7 @@ export default function TravelScreen() {
 
             <View style={{ gap: Spacing.xs }}>
               <Text style={styles.sectionLabel}>{t('travel.mode')}</Text>
-              <Row gap={Spacing.sm}>
+              <Row gap={Spacing.sm} style={{ flexWrap: 'wrap' }}>
                 {MODES.map((m) => (
                   <Chip key={m.key} label={m.key === 'all' ? t('travel.mode.all') : t(`travel.mode.${m.key}` as I18nKey)} selected={mode === m.key} onPress={() => setMode(m.key)} />
                 ))}

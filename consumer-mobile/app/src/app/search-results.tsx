@@ -391,9 +391,11 @@ const styles = StyleSheet.create({
   gridCard: { flex: 1 },
   gridImage: {
     width: '100%',
-    height: 64,
+    height: 80,
     borderRadius: Radius.md,
     backgroundColor: Colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.sm,
@@ -423,8 +425,8 @@ const styles = StyleSheet.create({
   headerIconBtn: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 34,
-    height: 34,
+    width: 36,
+    height: 36,
     borderRadius: Radius.pill,
     borderWidth: 1,
     borderColor: Colors.borderStrong,
@@ -439,7 +441,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 4,
   },
-  countBadgeText: { color: Colors.ink, fontSize: 10, fontFamily: Fonts.sansExtraBold },
+  countBadgeText: { color: Colors.white, fontSize: 10, fontFamily: Fonts.sansExtraBold },
   sheetRow: {
     flexDirection: 'row',
     alignItems: 'center',

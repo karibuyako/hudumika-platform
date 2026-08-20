@@ -16,8 +16,8 @@ import * as Linking from 'expo-linking';
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { AccessibilityInfo, ActivityIndicator, AppState, Platform, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AccessibilityInfo, ActivityIndicator, AppState, Platform, StyleSheet, Text } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { Colors, Fonts, FontSize } from '@/constants/theme';
 import { t } from '@/i18n';
@@ -175,10 +175,10 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <StatusBar style="dark" />
       {!fontsLoaded || status === 'boot' ? (
-        <View style={styles.splash}>
+        <SafeAreaView style={styles.splash} edges={['top', 'bottom']}>
           <ActivityIndicator size="large" color={Colors.primary} />
           <Text style={styles.splashText}>{t('common.connecting')}</Text>
-        </View>
+        </SafeAreaView>
       ) : (
         <>
           <Stack screenOptions={{ headerShown: false }}>

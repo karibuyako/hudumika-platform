@@ -148,7 +148,7 @@ export default function HotelsScreen() {
     </>
   ) : (
     <Card style={styles.card}>
-      <Text style={styles.meta}>{t('hotels.bookingsEmpty')}</Text>
+      <Text style={[styles.meta, { textAlign: 'center' }]}>{t('hotels.bookingsEmpty')}</Text>
     </Card>
   );
 

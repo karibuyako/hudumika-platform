@@ -135,8 +135,8 @@ export default function HotelDetailScreen() {
   const selectedRateTZS = selectedRoom ? nights * selectedRoom.pricePerNightTZS : 0;
 
   return (
-    <Screen>
-      <View style={{ padding: Spacing.lg, flex: 1 }}>
+    <Screen scroll>
+      <View style={{ padding: Spacing.lg }}>
         <Btn label={t('common.back')} onPress={() => router.back()} variant="subtle" size="sm" icon="arrow-back" style={{ alignSelf: 'flex-start', marginBottom: Spacing.md }} />
 
         <Text style={styles.title}>{hotel.name}</Text>

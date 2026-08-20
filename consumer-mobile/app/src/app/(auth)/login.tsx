@@ -140,14 +140,14 @@ export default function LoginScreen() {
             placeholder="+255700000000"
             keyboardType="phone-pad"
           />
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="polite">{error}</Text> : null}
           <Btn label={t('login.sendCode')} onPress={() => sendCode()} size="lg" loading={sending} />
           {mode === 'login' ? (
             <Pressable
               onPress={() => sendCode('password_reset').catch(() => undefined)}
               accessibilityRole="button"
               accessibilityLabel={t('login.forgot')}
-              hitSlop={8}
+              hitSlop={12}
               style={styles.forgotWrap}>
               <Text style={styles.forgot}>{t('login.forgot')}</Text>
             </Pressable>
@@ -211,15 +211,15 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: FontSize.xxl, fontFamily: Fonts.displayBold, color: Colors.text },
   sub: { fontSize: FontSize.md, color: Colors.textTertiary, fontFamily: Fonts.sans },
-  error: { color: Colors.danger, fontSize: FontSize.sm, fontFamily: Fonts.sansSemibold },
-  forgotWrap: { alignItems: 'center', paddingVertical: 2 },
+  error: { color: Colors.danger, fontSize: FontSize.sm, fontFamily: Fonts.sansSemibold, backgroundColor: Colors.dangerSoft, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: Radius.md, overflow: 'hidden' },
+  forgotWrap: { alignItems: 'center', paddingVertical: 12, minHeight: 44, justifyContent: 'center' },
   forgot: {
     color: Colors.primaryDeep,
     fontSize: FontSize.sm,
     fontFamily: Fonts.sansSemibold,
     textDecorationLine: 'underline',
   },
-  tip: { color: Colors.textFaint, fontSize: FontSize.xs, fontFamily: Fonts.sans, textAlign: 'center' },
+  tip: { color: Colors.textTertiary, fontSize: FontSize.xs, fontFamily: Fonts.sans, textAlign: 'center' },
   orDivider: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, marginTop: Spacing.xs },
   orLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: Colors.border },
   orLabel: {

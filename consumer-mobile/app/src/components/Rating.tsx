@@ -12,7 +12,7 @@ export function Rating({ rating, reviewCount, size = 13 }: { rating: number; rev
         {Number.isFinite(rating) ? rating.toFixed(1) : '—'}
       </Text>
       {reviewCount !== undefined ? (
-        <Text style={{ fontSize: FontSize.xs, color: Colors.textFaint, fontFamily: Fonts.sans }}>
+        <Text style={{ fontSize: FontSize.xs, color: Colors.textTertiary, fontFamily: Fonts.sans }}>
           ({reviewCount})
         </Text>
       ) : null}

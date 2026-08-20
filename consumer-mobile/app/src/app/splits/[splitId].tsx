@@ -210,7 +210,7 @@ export default function SplitScreen() {
               <MoneyText amountTZS={share.amountTZS} size={FontSize.sm} bold />
             </Row>
             <Row style={{ justifyContent: 'space-between' }}>
-              <MoneyText amountTZS={share.amountTZS} size={FontSize.sm} bold />
+              <Text style={styles.meta} numberOfLines={1}>{share.status === 'paid' ? t('split.paid') : t('split.pending')}</Text>
               <Pill label={t(share.status === 'paid' ? 'split.paid' : 'split.pending')} tone={share.status === 'paid' ? 'success' : 'neutral'} />
             </Row>
           </Card>

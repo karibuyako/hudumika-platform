@@ -352,9 +352,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   offlineText: { color: Colors.warning, fontSize: FontSize.xs, fontFamily: Fonts.sansSemibold, textAlign: 'center' },
-  phaseRail: { alignItems: 'center', width: 14 },
+  phaseRail: { alignItems: 'center', width: 14, alignSelf: 'stretch' },
   phaseDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: Colors.borderStrong },
-  phaseLine: { width: 2, flex: 1, backgroundColor: Colors.border, marginTop: 2 },
+  phaseLine: { width: 2, flex: 1, minHeight: 18, backgroundColor: Colors.border, marginTop: 2 },
 });
 
 function PressableRow({ label, hint, open, onToggle }: { label: string; hint: string; open: boolean; onToggle: () => void }) {

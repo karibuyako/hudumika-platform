@@ -5,6 +5,7 @@ import {
   NativeScrollEvent,
   NativeSyntheticEvent,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -347,7 +348,7 @@ export default function HomeScreen() {
         data={feed.merchants ?? []}
         keyExtractor={(m) => m.id}
         renderItem={renderMerchant}
-        onRefresh={onRefresh}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />}
         refreshing={refreshing}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 96 }}
@@ -373,9 +374,13 @@ export default function HomeScreen() {
                 {detectError ? <Text style={styles.detectError}>{detectError}</Text> : null}
               </View>
               <Row gap={Spacing.sm}>
-                <Pressable onPress={() => router.push('/notifications')} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('notifications.title')}>
+                <Pressable onPress={() => router.push('/notifications')} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('notifications.title')} style={styles.bellWrap}>
                   <Icon name="notifications-outline" size={22} color={Colors.text} />
-                  {feed.unreadCount ? <Badge count={feed.unreadCount} /> : null}
+                  {feed.unreadCount ? (
+                    <View style={styles.bellBadge}>
+                      <Badge count={feed.unreadCount} />
+                    </View>
+                  ) : null}
                 </Pressable>
               </Row>
             </Row>
@@ -723,30 +728,34 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     justifyContent: 'space-between',
   },
-  categoryItem: { width: '22%', alignItems: 'center', gap: 6, marginBottom: Spacing.md },
+  categoryItem: { width: '22%', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.md },
   categoryIcon: {
     width: 48,
     height: 48,
     borderRadius: Radius.md,
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   categoryName: { fontSize: FontSize.xs, color: Colors.textSecondary, fontFamily: Fonts.sansMedium, textAlign: 'center' },
   quickActions: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.lg },
-  quickAction: { flex: 1, alignItems: 'center', gap: 6 },
+  quickAction: { flex: 1, alignItems: 'center', gap: Spacing.sm },
   quickActionDisabled: { opacity: 0.55 },
   quickActionIcon: {
     width: 48,
     height: 48,
     borderRadius: Radius.md,
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   quickActionIconDisabled: { backgroundColor: Colors.surface, opacity: 0.7 },
   quickActionLabel: { fontSize: FontSize.xs, color: Colors.textSecondary, fontFamily: Fonts.sansMedium, textAlign: 'center' },
-  quickActionLabelDisabled: { color: Colors.textFaint },
+  quickActionLabelDisabled: { color: Colors.textTertiary },
   cityLabel: { fontSize: FontSize.xs, color: Colors.textTertiary, fontFamily: Fonts.sans },
   cityName: { fontSize: FontSize.lg, fontFamily: Fonts.sansExtraBold, color: Colors.text },
   cityArea: { fontSize: FontSize.xs, color: Colors.primaryDeep, fontFamily: Fonts.sansSemibold, marginTop: 2 },
@@ -759,12 +768,12 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.card,
     borderRadius: Radius.pill,
     paddingHorizontal: Spacing.lg,
-    paddingVertical: 12,
+    paddingVertical: Spacing.md,
     marginTop: Spacing.md,
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  searchText: { color: Colors.textFaint, fontSize: FontSize.sm, fontFamily: Fonts.sans, flex: 1 },
+  searchText: { color: Colors.textTertiary, fontSize: FontSize.sm, fontFamily: Fonts.sans, flex: 1 },
   merchantCard: { marginHorizontal: Spacing.lg, marginBottom: Spacing.md },
   heartOverlay: { position: 'absolute', top: Spacing.sm, right: Spacing.sm, zIndex: 1 },
   merchantLogo: {
@@ -784,11 +793,11 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
     padding: Spacing.lg,
   },
-  pageDots: { justifyContent: 'center', gap: 6, marginTop: Spacing.sm, marginBottom: Spacing.xs },
+  pageDots: { justifyContent: 'center', gap: Spacing.sm, marginTop: Spacing.sm, marginBottom: Spacing.xs },
   dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: Spacing.sm - 2,
+    height: Spacing.sm - 2,
+    borderRadius: Radius.pill,
     backgroundColor: Colors.borderStrong,
   },
   dotActive: { backgroundColor: Colors.primaryDeep, width: 16 },
@@ -815,7 +824,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.goldSoft,
     borderRadius: Radius.pill,
     paddingHorizontal: Spacing.sm,
-    paddingVertical: 3,
+    paddingVertical: Spacing.xs - 1,
   },
   campaignPillText: {
     color: Colors.gold,
@@ -831,7 +840,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.dangerSoft,
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.lg,
-    paddingVertical: 12,
+    paddingVertical: Spacing.md,
     marginBottom: Spacing.sm,
   },
   liveBannerTitle: { flex: 1, fontSize: FontSize.sm, fontFamily: Fonts.sansBold, color: Colors.danger },
@@ -848,12 +857,16 @@ const styles = StyleSheet.create({
   recReason: { fontSize: FontSize.xs, color: Colors.textTertiary, fontFamily: Fonts.sans, lineHeight: 16 },
   recMeta: { fontSize: FontSize.xs, color: Colors.textTertiary, fontFamily: Fonts.sans, marginTop: 'auto' },
   enableRow: {
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.lg,
-    paddingVertical: 12,
+    paddingVertical: Spacing.md,
     marginTop: Spacing.lg,
     marginBottom: Spacing.xs,
   },
   enableRowText: { fontSize: FontSize.sm, color: Colors.textSecondary, fontFamily: Fonts.sansMedium },
+  bellWrap: { position: 'relative', alignItems: 'center', justifyContent: 'center', padding: 4 },
+  bellBadge: { position: 'absolute', top: -6, right: -8 },
 });

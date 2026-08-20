@@ -228,7 +228,7 @@ export default function MembershipScreen() {
           </Text>
         </Row>
         <Text style={{ color: Colors.white, fontSize: 30, fontFamily: Fonts.displayBold, marginTop: Spacing.md }}>
-          {t('membership.points', { n: formatTZS(membership.points) })}
+          {t('membership.points', { n: membership.points.toLocaleString('en-US') })}
         </Text>
       </Card>
 

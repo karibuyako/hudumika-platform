@@ -412,11 +412,11 @@ export function PriceBreakdown({ rows, totalTZS, totalLabel }: {
           <Text
             style={{
               fontSize: FontSize.sm,
-              color: r.signed && r.amountTZS < 0 ? Colors.success : Colors.text,
+              color: r.signed && r.amountTZS !== 0 ? Colors.success : Colors.text,
               fontFamily: Fonts.sansSemibold,
               fontVariant: NumberStyle.fontVariant,
             }}>
-            {r.signed && r.amountTZS !== 0 ? `${r.amountTZS < 0 ? '−' : ''}` : ''}{formatTZS(Math.abs(r.amountTZS))}
+            {r.signed && r.amountTZS !== 0 ? '−' : ''}{formatTZS(Math.abs(r.amountTZS))}
           </Text>
         </Row>
       ))}

@@ -10,7 +10,7 @@ export function Skeleton({ width = '100%', height = 14, radius = Radius.sm, styl
   radius?: number;
   style?: StyleProp<ViewStyle>;
 }) {
-  return <View style={[{ width, height, borderRadius: radius, backgroundColor: Colors.surface }, style]} />;
+  return <View style={[{ width, height, borderRadius: radius, backgroundColor: Colors.border }, style]} />;
 }
 
 export function SkeletonCard({ rows = 2, height = 14 }: { rows?: number; height?: number }) {

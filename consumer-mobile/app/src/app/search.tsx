@@ -208,7 +208,7 @@ export default function SearchScreen() {
       accessibilityRole="button"
       accessibilityLabel={t('search.save')}
       accessibilityState={{ disabled: !query.trim() }}>
-      <Icon name={currentSaved ? 'star' : 'star-outline'} size={18} color={currentSaved ? Colors.gold : query.trim() ? Colors.textSecondary : Colors.textFaint} />
+      <Icon name={currentSaved ? 'star' : 'star-outline'} size={18} color={currentSaved ? Colors.gold : query.trim() ? Colors.textSecondary : Colors.textTertiary} />
     </Pressable>
   );
 
@@ -225,7 +225,7 @@ export default function SearchScreen() {
           onFocus={() => track({ name: 'search_started' })}
           onSubmitEditing={() => submit(query)}
           placeholder={t('search.placeholder')}
-          placeholderTextColor={Colors.textFaint}
+          placeholderTextColor={Colors.textTertiary}
           autoFocus
           accessibilityLabel={t('search.placeholder')}
           returnKeyType="search"
@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     paddingHorizontal: Spacing.lg,
-    paddingVertical: 11,
+    paddingVertical: Spacing.md - 1,
     fontSize: FontSize.md,
     color: Colors.text,
     fontFamily: Fonts.sans,
@@ -394,9 +394,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   clearAction: { color: Colors.textTertiary, fontSize: FontSize.sm, fontFamily: Fonts.sansMedium },
-  savedEmpty: { color: Colors.textFaint, fontSize: FontSize.sm, fontFamily: Fonts.sans },
+  savedEmpty: { color: Colors.textTertiary, fontSize: FontSize.sm, fontFamily: Fonts.sans },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginTop: Spacing.sm, marginLeft: Spacing.xl },
-  statusDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.primary },
+  statusDot: { width: Spacing.sm + 2, height: Spacing.sm + 2, borderRadius: Radius.pill, backgroundColor: Colors.primary },
   statusText: { fontSize: FontSize.sm, color: Colors.textSecondary, fontFamily: Fonts.sansMedium },
   thumb: { width: 28, height: 28, borderRadius: Radius.sm },
 });

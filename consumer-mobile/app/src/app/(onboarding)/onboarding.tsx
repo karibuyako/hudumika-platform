@@ -172,14 +172,15 @@ export default function OnboardingScreen() {
 
 function StepIndicator({ step, onBack }: { step: number; onBack?: () => void }) {
   return (
-    <View style={styles.header}>
-      {onBack ? (
-        <Pressable onPress={onBack} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('common.back')}>
-          <Icon name="chevron-back" size={22} color={Colors.textSecondary} />
-        </Pressable>
-      ) : (
-        <View style={styles.headerSpacer} />
-      )}
+    <SafeAreaView edges={['top']} style={styles.headerSafe}>
+      <View style={styles.header}>
+        {onBack ? (
+          <Pressable onPress={onBack} hitSlop={12} accessibilityRole="button" accessibilityLabel={t('common.back')} style={styles.headerBackBtn}>
+            <Icon name="chevron-back" size={22} color={Colors.textSecondary} />
+          </Pressable>
+        ) : (
+          <View style={styles.headerSpacer} />
+        )}
       <View
         style={styles.dots}
         accessibilityRole="progressbar"
@@ -190,7 +191,8 @@ function StepIndicator({ step, onBack }: { step: number; onBack?: () => void }) 
         ))}
       </View>
       <View style={styles.headerSpacer} />
-    </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
@@ -251,8 +253,8 @@ function CarouselStep({ onDone }: { onDone: () => void }) {
           ))}
         </View>
         <Row gap={Spacing.md}>
-          <Btn label={t('onboard.skip')} onPress={finish} variant="subtle" />
-          <Btn label={t('onboard.next')} onPress={last ? finish : () => go(slide + 1)} size="lg" style={{ flex: 1 }} />
+          <Btn label={t('onboard.skip')} onPress={finish} variant="subtle" size="lg" style={{ minHeight: 44, paddingHorizontal: Spacing.lg }} />
+          <Btn label={t('onboard.next')} onPress={last ? finish : () => go(slide + 1)} size="lg" style={{ flex: 1, minHeight: 44 }} />
         </Row>
       </SafeAreaView>
     </View>
@@ -320,8 +322,8 @@ function ProfileStep({ onDone }: { onDone: () => void }) {
         </Row>
       </Card>
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      <Btn label={t('onboard.profile.save')} onPress={save} size="lg" loading={saving} style={{ marginTop: Spacing.xl }} />
+      {error ? <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="polite">{error}</Text> : null}
+      <Btn label={t('onboard.profile.save')} onPress={save} size="lg" loading={saving} style={{ marginTop: Spacing.xl, minHeight: 44 }} />
     </Screen>
   );
 }
@@ -591,8 +593,10 @@ function CityStep({
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg, paddingBottom: Spacing.xs },
-  headerSpacer: { width: 22 },
+  headerSafe: { backgroundColor: Colors.bg },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: Spacing.xs, minHeight: 44 },
+  headerBackBtn: { minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
+  headerSpacer: { width: 44 },
   dots: { flexDirection: 'row', gap: Spacing.xs, alignItems: 'center' },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.borderStrong },
   dotActive: { backgroundColor: Colors.primary, width: 20, borderRadius: Radius.pill },
@@ -613,8 +617,8 @@ const styles = StyleSheet.create({
   fieldLabel: { fontSize: FontSize.sm, color: Colors.textSecondary, fontFamily: Fonts.sansSemibold },
   noteTitle: { fontSize: FontSize.md, color: Colors.text, fontFamily: Fonts.sansSemibold },
   note: { fontSize: FontSize.sm, color: Colors.textTertiary, fontFamily: Fonts.sans, marginTop: 2, lineHeight: 18 },
-  error: { color: Colors.danger, fontSize: FontSize.sm, fontFamily: Fonts.sansSemibold, marginTop: Spacing.md },
-  hint: { color: Colors.success, fontSize: FontSize.xs, fontFamily: Fonts.sansSemibold },
+  error: { color: Colors.danger, fontSize: FontSize.sm, fontFamily: Fonts.sansSemibold, marginTop: Spacing.md, backgroundColor: Colors.dangerSoft, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: Radius.md, overflow: 'hidden' },
+  hint: { color: Colors.success, fontSize: FontSize.xs, fontFamily: Fonts.sansSemibold, backgroundColor: Colors.successSoft, paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: Radius.sm, overflow: 'hidden', alignSelf: 'flex-start' },
   methodRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.lg, paddingHorizontal: Spacing.lg, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.lg, backgroundColor: Colors.card },
   methodRowActive: { borderColor: Colors.primary, borderWidth: 1.5 },
   methodRowDisabled: { opacity: 0.5 },
@@ -627,8 +631,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   methodLabel: { fontSize: FontSize.md, color: Colors.text, fontFamily: Fonts.sansMedium },
-  methodSub: { fontSize: FontSize.xs, color: Colors.textFaint, fontFamily: Fonts.sans, marginTop: 2 },
-  cityCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.lg },
+  methodSub: { fontSize: FontSize.xs, color: Colors.textTertiary, fontFamily: Fonts.sans, marginTop: 2 },
+  cityCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.lg, minHeight: 56 },
   cityCardActive: { borderColor: Colors.primary, borderWidth: 1.5 },
   cityIcon: {
     width: 36,
@@ -639,5 +643,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cityName: { fontSize: FontSize.md, fontFamily: Fonts.sansSemibold, color: Colors.text },
-  cityAreas: { fontSize: FontSize.xs, color: Colors.textFaint, fontFamily: Fonts.sans, marginTop: 2 },
+  cityAreas: { fontSize: FontSize.xs, color: Colors.textTertiary, fontFamily: Fonts.sans, marginTop: 2 },
 });

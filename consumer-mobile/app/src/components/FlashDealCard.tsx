@@ -47,8 +47,8 @@ const styles = StyleSheet.create({
   card: { width: 220, gap: Spacing.sm },
   topRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm },
   title: { flex: 1, fontSize: FontSize.sm, fontFamily: Fonts.sansSemibold, color: Colors.text },
-  badge: { backgroundColor: Colors.danger, borderRadius: Radius.sm, paddingHorizontal: 8, paddingVertical: 4 },
+  badge: { backgroundColor: Colors.danger, borderRadius: Radius.sm, paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs },
   badgeText: { color: Colors.white, fontSize: FontSize.xs, fontFamily: Fonts.sansExtraBold },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.sm, marginTop: 'auto' },
-  oldPrice: { fontSize: FontSize.xs, color: Colors.textFaint, fontFamily: Fonts.sansMedium, textDecorationLine: 'line-through' },
+  oldPrice: { fontSize: FontSize.xs, color: Colors.textTertiary, fontFamily: Fonts.sansMedium, textDecorationLine: 'line-through' },
 });

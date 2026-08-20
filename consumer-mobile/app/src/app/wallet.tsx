@@ -29,8 +29,8 @@ import { track } from '@/lib/analytics';
 import type { TopUpMyWalletBodyMethod, Wallet, WalletTransaction } from '@hudumika/contract';
 import { ReportTransactionIssueBodyIssueType, TopUpMyWalletBodyMethod as TopUpMethods } from '@hudumika/contract';
 
-const TOP_UP_PRESETS = [10000, 20000, 50000, 100000];
-const WITHDRAW_PRESETS = [10000, 20000, 50000, 100000];
+const TOP_UP_PRESETS = [10000, 20000, 30000, 50000];
+const WITHDRAW_PRESETS = [10000, 20000, 30000, 50000];
 /** Percentage-of-balance quick picks (25/50/100% of the withdrawable). */
 const WITHDRAW_PERCENTS = [0.25, 0.5, 1] as const;
 const TOP_UP_METHODS = Object.values(TopUpMethods);
@@ -244,14 +244,19 @@ export default function WalletScreen() {
               <Text style={{ color: Colors.white, fontSize: 30, fontFamily: Fonts.displayBold, marginTop: 4 }}>
                 {formatTZS(wallet.totalTZS)}
               </Text>
-              <Row style={{ justifyContent: 'space-between', marginTop: Spacing.sm }}>
-                <Text style={{ color: Colors.white, fontSize: FontSize.xs, fontFamily: Fonts.sans }}>
-                  {t('wallet.title')} · {t('wallet.transactions')}
-                </Text>
-                <Row gap={Spacing.sm}>
-                  <Btn label={t('wallet.withdraw')} onPress={() => setWithdrawOpen(true)} size="sm" variant="ghost" icon="arrow-down-outline" />
-                  <Btn label={t('wallet.topup')} onPress={() => setTopUpOpen(true)} size="sm" variant="success" icon="add" />
-                </Row>
+              <Row gap={Spacing.md} style={{ marginTop: Spacing.md }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: Colors.white, fontSize: FontSize.xs, fontFamily: Fonts.sans, opacity: 0.75 }}>{t('wallet.withdrawAvailable')}</Text>
+                  <Text style={{ color: Colors.white, fontSize: FontSize.md, fontFamily: Fonts.sansBold, marginTop: 2 }}>{formatTZS(wallet.withdrawableTZS)}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: Colors.white, fontSize: FontSize.xs, fontFamily: Fonts.sans, opacity: 0.75 }}>Pending</Text>
+                  <Text style={{ color: Colors.white, fontSize: FontSize.md, fontFamily: Fonts.sansBold, marginTop: 2 }}>{formatTZS(wallet.pendingTZS ?? 0)}</Text>
+                </View>
+              </Row>
+              <Row style={{ justifyContent: 'flex-end', marginTop: Spacing.md }} gap={Spacing.sm}>
+                <Btn label={t('wallet.withdraw')} onPress={() => setWithdrawOpen(true)} size="sm" variant="ghost" icon="arrow-down-outline" />
+                <Btn label={t('wallet.topup')} onPress={() => setTopUpOpen(true)} size="sm" variant="success" icon="add" />
               </Row>
             </Card>
 

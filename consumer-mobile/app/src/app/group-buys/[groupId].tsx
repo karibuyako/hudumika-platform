@@ -172,7 +172,7 @@ export default function GroupBuyDetailScreen() {
               <Pressable
                 onPress={() => setQty((q) => Math.max(1, q - 1))}
                 accessibilityRole="button"
-                accessibilityLabel={t('common.back')}
+                accessibilityLabel={t('groupBuy.quantity')}
                 style={styles.qtyBtn}>
                 <Icon name="remove" size={18} color={Colors.text} />
               </Pressable>

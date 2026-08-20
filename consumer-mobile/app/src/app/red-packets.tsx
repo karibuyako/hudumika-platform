@@ -137,7 +137,7 @@ export default function RedPacketsScreen() {
   const isClaimable = (p: RedPacket) => !p.claimed && new Date(p.expiresAt).getTime() > now;
 
   return (
-    <Screen>
+    <Screen scroll>
       <View style={{ paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg }}>
         <Row style={{ justifyContent: 'space-between', marginBottom: Spacing.md }}>
           <Btn label={t('common.back')} onPress={() => router.back()} variant="subtle" size="sm" icon="arrow-back" />
