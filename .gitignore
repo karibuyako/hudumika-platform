@@ -19,3 +19,4 @@ tools/
 
 # go build artifacts (none in-tree, safety)
 backend/app/bin/
+backend/app/backups/selfcheck-report-2026-08-20.txt
