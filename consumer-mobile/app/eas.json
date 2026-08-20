@@ -16,7 +16,7 @@
       },
       "env": {
         "EXPO_PUBLIC_ENV": "development",
-        "EXPO_PUBLIC_API_URL": "https://staging-api.hudumika.co.tz/api/v1",
+        "EXPO_PUBLIC_API_URL": "http://127.0.0.1:8080",
         "EXPO_PUBLIC_MOCK_AUTH": "false",
         "EXPO_PUBLIC_MOCK_HOME": "false",
         "EXPO_PUBLIC_MOCK_ORDERS": "false",

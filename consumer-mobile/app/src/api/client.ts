@@ -196,7 +196,7 @@ async function request<T>(method: string, path: string, opts: RequestOptions = {
   // reconnect; sensitive ones (payment, cancellation, quote approval,
   // address change, privacy ops) fail fast — never queued (blueprint §26).
   const isMutation = method === 'POST' || method === 'PATCH' || method === 'DELETE';
-  if (isMutation && !opts.skipOfflineQueue && typeof navigator !== 'undefined' && !navigator.onLine) {
+  if (isMutation && !opts.skipOfflineQueue && typeof navigator !== 'undefined' && navigator.onLine === false) {
     if (isSensitivePath(path)) {
       throw new ApiError(0, 'OFFLINE', 'You are offline — this action needs a connection and fresh server confirmation. Nothing was changed.', true);
     }
