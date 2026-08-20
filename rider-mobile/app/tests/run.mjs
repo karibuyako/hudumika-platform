@@ -11,7 +11,7 @@ mkdirSync(outDir, { recursive: true });
 const alias = path.join(root, 'src');
 const tests = process.argv.slice(2).length
   ? process.argv.slice(2)
-  : ['rider-contract.test.ts', 'hardening.test.ts', 'i18n-parity.test.ts', 'safety.test.ts', 'vehicletools.test.ts', 'trips.test.ts', 'eas-mocks.test.ts', 'logistics.test.ts'];
+  : ['rider-contract.test.ts', 'hardening.test.ts', 'i18n-parity.test.ts', 'safety.test.ts', 'vehicletools.test.ts', 'trips.test.ts', 'eas-mocks.test.ts', 'logistics.test.ts', 'offline.test.ts'];
 
 for (const t of tests) {
   const src = path.join(root, 'tests', t);

@@ -10,6 +10,8 @@ export default function ProfileLayout() {
       <Stack.Screen name="safety" options={{ title: t('safety.title') }} />
       <Stack.Screen name="vehicle" options={{ title: t('vehicle.title') }} />
       <Stack.Screen name="penalties" options={{ title: t('penalties.title') }} />
+      <Stack.Screen name="facilities" options={{ title: t('logistics.facilities') }} />
+      <Stack.Screen name="exceptions" options={{ title: t('logistics.exceptions') }} />
     </Stack>
   );
 }

@@ -369,7 +369,19 @@ test('auto-replan banner: exception with autoReplanned true renders plan.replann
 });
 
 test('registry exclusion: api layer never calls /warehouses, /carriers, /facilities, /fleet/accounts, /admin/shipments/{id}/reassign (+ /escalate)', async () => {
-  const apiLogisticsPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../src/repos/api/logistics.ts');
+  const { existsSync } = await import('node:fs');
+  function resolveSrc(relative: string): string {
+    const base = path.dirname(fileURLToPath(import.meta.url));
+    const candidates = [
+      path.resolve(base, relative),
+      path.resolve(base, '..', relative.replace(/^\.\.\//, '')),
+      path.resolve(base, '../..', relative.replace(/^\.\.\//, '')),
+      path.resolve(base, '../../app', relative.replace(/^\.\.\//, '')),
+    ];
+    for (const c of candidates) if (existsSync(c)) return c;
+    return candidates[0];
+  }
+  const apiLogisticsPath = resolveSrc('../src/repos/api/logistics.ts');
   const apiLogisticsSrc = readFileSync(apiLogisticsPath, 'utf8');
   const forbidden = [
     '/warehouses',
@@ -381,12 +393,12 @@ test('registry exclusion: api layer never calls /warehouses, /carriers, /facilit
   for (const needle of forbidden) {
     assert.equal(apiLogisticsSrc.includes(needle), false, `ApiLogisticsRepository must NEVER contain "${needle}" — rider app is forbidden from calling admin registries`);
   }
-  const mockPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../src/repos/mock/logistics.ts');
+  const mockPath = resolveSrc('../src/repos/mock/logistics.ts');
   const mockSrc = readFileSync(mockPath, 'utf8');
   for (const needle of forbidden) {
     assert.equal(mockSrc.includes(needle), false, `MockLogisticsRepository must NEVER contain "${needle}"`);
   }
-  const apiDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../src/repos/api');
+  const apiDir = resolveSrc('../src/repos/api');
   const { readdirSync } = await import('node:fs');
   const apiFiles = readdirSync(apiDir).filter((f) => f.endsWith('.ts'));
   for (const file of apiFiles) {
@@ -447,7 +459,19 @@ test('i18n en+sw keys exist for logistics surfaces', async () => {
 });
 
 test('theme tokens only: logistics uses existing design tokens (no invented literals)', async () => {
-  const themePath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../src/constants/theme.ts');
+  const { existsSync } = await import('node:fs');
+  function resolveSrc(relative: string): string {
+    const base = path.dirname(fileURLToPath(import.meta.url));
+    const candidates = [
+      path.resolve(base, relative),
+      path.resolve(base, '..', relative.replace(/^\.\.\//, '')),
+      path.resolve(base, '../..', relative.replace(/^\.\.\//, '')),
+      path.resolve(base, '../../app', relative.replace(/^\.\.\//, '')),
+    ];
+    for (const c of candidates) if (existsSync(c)) return c;
+    return candidates[0];
+  }
+  const themePath = resolveSrc('../src/constants/theme.ts');
   const themeSrc = readFileSync(themePath, 'utf8');
   assert.ok(themeSrc.includes('LogisticsTokens'), 'theme should export LogisticsTokens for logistics surfaces');
   assert.ok(themeSrc.includes('capacityBarHeight'), 'LogisticsTokens should define capacity bar tokens');

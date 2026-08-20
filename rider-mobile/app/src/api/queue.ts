@@ -1,5 +1,5 @@
 import { useNetworkStore } from '@/store/network';
-import { getTokenPair } from '@/api/tokenStore';
+import { getCachedTokenPair } from '@/api/tokenStore';
 
 /**
  * Offline-first mutation queue.
@@ -77,7 +77,7 @@ export async function flushQueue(): Promise<boolean> {
     for (const op of ops) {
       if (typeof navigator !== 'undefined' && !navigator.onLine) return false;
       const headers: Record<string, string> = { 'content-type': 'application/json', 'idempotency-key': op.key };
-      const pair = await getTokenPair();
+      const pair = getCachedTokenPair();
       if (pair?.accessToken) headers.authorization = `Bearer ${pair.accessToken}`;
       const res = await fetch(`/api${op.path}`, {
         method: op.method,

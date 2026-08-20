@@ -284,14 +284,6 @@ function buildState(): MockState {
       canClaim: false,
     },
   ];
-
-  const notifications: NotificationItem[] = [
-    { id: 'ntf_1', type: 'order', title: 'New order offer', body: 'Sunrise Kitchen — 2.5 km · TZS 4,200', read: false, ts: nowIso(), deepLink: `/orders/${orders[0].id}` },
-    { id: 'ntf_2', type: 'earnings', title: 'Earnings updated', body: 'Your statement is ready for this week', read: false, ts: nowIso(), deepLink: '/earnings' },
-    { id: 'ntf_3', type: 'system', title: 'Shift reminder', body: 'Clock in to start your shift', read: true, ts: nowIso() },
-    { id: 'ntf_4', type: 'warning', title: 'Low balance', body: 'Top up your wallet before the next shift', read: false, ts: nowIso(), deepLink: '/tickets/ntf_unknown' },
-  ];
-
   const maintenance: VehicleMaintenance[] = [
     {
       id: 'mnt_oil_1',
@@ -389,83 +381,6 @@ function buildState(): MockState {
     },
   ];
 
-  return {
-    profile,
-    feed,
-    orders,
-    pickupCodes,
-    fares: new Map(),
-    ledger,
-    ledgerBalance: balance,
-    balanceTZS: wallet.totalTZS,
-    availableTZS: wallet.withdrawableTZS,
-    payouts: [
-      { id: 'po_1', status: 'paid', amountTZS: 125000, method: 'Mobile Money', createdAt: nowIso() },
-      { id: 'po_2', status: 'processing', amountTZS: 62000, method: 'Mobile Money', createdAt: nowIso() },
-    ],
-    shifts: [],
-    missions,
-    notifications,
-    preferences: {
-      soundNotifications: true,
-      autoAccept: false,
-      longDistance: true,
-      wifiOnlyMaps: false,
-      destinationFilters: [],
-      language: 'en',
-    },
-    performance: {
-      acceptanceRate: 88,
-      onTimePct: 94,
-      ratingAverage: 4.8,
-      completedOrders: 128,
-      earningsTZS: 845000,
-      safetyScore: 92,
-      behaviorScore: 78,
-      reliabilityScore: profileFixture.reliabilityScore,
-      level: 'gold',
-      deliveryStreak: 6,
-      securityScore: 90,
-      avgPerTripTZS: 4200,
-      topHours: ['11:00-13:00', '18:00-21:00'],
-      onlineHoursWeek: 38,
-      levelBenefits: ['Priority dispatch', 'Higher fare multiplier', 'Weekend bonus'],
-      benchmarks: { teamAverage: 3.9, fleetAverage: 4.1, percentileRank: 82 },
-      trends: [
-        { label: 'Mon', value: 12 },
-        { label: 'Tue', value: 15 },
-        { label: 'Wed', value: 11 },
-        { label: 'Thu', value: 18 },
-        { label: 'Fri', value: 22 },
-        { label: 'Sat', value: 26 },
-        { label: 'Sun', value: 24 },
-      ],
-    },
-    heatmap,
-    tripSequence: null,
-    completedTrip: null,
-    rejectReasons: ['Restaurant too busy', 'Customer unreachable', 'Distance too far', 'Traffic', 'Other'],
-    issueReasons: ['Customer unavailable', 'Wrong address', 'Order damaged', 'Address inaccessible', 'Payment issue', 'Other'],
-    otpRequests: new Map(),
-    otpCounter: 0,
-    otpLastRequestAt: new Map(),
-    podSubmitted: new Set(),
-    shiftCodExpectedTZS: {},
-    tickets: [],
-    sosAlerts: [],
-    sosLastSentAt: null,
-    trustedContacts: [
-      { id: 'contact_1', name: 'Neema Mwakyusa', phone: '+255712345678', relationship: 'sibling', notifiedOnSos: true, shareLocation: true },
-      { id: 'contact_2', name: 'Baraka Joseph', phone: '+255713456789', relationship: 'friend', notifiedOnSos: true, shareLocation: false },
-    ],
-    security: {
-      securityScore: 90,
-      alerts: [
-        { type: 'unusual_location', severity: 'medium', at: nowIso() },
-        { type: 'unusual_login', severity: 'low', at: nowIso() },
-      ],
-    },
-    shareTokens: {},
   // ---- Logistics seed ----
   // Enrich first two feed orders with deep-logistics fields for demo
   if (feedOrders[0]) {
@@ -639,8 +554,8 @@ function buildState(): MockState {
       { id: 'ntf_2', type: 'earnings', title: 'Earnings updated', body: 'Your statement is ready for this week', read: false, ts: nowIso(), deepLink: '/earnings' },
       { id: 'ntf_3', type: 'system', title: 'Shift reminder', body: 'Clock in to start your shift', read: true, ts: nowIso() },
       { id: 'ntf_4', type: 'warning', title: 'Low balance', body: 'Top up your wallet before the next shift', read: false, ts: nowIso(), deepLink: '/tickets/ntf_unknown' },
-      { id: 'ntf_fac_grant', type: 'system', title: 'Facility access granted', body: 'You have been whitelisted for Green View Estate (whitelist_only)', read: false, ts: nowIso(), deepLink: null },
-      { id: 'ntf_fac_revoke', type: 'system', title: 'Facility access revoked', body: 'Access revoked for Old Industrial Park', read: true, ts: new Date(Date.now() - 2 * 24 * 3600_000).toISOString(), deepLink: null },
+      { id: 'ntf_fac_grant', type: 'system', title: 'Facility access granted', body: 'You have been whitelisted for Green View Estate (whitelist_only)', read: false, ts: new Date(Date.now() - 60_000).toISOString(), deepLink: '/profile/facilities' },
+      { id: 'ntf_fac_revoke', type: 'system', title: 'Facility access revoked', body: 'Access revoked for Old Industrial Park', read: true, ts: new Date(Date.now() - 2 * 24 * 3600_000).toISOString(), deepLink: '/profile/facilities' },
     ],
     preferences: {
       soundNotifications: true,

@@ -72,9 +72,9 @@ export default function TabsLayout() {
         tabBarStyle: {
           backgroundColor: Colors.card,
           borderTopColor: Colors.border,
-          height: 62,
-          paddingBottom: 8,
-          paddingTop: 6,
+          height: 50,
+          paddingBottom: 4,
+          paddingTop: 4,
           display: inDetail ? 'none' : 'flex',
         },
         tabBarLabelStyle: { fontSize: 10, fontWeight: '600' },
@@ -89,20 +89,20 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="orders"
-        options={{
-          title: t('tab.orders'),
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'receipt' : 'receipt-outline'} size={22} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="nearby"
         options={{
           title: t('tab.nearby'),
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'location' : 'location-outline'} size={22} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="orders"
+        options={{
+          title: t('tab.orders'),
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'receipt' : 'receipt-outline'} size={22} color={color} />
           ),
         }}
       />

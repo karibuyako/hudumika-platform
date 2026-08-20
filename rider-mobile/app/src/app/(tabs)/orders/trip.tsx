@@ -11,11 +11,13 @@ import type { ListRenderItemInfo } from 'react-native';
 
 import { ApiError } from '@/api/client';
 import { Btn, Card, Empty, Pill, Row, Screen, Spinner } from '@/components/ui';
-import { Colors, FontSize, NumberStyle, Spacing } from '@/constants/theme';
+import { Colors, FontSize, LogisticsTokens, NumberStyle, Radius, Spacing } from '@/constants/theme';
 import { t, formatTZS } from '@/i18n';
 import { clockISO } from '@/lib/format';
+import { capacityBarTone, capacityPercent } from '@/lib/logistics';
 import { getTripsRepository } from '@/repos';
-import type { Trip, TripStopsItem } from '@hudumika/contract';
+import { MockLogisticsRepository } from '@/repos/mock/logistics';
+import type { LogisticsTrip, Trip, TripStopsItem, Vehicle } from '@hudumika/contract';
 
 const STOP_TONE: Record<TripStopsItem['status'], 'neutral' | 'success' | 'info' | 'danger'> = {
   pending: 'neutral',
@@ -37,18 +39,51 @@ interface StopRow {
   dropoff: TripStopsItem;
 }
 
+function CapacityBar({ used, max, label }: { used: number; max: number; label: string }) {
+  const pct = capacityPercent(used, max);
+  const tone = capacityBarTone(pct);
+  const color = tone === 'danger' ? Colors.danger : tone === 'warning' ? Colors.warning : Colors.success;
+  return (
+    <View style={styles.capacityRow}>
+      <Text style={styles.capacityLabel}>{label} {used}/{max}</Text>
+      <View style={styles.capacityTrack}>
+        <View style={[styles.capacityFill, { width: `${pct}%`, backgroundColor: color }]} />
+      </View>
+      <Text style={styles.capacityPct}>{pct}%</Text>
+    </View>
+  );
+}
+
 export default function TripScreen() {
   const [trip, setTrip] = useState<Trip | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [reorderError, setReorderError] = useState('');
   const [reordering, setReordering] = useState(false);
+  const [logisticsTrip, setLogisticsTrip] = useState<LogisticsTrip | null>(null);
+  const [vehicle, setVehicle] = useState<Vehicle | null>(null);
+  const [capacityError, setCapacityError] = useState<{ code: string; message: string; requestId?: string } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
+    setCapacityError(null);
     try {
       setTrip(await getTripsRepository().getActiveTrip());
+      try {
+        const logisticsRepo = new MockLogisticsRepository();
+        const trips = await logisticsRepo.listLogisticsTrips();
+        if (trips.length > 0) {
+          const lt = trips[0];
+          setLogisticsTrip(lt);
+          if (lt.vehicleId) {
+            const v = await logisticsRepo.getVehicle(lt.vehicleId);
+            setVehicle(v);
+          }
+        }
+      } catch {
+        // cargo summary optional
+      }
     } catch (e) {
       setError(e instanceof ApiError ? e.message : t('trip.loadFailed'));
     } finally {
@@ -162,6 +197,24 @@ export default function TripScreen() {
 
   const completed = trip.status === 'completed';
 
+  const usedWeight = vehicle ? (vehicle.capacity?.compartments ?? []).reduce((s, c) => s + (c.usedWeightKg ?? 0), 0) : 0;
+  const maxWeight = vehicle?.capacity?.maxWeightKg ?? 0;
+  const usedVolume = vehicle ? (vehicle.capacity?.compartments ?? []).reduce((s, c) => s + (c.usedVolumeL ?? 0), 0) : 0;
+  const maxVolume = vehicle?.capacity?.maxVolumeL ?? 0;
+
+  const checkCapacity = async (pkgId: string) => {
+    if (!vehicle) return;
+    setCapacityError(null);
+    try {
+      const repo = new MockLogisticsRepository();
+      await repo.checkVehicleCapacity(vehicle.id, pkgId);
+    } catch (e) {
+      if (e instanceof ApiError) {
+        setCapacityError({ code: e.code, message: e.message, requestId: e.requestId });
+      }
+    }
+  };
+
   return (
     <Screen>
       <FlatList
@@ -192,6 +245,31 @@ export default function TripScreen() {
                 />
               </Row>
             </Card>
+            {logisticsTrip && vehicle ? (
+              <Card style={styles.cargoCard}>
+                <Text style={styles.cargoTitle}>{t('logistics.cargoSummary')} · {logisticsTrip.tripNumber}</Text>
+                <Text style={styles.cargoSub}>Expected {logisticsTrip.manifestSummary?.expectedUnits ?? 0} · Verified {logisticsTrip.manifestSummary?.verifiedUnits ?? 0} · Exceptions {logisticsTrip.manifestSummary?.exceptions ?? 0}</Text>
+                {maxWeight ? <CapacityBar used={usedWeight} max={maxWeight} label={t('logistics.cargoWeight')} /> : null}
+                {maxVolume ? <CapacityBar used={usedVolume} max={maxVolume} label={t('logistics.cargoVolume')} /> : null}
+                {vehicle.capacity?.compartments?.map((c) => (
+                  <View key={c.name} style={styles.compartmentRow}>
+                    <Text style={styles.compartmentName}>{t('logistics.compartment')} {c.name}</Text>
+                    <Text style={styles.compartmentMeta}>{c.used}/{c.capacity} · {c.usedWeightKg ?? 0}kg · {c.usedVolumeL ?? 0}L</Text>
+                  </View>
+                ))}
+                {capacityError ? (
+                  <View style={styles.capacityErrorBox}>
+                    <Text style={styles.capacityErrorText}>{capacityError.code}: {capacityError.message}</Text>
+                    {capacityError.requestId ? <Text style={styles.capacityRequestId}>RequestId: {capacityError.requestId}</Text> : null}
+                  </View>
+                ) : null}
+                <View style={styles.capacityActions}>
+                  <Btn label="Check heavy pkg" variant="ghost" size="sm" onPress={() => checkCapacity('pkg_heavy')} />
+                  <Btn label="Check bulky pkg" variant="ghost" size="sm" onPress={() => checkCapacity('pkg_bulky')} />
+                  <Btn label="Check normal pkg" variant="ghost" size="sm" onPress={() => checkCapacity('pkg_1')} />
+                </View>
+              </Card>
+            ) : null}
             {!completed && <Text style={styles.hint}>{t('trip.reorderHint')}</Text>}
             {reorderError ? <Text style={styles.error}>{reorderError}</Text> : null}
           </View>
@@ -227,4 +305,19 @@ const styles = StyleSheet.create({
   moveCol: { alignItems: 'center', justifyContent: 'space-between' },
   separator: { height: Spacing.md },
   listContent: { padding: Spacing.md, paddingBottom: 120 },
+  cargoCard: { gap: Spacing.sm, marginBottom: Spacing.sm },
+  cargoTitle: { fontSize: FontSize.md, fontWeight: '700', color: Colors.text },
+  cargoSub: { fontSize: FontSize.xs, color: Colors.textTertiary },
+  capacityRow: { gap: 4 },
+  capacityLabel: { fontSize: FontSize.xs, color: Colors.textSecondary, fontWeight: '600' },
+  capacityTrack: { height: LogisticsTokens.capacityBarHeight, borderRadius: LogisticsTokens.capacityBarRadius, backgroundColor: Colors.surface, overflow: 'hidden' },
+  capacityFill: { height: '100%', borderRadius: LogisticsTokens.capacityBarRadius },
+  capacityPct: { fontSize: FontSize.xs, color: Colors.textTertiary, textAlign: 'right' },
+  compartmentRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 2 },
+  compartmentName: { fontSize: FontSize.xs, color: Colors.textSecondary, fontWeight: '600' },
+  compartmentMeta: { fontSize: FontSize.xs, color: Colors.textTertiary },
+  capacityErrorBox: { backgroundColor: Colors.dangerSoft, borderRadius: Radius.sm, padding: Spacing.sm, gap: 4, borderWidth: 1, borderColor: Colors.danger },
+  capacityErrorText: { fontSize: FontSize.xs, color: Colors.danger, fontWeight: '700' },
+  capacityRequestId: { fontSize: FontSize.xs, color: Colors.textTertiary },
+  capacityActions: { flexDirection: 'row', gap: Spacing.sm, flexWrap: 'wrap' },
 });

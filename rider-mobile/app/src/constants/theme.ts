@@ -129,3 +129,9 @@ export const HeaderStyle = {
 export const NumberStyle = {
   fontVariant: ['tabular-nums'] as TextStyle['fontVariant'],
 };
+
+export const LogisticsTokens = {
+  capacityBarHeight: 8,
+  capacityBarRadius: 4,
+  capacityBarGap: 8,
+} as const;

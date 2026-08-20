@@ -402,7 +402,7 @@ export function Segmented<T extends string>({
             accessibilityRole="button"
             accessibilityLabel={opt.label}
             accessibilityState={{ selected: active }}
-            hitSlop={{ top: 6, bottom: 6 }}
+            hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
             style={({ pressed }) => [styles.segmentItem, active && styles.segmentItemActive, pressed && { opacity: 0.7 }]}>
             <Text
               numberOfLines={1}

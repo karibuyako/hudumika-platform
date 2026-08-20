@@ -16,6 +16,20 @@ const VEHICLE_LABEL: Record<string, string> = {
   car: t('vehicles.car'),
 };
 
+const SERVICE_MODEL_TONE: Record<string, 'info' | 'success' | 'warning' | 'neutral'> = {
+  specialized: 'info',
+  crowdsourced: 'success',
+  errand: 'warning',
+  fleet: 'neutral',
+};
+
+const SERVICE_MODEL_KEY: Record<string, string> = {
+  specialized: 'profile.serviceModel.specialized',
+  crowdsourced: 'profile.serviceModel.crowdsourced',
+  errand: 'profile.serviceModel.errand',
+  fleet: 'profile.serviceModel.fleet',
+};
+
 const PREFS_TOGGLES: { key: 'autoAccept' | 'longDistance' | 'soundNotifications' | 'wifiOnlyMaps'; labelKey: 'profile.autoAccept' | 'profile.longDistance' | 'profile.sounds' | 'profile.wifiOnlyMaps'; subKey: 'profile.autoAcceptSub' | 'profile.longDistanceSub' | 'profile.soundsSub' | 'profile.wifiOnlyMapsSub' }[] = [
   { key: 'autoAccept', labelKey: 'profile.autoAccept', subKey: 'profile.autoAcceptSub' },
   { key: 'longDistance', labelKey: 'profile.longDistance', subKey: 'profile.longDistanceSub' },
@@ -33,19 +47,17 @@ export default function ProfileScreen() {
   const [logoutVisible, setLogoutVisible] = useState(false);
   const [filterDraft, setFilterDraft] = useState('');
 
+  const loadPrefs = async () => {
+    setPrefsError('');
+    try {
+      setPrefs(await getRiderRepository().getPreferences());
+    } catch (e) {
+      setPrefsError(e instanceof ApiError ? e.message : t('profile.loadFailed'));
+    }
+  };
+
   useEffect(() => {
-    let cancelled = false;
-    getRiderRepository()
-      .getPreferences()
-      .then((p) => {
-        if (!cancelled) setPrefs(p);
-      })
-      .catch((e) => {
-        if (!cancelled) setPrefsError(e instanceof ApiError ? e.message : t('profile.loadFailed'));
-      });
-    return () => {
-      cancelled = true;
-    };
+    void loadPrefs();
   }, []);
 
   /** Optimistic PUT with server rollback: PREFERENCES_INVALID keeps previous values. */
@@ -127,6 +139,17 @@ export default function ProfileScreen() {
             </View>
             <Pill label={rider.online ? t('home.online') : t('home.offline')} tone={rider.online ? 'success' : 'neutral'} />
           </Row>
+          <View style={styles.serviceRow}>
+            <Pill
+              label={t((SERVICE_MODEL_KEY[rider.serviceModel ?? 'specialized'] ?? 'profile.serviceModel.specialized') as never)}
+              tone={SERVICE_MODEL_TONE[rider.serviceModel ?? 'specialized'] ?? 'neutral'}
+            />
+            {rider.fleetAccountId ? (
+              <Pill label={`${t('profile.fleetAccountId')}: ${rider.fleetAccountId.slice(0, 8)}`} tone="neutral" />
+            ) : null}
+          </View>
+          <Text style={styles.serviceSub}>{t('profile.serviceModelSub')}</Text>
+          {rider.fleetAccountId ? <Text style={styles.serviceSub}>{t('profile.fleetAccountIdSub')}</Text> : null}
         </Card>
       ) : null}
 
@@ -200,7 +223,18 @@ export default function ProfileScreen() {
             <Spinner color={Colors.primary} />
           </View>
         )}
-        {prefsError ? <Text style={styles.error}>{prefsError}</Text> : null}
+        {prefsError ? (
+          <View style={{ gap: Spacing.sm, marginTop: Spacing.sm }}>
+            <Text style={styles.error}>{prefsError}</Text>
+            {!prefs ? <Btn label={t('common.retry')} variant="ghost" size="sm" onPress={loadPrefs} /> : null}
+          </View>
+        ) : null}
+      </Card>
+
+      <SectionTitle title={t('logistics.facilities')} icon="business-outline" />
+      <Card flat style={{ paddingHorizontal: Spacing.lg }}>
+        <ListRow title={t('logistics.facilities')} sub={t('logistics.facilitiesSub')} icon="business-outline" onPress={() => router.push('/profile/facilities')} />
+        <ListRow title={t('logistics.exceptions')} sub={t('logistics.exceptionsSub')} icon="warning-outline" onPress={() => router.push('/profile/exceptions')} />
       </Card>
 
       <SectionTitle title={t('profile.audit')} icon="apps-outline" />
@@ -235,6 +269,8 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   name: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.text },
   sub: { fontSize: FontSize.sm, color: Colors.textSecondary },
+  serviceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginTop: Spacing.sm },
+  serviceSub: { fontSize: FontSize.xs, color: Colors.textTertiary, marginTop: 2 },
   toggleBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Colors.border },
   prefsLoading: { paddingVertical: Spacing.xl, alignItems: 'center' },
   error: { color: Colors.danger, fontSize: FontSize.sm, paddingBottom: Spacing.md },

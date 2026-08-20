@@ -56,6 +56,7 @@ export function Spinner({ color = Colors.primary, size = 'small' }: { color?: st
     return (
       <View
         accessible
+        accessibilityRole="progressbar"
         accessibilityLabel={t('common.loading')}
         style={{ width: dim, height: dim, borderRadius: dim / 2, borderWidth: 2, borderColor: color, opacity: 0.4 }}
       />
@@ -166,6 +167,7 @@ export function Btn({
   loading,
   icon,
   style,
+  accessibilityLabel,
 }: {
   label: string;
   onPress?: () => void;
@@ -175,6 +177,7 @@ export function Btn({
   loading?: boolean;
   icon?: IconName;
   style?: StyleProp<ViewStyle>;
+  accessibilityLabel?: string;
 }) {
   const bg: Record<BtnVariant, string> = {
     primary: Colors.primary,
@@ -201,9 +204,9 @@ export function Btn({
       onPress={onPress}
       disabled={disabled || loading}
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled: disabled || loading, busy: loading }}
-      hitSlop={size === 'sm' ? { top: 10, bottom: 10, left: 6, right: 6 } : size === 'md' ? { top: 8, bottom: 8 } : { top: 6, bottom: 6 }}
+      hitSlop={size === 'sm' ? { top: 10, bottom: 10, left: 6, right: 6 } : size === 'md' ? { top: 8, bottom: 8 } : { top: 8, bottom: 8, left: 4, right: 4 }}
       style={({ pressed }) => [
         styles.btn,
         {
@@ -251,7 +254,7 @@ export function Chip({
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ selected: selected ?? false }}
-      hitSlop={{ top: 8, bottom: 8 }}
+      hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
       style={({ pressed }) => [
         styles.chip,
         selected && { backgroundColor: Colors.ink, borderColor: Colors.ink },
@@ -381,6 +384,7 @@ export function Field({
         multiline={multiline}
         maxLength={maxLength}
         accessibilityLabel={label}
+        accessibilityRole="search"
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         style={[

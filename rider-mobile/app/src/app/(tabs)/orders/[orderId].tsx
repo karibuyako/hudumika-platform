@@ -9,6 +9,7 @@ import { Btn, Card, Icon, Pill, Row, Screen, Segmented, SheetModal, SosButton, S
 import { Colors, FontSize, NumberStyle, Radius, Spacing } from '@/constants/theme';
 import { formatTZS, t } from '@/i18n';
 import { clockISO, dateISO } from '@/lib/format';
+import { dispatchStrategyLabel, hasCarrierLeg, isWarehouseFulfillment } from '@/lib/logistics';
 import { advanceStepFor, capitalize, formatEta, priorityMeta, statusMeta } from '@/lib/order';
 import { getDeliveryRepository, getPaymentRepository, getRiderRepository } from '@/repos';
 import type { PaymentQrResult, RiderAdvanceableStatus } from '@/repos';
@@ -384,6 +385,50 @@ export default function OrderDetailScreen() {
           </Card>
         ) : null}
 
+        {/* Logistics — dispatch strategy chip (read-only) */}
+        {order.dispatchStrategy ? (
+          <Card style={{ gap: Spacing.sm }}>
+            <Row gap={Spacing.sm}>
+              <Pill label={t('logistics.dispatchStrategy')} tone="neutral" />
+              <Pill label={dispatchStrategyLabel(order.dispatchStrategy)} tone="info" />
+              {order.fulfillmentSource ? <Pill label={t(`logistics.fulfillment.${order.fulfillmentSource}` as never)} tone={order.fulfillmentSource === 'warehouse' ? 'warning' : 'neutral'} /> : null}
+            </Row>
+          </Card>
+        ) : null}
+
+        {/* Warehouse pickup context */}
+        {isWarehouseFulfillment(order) ? (
+          <Card style={{ gap: Spacing.sm, backgroundColor: Colors.warningSoft, borderColor: Colors.warning }}>
+            <Row gap={Spacing.sm}>
+              <Icon name="cube-outline" size={16} color={Colors.warning} />
+              <Text style={styles.cardTitle}>{t('logistics.warehousePickup')}</Text>
+            </Row>
+            <Text style={styles.routeAddress}>{t('logistics.warehousePickupSub')}</Text>
+            {order.routeSegments?.[0]?.fromHubId === null || order.routeSegments?.[0]?.toHubId ? (
+              <Text style={styles.routeItems}>First-mile: {order.routeSegments[0]?.type} · {order.routeSegments[0]?.mode ?? ''}</Text>
+            ) : null}
+          </Card>
+        ) : null}
+
+        {/* Carrier handoff context */}
+        {hasCarrierLeg(order.routeSegments) ? (
+          <Card style={{ gap: Spacing.sm, borderColor: Colors.info }}>
+            <Row gap={Spacing.sm}>
+              <Icon name="bus-outline" size={16} color={Colors.info} />
+              <Text style={styles.cardTitle}>{t('logistics.carrierLeg')}</Text>
+              <Pill label={t('logistics.carrierHandoff')} tone="info" />
+            </Row>
+            {order.routeSegments
+              ?.filter((s) => typeof s.handledBy === 'string' && s.handledBy.startsWith('carrier_'))
+              .map((seg) => (
+                <View key={seg.legId} style={styles.carrierRow}>
+                  <Text style={styles.carrierText}>Leg {seg.sequence} · {seg.type} · {seg.handledBy}</Text>
+                  <Pill label={seg.handledBy ?? ''} tone="neutral" />
+                </View>
+              ))}
+          </Card>
+        ) : null}
+
         {/* Fare */}
         {fare ? (
           <Card style={{ gap: Spacing.sm }}>
@@ -746,4 +791,6 @@ const styles = StyleSheet.create({
   qrValue: { fontSize: FontSize.md, color: Colors.text, fontWeight: '800', fontVariant: NumberStyle.fontVariant },
   qrExpiry: { fontSize: FontSize.xs, color: Colors.textTertiary },
   offlineText: { color: Colors.warning, fontSize: FontSize.xs, fontWeight: '700', textAlign: 'center' },
+  carrierRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: Spacing.xs },
+  carrierText: { fontSize: FontSize.xs, color: Colors.textSecondary },
 });
