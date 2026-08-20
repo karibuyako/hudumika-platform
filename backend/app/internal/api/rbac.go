@@ -26,12 +26,15 @@ const (
 // Longer prefixes win when several match; paths matching no prefix are open
 // to every authenticated session.
 var routePolicy = map[string][]string{
-	"/admin/":     {RoleAdmin, RoleFinance, RoleOps, RoleCompliance},
-	"/wallet/me":  {}, // customer wallet: any authenticated role (longest prefix wins)
-	"/wallet/":    {RoleMerchant, RoleProvider, RoleRider},
-	"/riders/":    {RoleRider, RoleAdmin, RoleFinance, RoleOps, RoleCompliance},
-	"/providers/": {RoleProvider, RoleAdmin, RoleFinance, RoleOps, RoleCompliance},
-	"/merchants/": {RoleMerchant, RoleAdmin, RoleFinance, RoleOps, RoleCompliance},
+	"/admin/":                  {RoleAdmin, RoleFinance, RoleOps, RoleCompliance},
+	"/wallet/me":               {}, // customer wallet: any authenticated role (longest prefix wins)
+	"/wallet/":                 {RoleMerchant, RoleProvider, RoleRider},
+	"/riders/":                 {RoleRider, RoleAdmin, RoleFinance, RoleOps, RoleCompliance},
+	"/providers/available":     {}, // consumer discovery: open to every authenticated role (longest prefix wins)
+	"/providers/me/preferred":  {}, // consumer preferred providers: open to every authenticated role
+	"/providers":               {RoleCustomer, RoleProvider, RoleAdmin, RoleFinance, RoleOps, RoleCompliance},
+	"/providers/":              {RoleCustomer, RoleProvider, RoleAdmin, RoleFinance, RoleOps, RoleCompliance},
+	"/merchants/":              {RoleMerchant, RoleAdmin, RoleFinance, RoleOps, RoleCompliance},
 }
 
 // allowedRoles returns the role set for the longest route-policy prefix that

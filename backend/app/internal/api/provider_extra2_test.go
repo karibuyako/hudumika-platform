@@ -124,19 +124,22 @@ func TestProviderPublicRoutesRequireToken(t *testing.T) {
 }
 
 // TestProviderListWithoutDB: an authenticated session of any role reaches
-// the public handler, which answers INTERNAL_ERROR with no database wired.
+// the tolerant consumer handler, which answers 200 [] with no database wired
+// (stub_mth.go MthListProvidersConsumer live stub). The former 500
+// INTERNAL_ERROR expectation is outdated — the live stub returns an empty
+// list so the consumer mobile renders without a 500/501.
 func TestProviderListWithoutDB(t *testing.T) {
 	s := newTestServer()
 	token := tokenFor(t, s, "+255700000043", RoleCustomer, false)
 	rec := authedDo(t, s.Router(), http.MethodGet, "/providers", "", token)
-	if rec.Code != http.StatusInternalServerError {
-		t.Fatalf("GET /providers status = %d, want 500 (%s)", rec.Code, rec.Body)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /providers status = %d, want 200 (%s)", rec.Code, rec.Body)
 	}
-	var errBody gen.ErrorResponse
-	if err := json.NewDecoder(rec.Body).Decode(&errBody); err != nil {
-		t.Fatalf("decode error body: %v", err)
+	var list []any
+	if err := json.NewDecoder(rec.Body).Decode(&list); err != nil {
+		t.Fatalf("decode list body: %v", err)
 	}
-	if errBody.Code != "INTERNAL_ERROR" {
-		t.Fatalf("GET /providers error code = %q, want INTERNAL_ERROR", errBody.Code)
+	if list == nil {
+		t.Fatalf("GET /providers list is nil, want []")
 	}
 }
