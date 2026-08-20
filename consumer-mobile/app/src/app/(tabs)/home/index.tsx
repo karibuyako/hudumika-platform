@@ -64,6 +64,17 @@ const CATEGORY_ICONS: Record<string, IconName> = {
   Travel: 'airplane',
 };
 
+const FALLBACK_CATEGORIES: Array<{ id: string; name: string }> = [
+  { id: '1', name: 'Food' },
+  { id: '2', name: 'Groceries' },
+  { id: '3', name: 'Pharmacy' },
+  { id: '4', name: 'Home Services' },
+  { id: '5', name: 'Beauty' },
+  { id: '6', name: 'Laundry' },
+  { id: '7', name: 'Repairs' },
+  { id: '8', name: 'Logistics' },
+];
+
 /* Campaign pill is fetched per merchant (the feed carries platform promotions
  * only — no per-merchant campaigns); cap the fetch to the first visible cards
  * so the home list never fans out N+1 queries. */
@@ -444,20 +455,38 @@ export default function HomeScreen() {
               </>
             ) : null}
 
+            <SectionTitle title={t('home.categories')} icon="grid" />
+            <View style={styles.categoryGrid}>
+              {((feed.categories && feed.categories.length > 0 ? feed.categories : FALLBACK_CATEGORIES) as Array<{ id: string; name: string }>).slice(0, 8).map((cat) => {
+                const icon = CATEGORY_ICONS[cat.name] ?? 'grid-outline';
+                return (
+                  <Pressable
+                    key={cat.id}
+                    onPress={() => router.push({ pathname: '/search', params: { category: cat.name } })}
+                    accessibilityRole="button"
+                    accessibilityLabel={cat.name}
+                    style={styles.categoryItem}>
+                    <View style={styles.categoryIcon}>
+                      <Icon name={icon} size={20} color={Colors.primaryDeep} />
+                    </View>
+                    <Text style={styles.categoryName} numberOfLines={2}>{cat.name}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
             <View style={styles.quickActions}>
-              {quickActions.map((qa) => (
+              {quickActions.filter((qa) => !qa.disabled).map((qa) => (
                 <Pressable
                   key={qa.key}
                   onPress={qa.onPress}
-                  disabled={qa.disabled}
                   accessibilityRole="button"
                   accessibilityLabel={qa.label}
-                  accessibilityState={qa.disabled ? { disabled: true } : undefined}
-                  style={({ pressed }) => [styles.quickAction, qa.disabled && styles.quickActionDisabled, pressed && !qa.disabled && { opacity: 0.8 }]}>
-                  <View style={[styles.quickActionIcon, qa.disabled && styles.quickActionIconDisabled]}>
-                    <Icon name={qa.icon} size={20} color={qa.disabled ? Colors.textTertiary : Colors.primaryDeep} />
+                  style={({ pressed }) => [styles.quickAction, pressed && { opacity: 0.8 }]}>
+                  <View style={styles.quickActionIcon}>
+                    <Icon name={qa.icon} size={20} color={Colors.primaryDeep} />
                   </View>
-                  <Text style={[styles.quickActionLabel, qa.disabled && styles.quickActionLabelDisabled]}>{qa.label}</Text>
+                  <Text style={styles.quickActionLabel}>{qa.label}</Text>
                 </Pressable>
               ))}
             </View>
@@ -480,26 +509,6 @@ export default function HomeScreen() {
                 </Text>
               </Card>
             ) : null}
-
-            <SectionTitle title={t('home.categories')} icon="grid" />
-            <View style={styles.categoryGrid}>
-              {(feed.categories ?? []).slice(0, 8).map((cat) => {
-                const icon = CATEGORY_ICONS[cat.name] ?? 'grid-outline';
-                return (
-                  <Pressable
-                    key={cat.id}
-                    onPress={() => router.push({ pathname: '/search', params: { category: cat.name } })}
-                    accessibilityRole="button"
-                    accessibilityLabel={cat.name}
-                    style={styles.categoryItem}>
-                    <View style={styles.categoryIcon}>
-                      <Icon name={icon} size={20} color={Colors.primaryDeep} />
-                    </View>
-                    <Text style={styles.categoryName} numberOfLines={2}>{cat.name}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
 
             <SectionTitle title={t('home.promotions')} icon="pricetag" />
             {(feed.promotions ?? []).length > 0 ? (
