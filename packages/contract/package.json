@@ -1,6 +1,6 @@
 {
   "name": "@hudumika/contract",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Generated TypeScript client, model types, MSW mock handlers, and fixture factories from HUDumika API-CONTRACT.yaml",
   "type": "module",
   "main": "./src/index.ts",
