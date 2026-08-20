@@ -103,9 +103,13 @@ func (s *Store) AppendEntry(ctx context.Context, e LedgerEntryInput) (bool, erro
 		return false, fmt.Errorf("payouts: lock owner %s: %w", e.AccountOwnerID, err)
 	}
 
+	// Read the running balance of the LAST entry for this owner so debits
+	// (payouts, refunds, commission) are preserved. MAX(balance_tzs) would
+	// erase them on the next credit (BUG: money creation on every credit).
+	// Ledger invariant: ledger_entries is append-only, never updated/deleted.
 	var balance int64
 	if err := tx.QueryRow(ctx,
-		`SELECT COALESCE(MAX(balance_tzs), 0) FROM ledger_entries WHERE account_owner_id = $1`,
+		`SELECT COALESCE((SELECT balance_tzs FROM ledger_entries WHERE account_owner_id = $1 ORDER BY created_at DESC, id DESC LIMIT 1), 0)`,
 		e.AccountOwnerID).Scan(&balance); err != nil {
 		return false, fmt.Errorf("payouts: read balance for %s: %w", e.AccountOwnerID, err)
 	}

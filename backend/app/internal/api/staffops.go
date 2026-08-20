@@ -194,18 +194,31 @@ func (s *Server) ListMerchantDevices(w http.ResponseWriter, r *http.Request) {
 }
 
 // RegisterMerchantDevice registers one device for the merchant (POST
-// /devices).
+// /devices). The contract field is `label` but older clients send `name`;
+// both are accepted for backwards compatibility (prefer label, fall back to
+// name).
 func (s *Server) RegisterMerchantDevice(w http.ResponseWriter, r *http.Request) {
 	merchantID, ok := s.staffOpsMerchantID(w, r)
 	if !ok {
 		return
 	}
-	var body gen.RegisterMerchantDeviceJSONRequestBody
+	var body struct {
+		Type   gen.MerchantDeviceType    `json:"type"`
+		Label  *string                   `json:"label"`
+		Name   *string                   `json:"name"`
+		Status *gen.MerchantDeviceStatus `json:"status"`
+	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Invalid request body")
 		return
 	}
-	if strings.TrimSpace(body.Label) == "" {
+	label := ""
+	if body.Label != nil && strings.TrimSpace(*body.Label) != "" {
+		label = strings.TrimSpace(*body.Label)
+	} else if body.Name != nil && strings.TrimSpace(*body.Name) != "" {
+		label = strings.TrimSpace(*body.Name)
+	}
+	if label == "" {
 		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "label must not be empty")
 		return
 	}
@@ -216,7 +229,7 @@ func (s *Server) RegisterMerchantDevice(w http.ResponseWriter, r *http.Request) 
 	var id uuid.UUID
 	if err := s.db.Pool().QueryRow(r.Context(),
 		`INSERT INTO devices (merchant_id, type, name, status) VALUES ($1, $2, $3, $4) RETURNING id`,
-		merchantID, deviceTypeToStorage(body.Type), strings.TrimSpace(body.Label),
+		merchantID, deviceTypeToStorage(body.Type), label,
 		deviceStatusToStorage(body.Status)).Scan(&id); err != nil {
 		s.logger.Error("register device failed", "merchant", merchantID, "error", err)
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
@@ -233,13 +246,31 @@ func (s *Server) RegisterMerchantDevice(w http.ResponseWriter, r *http.Request) 
 
 // UpdateMerchantDevice patches one device (PATCH /devices/{deviceId}); the
 // label is only applied when non-empty and the type only when non-blank.
-// Unknown or foreign ids surface DEVICE_NOT_FOUND.
+// Both `label` and `name` are accepted for the label field for backwards
+// compatibility (prefer label). Unknown or foreign ids surface DEVICE_NOT_FOUND.
 func (s *Server) UpdateMerchantDevice(w http.ResponseWriter, r *http.Request, deviceId openapi_types.UUID) {
 	merchantID, ok := s.staffOpsMerchantID(w, r)
 	if !ok {
 		return
 	}
+	var raw struct {
+		Type   gen.MerchantDeviceType    `json:"type"`
+		Label  *string                   `json:"label"`
+		Name   *string                   `json:"name"`
+		Status *gen.MerchantDeviceStatus `json:"status"`
+	}
+	if err := decodeJSON(r, &raw); err != nil {
+		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Invalid request body")
+		return
+	}
 	var body gen.UpdateMerchantDeviceJSONRequestBody
+	body.Type = raw.Type
+	body.Status = raw.Status
+	if raw.Label != nil {
+		body.Label = *raw.Label
+	} else if raw.Name != nil {
+		body.Label = *raw.Name
+	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Invalid request body")
 		return

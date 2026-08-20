@@ -234,6 +234,86 @@ func (s *Server) ListIntegrations(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
+// CreateIntegration creates a per-merchant integration (POST /integrations).
+// It validates the provider enum against integrationAllowedScopes
+// (pos/erp/accounting/payroll/crm — delivery_partner is NOT allowed and must
+// surface 422 VALIDATION_FAILED instead of a 500 constraint violation) and
+// inserts the row. Invalid scope surfaces 422 VALIDATION_FAILED.
+func (s *Server) CreateIntegration(w http.ResponseWriter, r *http.Request) {
+	merchantID, ok := s.integrationsMerchantID(w, r)
+	if !ok {
+		return
+	}
+	var body struct {
+		Provider string   `json:"provider"`
+		Name     *string  `json:"name"`
+		Scope    []string `json:"scope"`
+		Label    *string  `json:"label"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Invalid request body")
+		return
+	}
+	provider := strings.TrimSpace(body.Provider)
+	if _, ok := integrationAllowedScopes[provider]; !ok {
+		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "provider must be one of pos, erp, accounting, payroll, crm")
+		return
+	}
+	if body.Scope != nil {
+		if err := validateIntegrationScope(provider, body.Scope); err != nil {
+			writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", err.Error())
+			return
+		}
+	}
+	var scopeJSON []byte
+	if body.Scope != nil {
+		b, err := json.Marshal(body.Scope)
+		if err != nil {
+			s.logger.Error("integration scope marshal failed", "merchant", merchantID, "error", err)
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+			return
+		}
+		scopeJSON = b
+	}
+	displayName := body.Name
+	if displayName == nil {
+		displayName = body.Label
+	}
+	var (
+		id     uuid.UUID
+		status string
+	)
+	var scopeArg any
+	if scopeJSON != nil {
+		scopeArg = string(scopeJSON)
+	}
+	err := s.db.Pool().QueryRow(r.Context(),
+		`INSERT INTO integrations (merchant_id, provider, name, scope, status)
+		 VALUES ($1, $2, $3, $4::jsonb, 'connected')
+		 RETURNING id, status`,
+		merchantID, provider, displayName, scopeArg).Scan(&id, &status)
+	if err != nil {
+		if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "unique") {
+			writeError(w, http.StatusConflict, "INTEGRATION_ALREADY_CONNECTED", "Integration for this provider already exists")
+			return
+		}
+		s.logger.Error("create integration failed", "merchant", merchantID, "provider", provider, "error", err)
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+		return
+	}
+	var scopes *[]string
+	if body.Scope != nil {
+		scopes = &body.Scope
+	}
+	writeJSON(w, http.StatusCreated, gen.IntegrationInfo{
+		Id:       newUUID(id.String()),
+		Provider: gen.IntegrationInfoProvider(provider),
+		Status:   gen.IntegrationStatus(status),
+		Label:    displayName,
+		Scopes:   scopes,
+	})
+}
+
 // DisconnectIntegration flips a connected integration to disconnected (POST
 // /integrations/{integrationId}/disconnect, contract response 204). An
 // unknown id surfaces INTEGRATION_NOT_FOUND; disconnecting an already

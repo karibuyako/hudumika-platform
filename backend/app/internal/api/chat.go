@@ -800,9 +800,11 @@ func (s *Server) ArchiveConversation(w http.ResponseWriter, r *http.Request, con
 // BlockConversation moves a conversation to blocked; either participant may
 // block, and a blocked conversation refuses new messages with 409. The
 // reason body is validated but not persisted — the schema reserves it for
-// future moderation surfaces.
+// future moderation surfaces. Staff (admin/finance/ops/compliance) may block
+// any conversation (admin bypass of participant check) via the
+// POST /admin/conversations/{id}/block alias.
 func (s *Server) BlockConversation(w http.ResponseWriter, r *http.Request, conversationId openapi_types.UUID) {
-	userID, _, err := s.chatCaller(r)
+	userID, role, err := s.chatCaller(r)
 	if err != nil {
 		s.writeChatCallerError(w, err)
 		return
@@ -817,21 +819,42 @@ func (s *Server) BlockConversation(w http.ResponseWriter, r *http.Request, conve
 		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Invalid request body")
 		return
 	}
+	if strings.TrimSpace(body.Reason) == "" {
+		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "reason is required")
+		return
+	}
+	if len(body.Reason) > 500 {
+		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "reason must be at most 500 characters")
+		return
+	}
 	conv, err := s.loadConversation(r.Context(), id)
 	if err != nil {
 		s.logger.Error("load conversation failed", "conversation", id, "error", err)
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
-	if conv == nil || !conv.isParticipant(userID) {
+	if conv == nil {
 		writeError(w, http.StatusNotFound, "CONVERSATION_NOT_FOUND", "Conversation not found")
 		return
 	}
-	if _, err := s.db.Pool().Exec(r.Context(),
-		`UPDATE conversations SET status = 'blocked', updated_at = now()
-		 WHERE id = $1 AND (customer_user_id = $2 OR merchant_id = $2)`,
-		id, userID); err != nil {
-		s.logger.Error("block conversation failed", "conversation", id, "error", err)
+	isStaff := staffRole(role)
+	if !isStaff && !conv.isParticipant(userID) {
+		writeError(w, http.StatusNotFound, "CONVERSATION_NOT_FOUND", "Conversation not found")
+		return
+	}
+	var execErr error
+	if isStaff {
+		_, execErr = s.db.Pool().Exec(r.Context(),
+			`UPDATE conversations SET status = 'blocked', updated_at = now() WHERE id = $1`,
+			id)
+	} else {
+		_, execErr = s.db.Pool().Exec(r.Context(),
+			`UPDATE conversations SET status = 'blocked', updated_at = now()
+			 WHERE id = $1 AND (customer_user_id = $2 OR merchant_id = $2)`,
+			id, userID)
+	}
+	if execErr != nil {
+		s.logger.Error("block conversation failed", "conversation", id, "error", execErr)
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}

@@ -265,9 +265,10 @@ func (s *Server) CreateBulkOperation(w http.ResponseWriter, r *http.Request) {
 	}
 	if !validBulkKind(kind) {
 		writeError(w, http.StatusUnprocessableEntity, "BULK_OPERATION_INVALID",
-			"kind must be one of inventory, price_change, promotion, closure")
+			"kind must be one of inventory, price_change, promotion, closure, availability, catalogue_sync, price_update, promotion_apply")
 		return
 	}
+	storageKind := normalizeBulkKind(kind)
 	payload := map[string]any{}
 	if len(raw.Payload) > 0 {
 		trimmed := bytes.TrimSpace(raw.Payload)
@@ -301,20 +302,20 @@ func (s *Server) CreateBulkOperation(w http.ResponseWriter, r *http.Request) {
 		`INSERT INTO bulk_operations (owner_user_id, kind, status, payload, requested_by)
 		 VALUES ($1, $2, 'pending', $3, $4)
 		 RETURNING id, created_at`,
-		ownerID, kind, payloadBytes, ownerID).Scan(&opID, &createdAt)
+		ownerID, storageKind, payloadBytes, ownerID).Scan(&opID, &createdAt)
 	if err != nil {
 		s.logger.Error("bulk operation insert failed", "owner", ownerID, "error", err)
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
-	requiresApproval := kind == "closure"
+	requiresApproval := storageKind == "closure"
 	ids := make([]openapi_types.UUID, 0, len(storeIDs))
 	for _, id := range storeIDs {
 		ids = append(ids, newUUID(id))
 	}
 	writeJSON(w, http.StatusAccepted, gen.BulkOperation{
 		Id:               newUUID(opID.String()),
-		Type:             gen.BulkOperationType(kind),
+		Type:             gen.BulkOperationType(storageKind),
 		Status:           bulkStatusToContract("pending"),
 		StoreIds:         ids,
 		Payload:          &payload,
@@ -491,15 +492,35 @@ func toBulkOperation(row bulkOperationRow) gen.BulkOperation {
 	}
 }
 
-// validBulkKind reports whether kind is a member of the storage enum (the
-// migration CHECK constraint is authoritative for this milestone; the
-// generated BulkOperationType enum differs and is not used here).
+// validBulkKind reports whether kind is a member of the storage enum or the
+// contract BulkOperationType enum. The migration CHECK constraint stores
+// inventory/price_change/promotion/closure (00022_chain.sql) while the
+// contract declares availability/catalogue_sync/price_update/promotion_apply;
+// both sets are accepted and contract values are normalized to their storage
+// counterpart before the INSERT.
 func validBulkKind(kind string) bool {
 	switch kind {
-	case "inventory", "price_change", "promotion", "closure":
+	case "inventory", "price_change", "promotion", "closure",
+		"availability", "catalogue_sync", "price_update", "promotion_apply":
 		return true
 	default:
 		return false
+	}
+}
+
+// normalizeBulkKind maps the contract BulkOperationType values onto the
+// storage enum so the CHECK constraint is satisfied. Storage values pass
+// through unchanged.
+func normalizeBulkKind(kind string) string {
+	switch kind {
+	case "price_update":
+		return "price_change"
+	case "promotion_apply":
+		return "promotion"
+	case "catalogue_sync", "availability":
+		return "inventory"
+	default:
+		return kind
 	}
 }
 

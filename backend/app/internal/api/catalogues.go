@@ -310,6 +310,54 @@ func upsertCatalogueItem(ctx context.Context, tx pgx.Tx, merchantID uuid.UUID, i
 	return id, nil
 }
 
+// catalogueActorID returns the actor user id for catalogue_item_logs.
+// Ledger invariant: the log is append-only and records who made the change.
+func (s *Server) catalogueActorID(r *http.Request) *uuid.UUID {
+	claims, ok := ClaimsFromContext(r.Context())
+	if !ok {
+		return nil
+	}
+	user, err := auth.NewRepo(s.db.Pool()).GetUserByPhone(r.Context(), claims.Subject)
+	if err != nil || user == nil {
+		return nil
+	}
+	id := user.ID
+	return &id
+}
+
+// appendCatalogueItemLog inserts one catalogue_item_logs row best-effort.
+// The ledger invariant: logs are append-only and never updated or deleted.
+func (s *Server) appendCatalogueItemLog(ctx context.Context, itemID uuid.UUID, action string, actor *uuid.UUID, detail any) {
+	var payload []byte
+	if detail != nil {
+		var err error
+		if payload, err = json.Marshal(detail); err != nil {
+			s.logger.Warn("catalogue item log marshal failed", "item", itemID, "error", err)
+			return
+		}
+	}
+	if _, err := s.db.Pool().Exec(ctx,
+		`INSERT INTO catalogue_item_logs (catalogue_item_id, action, actor_uuid, detail) VALUES ($1, $2, $3, $4)`,
+		itemID, action, actor, payload); err != nil {
+		s.logger.Warn("catalogue item log write failed", "item", itemID, "action", action, "error", err)
+	}
+}
+
+// appendCatalogueItemLogTx is the transactional variant used inside ReplaceMyCatalogue.
+func appendCatalogueItemLogTx(ctx context.Context, tx pgx.Tx, itemID uuid.UUID, action string, actor *uuid.UUID, detail any) error {
+	var payload []byte
+	if detail != nil {
+		var err error
+		if payload, err = json.Marshal(detail); err != nil {
+			return err
+		}
+	}
+	_, err := tx.Exec(ctx,
+		`INSERT INTO catalogue_item_logs (catalogue_item_id, action, actor_uuid, detail) VALUES ($1, $2, $3, $4)`,
+		itemID, action, actor, payload)
+	return err
+}
+
 // writeCatalogueItemMiss distinguishes the ITEM_NOT_FOUND and
 // CATALOGUE_MERCHANT_MISMATCH envelopes after an owned update/delete missed.
 // A row owned by another merchant is the mismatch; an unknown or already
@@ -386,6 +434,7 @@ func (s *Server) ReplaceMyCatalogue(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
+	actor := s.catalogueActorID(r)
 	for _, item := range body.Items {
 		categoryID, err := resolveCategoryID(ctx, tx, merchantID, item.Category, true)
 		if err != nil {
@@ -399,10 +448,14 @@ func (s *Server) ReplaceMyCatalogue(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 			return
 		}
-		if _, err := upsertCatalogueItem(ctx, tx, merchantID, item, categoryID, options); err != nil {
+		id, err := upsertCatalogueItem(ctx, tx, merchantID, item, categoryID, options)
+		if err != nil {
 			s.logger.Error("replace catalogue item failed", "merchant", merchantID, "error", err)
 			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 			return
+		}
+		if err := appendCatalogueItemLogTx(ctx, tx, id, "updated", actor, map[string]any{"after": item}); err != nil {
+			s.logger.Warn("replace catalogue item log failed", "item", id, "error", err)
 		}
 	}
 	catalogue, err := s.loadCatalogue(ctx, tx, merchantID, false)
@@ -499,6 +552,8 @@ func (s *Server) CreateCatalogueItem(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
+	actor := s.catalogueActorID(r)
+	s.appendCatalogueItemLog(ctx, id, "created", actor, map[string]any{"after": item})
 	writeJSON(w, http.StatusCreated, item)
 }
 
@@ -580,6 +635,16 @@ func (s *Server) UpdateCatalogueItem(w http.ResponseWriter, r *http.Request, ite
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
+	actor := s.catalogueActorID(r)
+	action := "updated"
+	onlyPrice := body.PriceTZS != nil && body.Available == nil && body.Name == nil && body.Description == nil && body.VideoUrl == nil && body.Options == nil
+	onlyAvail := body.Available != nil && body.PriceTZS == nil && body.Name == nil && body.Description == nil && body.VideoUrl == nil && body.Options == nil
+	if onlyPrice {
+		action = "price_changed"
+	} else if onlyAvail {
+		action = "availability_changed"
+	}
+	s.appendCatalogueItemLog(r.Context(), uuid.UUID(itemId), action, actor, map[string]any{"after": item})
 	writeJSON(w, http.StatusOK, item)
 }
 
@@ -605,5 +670,7 @@ func (s *Server) DeleteCatalogueItem(w http.ResponseWriter, r *http.Request, ite
 		s.writeCatalogueItemMiss(w, r, itemId, merchantID)
 		return
 	}
+	actor := s.catalogueActorID(r)
+	s.appendCatalogueItemLog(r.Context(), uuid.UUID(itemId), "deleted", actor, map[string]any{"after": map[string]any{"deleted": true}})
 	w.WriteHeader(http.StatusNoContent)
 }
