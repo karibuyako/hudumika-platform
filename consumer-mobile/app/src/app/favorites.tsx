@@ -169,23 +169,25 @@ export default function FavoritesScreen() {
   };
 
   const renderMerchant = ({ item }: { item: MerchantPublic }) => (
-    <Card style={styles.card} onPress={() => router.push(`/merchant/${item.id}`)}>
-      <Row gap={Spacing.md}>
-        <View style={styles.icon}>
-          <Icon name="storefront" size={18} color={Colors.textSecondary} />
-        </View>
-        <View style={{ flex: 1, paddingRight: 56 }}>
-          <Text style={styles.name} numberOfLines={1}>{item.businessName}</Text>
-          <Row gap={Spacing.sm} style={{ marginTop: 4 }}>
-            <Rating rating={item.rating} reviewCount={item.reviewCount} />
-            <Pill label={item.isOpen ? t('merchant.open') : t('merchant.closed')} tone={item.isOpen ? 'success' : 'danger'} />
-          </Row>
-          <Row gap={Spacing.sm} style={{ marginTop: 4 }}>
-            <Text style={styles.meta}>{item.city}</Text>
-            {item.deliveryMinutes ? <Text style={styles.meta}>{t('order.estimated', { m: item.deliveryMinutes })}</Text> : null}
-          </Row>
-        </View>
-      </Row>
+    <View style={[styles.card, { position: 'relative' }]}>
+      <Card onPress={() => router.push(`/merchant/${item.id}`)}>
+        <Row gap={Spacing.md}>
+          <View style={styles.icon}>
+            <Icon name="storefront" size={18} color={Colors.textSecondary} />
+          </View>
+          <View style={{ flex: 1, paddingRight: 56 }}>
+            <Text style={styles.name} numberOfLines={1}>{item.businessName}</Text>
+            <Row gap={Spacing.sm} style={{ marginTop: 4 }}>
+              <Rating rating={item.rating} reviewCount={item.reviewCount} />
+              <Pill label={item.isOpen ? t('merchant.open') : t('merchant.closed')} tone={item.isOpen ? 'success' : 'danger'} />
+            </Row>
+            <Row gap={Spacing.sm} style={{ marginTop: 4 }}>
+              <Text style={styles.meta}>{item.city}</Text>
+              {item.deliveryMinutes ? <Text style={styles.meta}>{t('order.estimated', { m: item.deliveryMinutes })}</Text> : null}
+            </Row>
+          </View>
+        </Row>
+      </Card>
       <Pressable
         onPress={() => setPickSheet({ kind: 'list-for-merchant', merchant: item })}
         hitSlop={10}
@@ -202,32 +204,34 @@ export default function FavoritesScreen() {
         style={styles.heartOverlay}>
         <Icon name="heart" size={20} color={Colors.danger} />
       </Pressable>
-    </Card>
+    </View>
   );
 
   const renderSaved = ({ item }: { item: string }) => (
-    <Card style={styles.card} onPress={() => router.push({ pathname: '/search', params: { q: item } })}>
-      <Row gap={Spacing.md}>
-        <View style={styles.icon}>
-          <Icon name="search" size={18} color={Colors.textSecondary} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.name} numberOfLines={1}>{item}</Text>
-        </View>
-        <Pressable
-          onPress={() => removeSavedSearch(item)}
-          hitSlop={10}
-          accessibilityRole="button"
-          accessibilityLabel={t('search.savedRemove', { query: item })}
-          style={styles.deleteButton}>
-          <Icon name="trash-outline" size={18} color={Colors.textTertiary} />
-        </Pressable>
-      </Row>
-    </Card>
+    <View style={[styles.card, { position: 'relative' }]}>
+      <Card onPress={() => router.push({ pathname: '/search', params: { q: item } })}>
+        <Row gap={Spacing.md}>
+          <View style={styles.icon}>
+            <Icon name="search" size={18} color={Colors.textSecondary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.name} numberOfLines={1}>{item}</Text>
+          </View>
+        </Row>
+      </Card>
+      <Pressable
+        onPress={() => removeSavedSearch(item)}
+        hitSlop={10}
+        accessibilityRole="button"
+        accessibilityLabel={t('search.savedRemove', { query: item })}
+        style={[styles.deleteButton, { position: 'absolute', right: Spacing.md, top: '50%', marginTop: -9 }]}>
+        <Icon name="trash-outline" size={18} color={Colors.textTertiary} />
+      </Pressable>
+    </View>
   );
 
-  const selectedList = lists?.find((l) => l.id === selectedListId) ?? null;
-  const listMerchants = selectedList && favorites
+  const selectedList = Array.isArray(lists) ? (lists.find((l) => l.id === selectedListId) ?? null) : null;
+  const listMerchants = selectedList && Array.isArray(favorites)
     ? selectedList.merchantIds
         .map((id) => favorites.find((m) => m.id === id))
         .filter((m): m is MerchantPublic => Boolean(m))
@@ -326,7 +330,7 @@ export default function FavoritesScreen() {
     if (selectedList) return renderListDetail();
     return (
       <FlatList
-        data={lists}
+        data={Array.isArray(lists) ? lists : []}
         keyExtractor={(l) => l.id}
         onRefresh={() => {
           load();
@@ -459,8 +463,8 @@ export default function FavoritesScreen() {
         ) : (
           (() => {
             const list = pickSheet?.kind === 'list-for-merchant' ? pickSheet.merchant : null;
-            const available = (lists ?? []).filter((l) => list && !l.merchantIds.includes(list.id));
-            if ((lists ?? []).length === 0) {
+            const available = (Array.isArray(lists) ? lists : []).filter((l) => list && !l.merchantIds.includes(list.id));
+            if ((Array.isArray(lists) ? lists : []).length === 0) {
               return (
                 <>
                   <Text style={styles.pickHint}>{t('favorites.listsEmpty')}</Text>

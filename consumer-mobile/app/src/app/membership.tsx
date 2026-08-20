@@ -82,6 +82,7 @@ function typeLabel(type: string): string {
 }
 
 function prettyLevel(level: string): string {
+  if (!level || typeof level !== 'string') return '';
   return level.charAt(0).toUpperCase() + level.slice(1);
 }
 
@@ -226,13 +227,13 @@ export default function MembershipScreen() {
       <Text style={styles.title}>{t('membership.title')}</Text>
       <Card style={[styles.card, { backgroundColor: Colors.primaryDeep }]}>
         <Row style={{ justifyContent: 'space-between' }}>
-          <Text style={{ color: Colors.gold, fontSize: FontSize.xs, fontFamily: Fonts.sansSemibold }}>{t('membership.level', { level: prettyLevel(membership.level) })}</Text>
+          <Text style={{ color: Colors.gold, fontSize: FontSize.xs, fontFamily: Fonts.sansSemibold }}>{t('membership.level', { level: prettyLevel(membership?.level ?? '') })}</Text>
           <Text style={{ color: Colors.white, fontSize: FontSize.xs, fontFamily: Fonts.sans }}>
-            {membership.memberSince ? t('membership.since', { t: dateISO(membership.memberSince) }) : ''}
+            {membership?.memberSince ? t('membership.since', { t: dateISO(membership.memberSince) }) : ''}
           </Text>
         </Row>
         <Text style={{ color: Colors.white, fontSize: 30, fontFamily: Fonts.displayBold, marginTop: Spacing.md, fontVariant: NumberStyle.fontVariant }}>
-          {t('membership.points', { n: membership.points.toLocaleString('en-US') })}
+          {t('membership.points', { n: (membership?.points ?? 0).toLocaleString('en-US') })}
         </Text>
       </Card>
 
@@ -302,8 +303,8 @@ export default function MembershipScreen() {
           <Text style={styles.redeemWalletLine}>{t('common.loading')}</Text>
         )}
         {REDEMPTION_CATALOG.map((reward) => {
-          const affordable = membership.points >= reward.points;
-          const shortfall = reward.points - membership.points;
+          const affordable = (membership?.points ?? 0) >= reward.points;
+          const shortfall = reward.points - (membership?.points ?? 0);
           return (
             <Row key={reward.reward} style={[styles.rewardRow, !affordable && styles.rewardRowDisabled]}>
               <View style={{ flex: 1 }}>

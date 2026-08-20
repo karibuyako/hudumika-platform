@@ -78,7 +78,9 @@ export default function GroupBuysScreen() {
                     <Text style={styles.oldPrice}>{formatTZS(item.originalPriceTZS)}</Text>
                     <MoneyText amountTZS={item.priceTZS} size={FontSize.lg} bold />
                   </View>
-                  <Btn label={t('groupBuy.buy')} size="sm" disabled={ended} onPress={() => router.push(`/group-buys/${item.id}`)} />
+                  <View style={[styles.buyPill, ended && { opacity: 0.5 }]}>
+                    <Text style={styles.buyText}>{t('groupBuy.buy')}</Text>
+                  </View>
                 </Row>
               </Card>
             );
@@ -97,4 +99,6 @@ const styles = StyleSheet.create({
   discountText: { color: Colors.white, fontSize: FontSize.xs, fontFamily: Fonts.sansExtraBold },
   meta: { fontSize: FontSize.xs, color: Colors.textTertiary, fontFamily: Fonts.sans, marginTop: 2 },
   oldPrice: { fontSize: FontSize.xs, color: Colors.textFaint, fontFamily: Fonts.sansMedium, textDecorationLine: 'line-through' },
+  buyPill: { backgroundColor: Colors.primary, borderRadius: Radius.pill, paddingHorizontal: 16, paddingVertical: 8, minWidth: 48, alignItems: 'center', justifyContent: 'center' },
+  buyText: { color: Colors.white, fontSize: FontSize.sm, fontFamily: Fonts.sansBold },
 });

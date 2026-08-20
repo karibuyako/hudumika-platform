@@ -252,31 +252,33 @@ export default function HomeScreen() {
   const renderMerchant = ({ item }: { item: MerchantPublic }) => {
     const isFav = favoriteIds.has(item.id);
     return (
-      <Card style={styles.merchantCard} onPress={() => router.push(`/merchant/${item.id}`)} accessibilityLabel={t('home.merchantLabel', { name: item.businessName })}>
-        <Row gap={Spacing.md}>
-          <View style={styles.merchantLogo}>
-            <Icon name="storefront" size={20} color={Colors.textSecondary} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Row style={{ justifyContent: 'space-between' }}>
-              <Text style={styles.merchantName} numberOfLines={1}>{item.businessName}</Text>
-              <Row gap={Spacing.sm}>
-                {campaigns[item.id] ? (
-                  <View style={styles.campaignPill} accessibilityLabel={t('home.campaignA11y', { title: campaigns[item.id] })}>
-                    <Text style={styles.campaignPillText} numberOfLines={1}>{campaigns[item.id]}</Text>
-                  </View>
-                ) : null}
-                <Pill label={item.isOpen ? t('merchant.open') : t('merchant.closed')} tone={item.isOpen ? 'success' : 'danger'} />
+      <View style={[styles.merchantCard, { position: 'relative' }]}>
+        <Card onPress={() => router.push(`/merchant/${item.id}`)} accessibilityLabel={t('home.merchantLabel', { name: item.businessName })}>
+          <Row gap={Spacing.md}>
+            <View style={styles.merchantLogo}>
+              <Icon name="storefront" size={20} color={Colors.textSecondary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Row style={{ justifyContent: 'space-between' }}>
+                <Text style={styles.merchantName} numberOfLines={1}>{item.businessName}</Text>
+                <Row gap={Spacing.sm}>
+                  {campaigns[item.id] ? (
+                    <View style={styles.campaignPill} accessibilityLabel={t('home.campaignA11y', { title: campaigns[item.id] })}>
+                      <Text style={styles.campaignPillText} numberOfLines={1}>{campaigns[item.id]}</Text>
+                    </View>
+                  ) : null}
+                  <Pill label={item.isOpen ? t('merchant.open') : t('merchant.closed')} tone={item.isOpen ? 'success' : 'danger'} />
+                </Row>
               </Row>
-            </Row>
-            <Row gap={Spacing.sm} style={{ marginTop: 4 }}>
-              <Rating rating={item.rating} reviewCount={item.reviewCount} />
-              {item.deliveryMinutes ? (
-                <Text style={styles.merchantMeta}>{t('order.estimated', { m: item.deliveryMinutes })}</Text>
-              ) : null}
-            </Row>
-          </View>
-        </Row>
+              <Row gap={Spacing.sm} style={{ marginTop: 4 }}>
+                <Rating rating={item.rating} reviewCount={item.reviewCount} />
+                {item.deliveryMinutes ? (
+                  <Text style={styles.merchantMeta}>{t('order.estimated', { m: item.deliveryMinutes })}</Text>
+                ) : null}
+              </Row>
+            </View>
+          </Row>
+        </Card>
         <Pressable
           onPress={() => toggleFavorite(item)}
           hitSlop={10}
@@ -285,7 +287,7 @@ export default function HomeScreen() {
           style={styles.heartOverlay}>
           <Icon name={isFav ? 'heart' : 'heart-outline'} size={20} color={isFav ? Colors.danger : Colors.textTertiary} />
         </Pressable>
-      </Card>
+      </View>
     );
   };
 
