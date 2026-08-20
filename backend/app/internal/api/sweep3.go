@@ -102,7 +102,11 @@ func replyAuthorRole(role string) gen.ReviewReplyAuthorRole {
 // DeleteDineInTable deactivates a dine-in table of the caller's store
 // (DELETE /dine-in/tables/{tableId}). Tables are soft-deleted (active =
 // false) so open dine-in orders keep their reference; deletion is scoped to
-// the caller's merchant.
+// the caller's merchant. A table that currently hosts an open order
+// (current_dine_in_order_id IS NOT NULL or any dine_in_orders row in
+// open/awaiting_payment/paid) is guarded with 409 DINE_IN_TABLE_IN_USE.
+// An already-deleted table is idempotent 204; a missing/foreign table is
+// 404 DINE_IN_TABLE_NOT_FOUND so existence never leaks beyond ownership.
 func (s *Server) DeleteDineInTable(w http.ResponseWriter, r *http.Request, tableId openapi_types.UUID) {
 	merchantID, err := s.merchantIDForSession(r)
 	if err != nil {
@@ -114,9 +118,46 @@ func (s *Server) DeleteDineInTable(w http.ResponseWriter, r *http.Request, table
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
+	var (
+		active   bool
+		curOrder *uuid.UUID
+	)
+	err = s.db.Pool().QueryRow(r.Context(),
+		`SELECT active, current_dine_in_order_id FROM dine_in_tables WHERE id = $1 AND merchant_id = $2`,
+		uuid.UUID(tableId), merchantID).Scan(&active, &curOrder)
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeError(w, http.StatusNotFound, "DINE_IN_TABLE_NOT_FOUND", "Dine-in table not found")
+		return
+	}
+	if err != nil {
+		s.logger.Error("delete dine-in table lookup failed", "error", err)
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+		return
+	}
+	if !active {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	if curOrder != nil {
+		writeError(w, http.StatusConflict, "DINE_IN_TABLE_IN_USE", "Table already has an open order")
+		return
+	}
+	var openID uuid.UUID
+	err = s.db.Pool().QueryRow(r.Context(),
+		`SELECT id FROM dine_in_orders WHERE table_id = $1 AND status IN ('open', 'awaiting_payment', 'paid') LIMIT 1`,
+		uuid.UUID(tableId)).Scan(&openID)
+	if err == nil {
+		writeError(w, http.StatusConflict, "DINE_IN_TABLE_IN_USE", "Table already has an open order")
+		return
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		s.logger.Error("delete dine-in table open-order check failed", "error", err)
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+		return
+	}
 	if _, err := s.db.Pool().Exec(r.Context(),
 		`UPDATE dine_in_tables SET active = false, updated_at = now()
-		 WHERE id = $1 AND merchant_id = $2`,
+		 WHERE id = $1 AND merchant_id = $2 AND active = true`,
 		uuid.UUID(tableId), merchantID); err != nil {
 		s.logger.Error("delete dine-in table failed", "error", err)
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")

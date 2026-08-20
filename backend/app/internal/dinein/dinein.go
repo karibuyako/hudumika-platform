@@ -159,13 +159,17 @@ const (
 )
 
 // ListTables returns the tables of one merchant, ordered by label; a zero
-// merchant id (staff sessions) lists every table.
+// merchant id (staff sessions) lists every table. Soft-deleted tables
+// (active=false) are hidden — they are kept only so open dine-in orders
+// retain their foreign key (FIX: dine-in soft-delete leak).
 func (s *Store) ListTables(ctx context.Context, merchantID uuid.UUID) ([]TableRow, error) {
 	query := `SELECT ` + tableColumns + ` FROM dine_in_tables`
 	args := make([]any, 0, 1)
 	if merchantID != uuid.Nil {
 		args = append(args, merchantID)
-		query += ` WHERE merchant_id = $1`
+		query += ` WHERE merchant_id = $1 AND active = true`
+	} else {
+		query += ` WHERE active = true`
 	}
 	query += ` ORDER BY label`
 

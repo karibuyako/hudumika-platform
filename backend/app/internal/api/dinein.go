@@ -66,6 +66,43 @@ func (s *Server) ListDineInTables(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
+// GetDineInTable returns a single dine-in table by id (GET
+// /dine-in/tables/{tableId}) — manual extension, not in the generated
+// contract (contract only has PATCH/DELETE/GET /qr). Merchant-scoped and
+// hides soft-deleted rows (active=false) as 404 so List and Get stay
+// consistent.
+func (s *Server) GetDineInTable(w http.ResponseWriter, r *http.Request, tableId openapi_types.UUID) {
+	claims, ok := ClaimsFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid bearer token")
+		return
+	}
+	if claims.Role != RoleMerchant && !isStaffRole(claims.Role) {
+		writeError(w, http.StatusForbidden, "FORBIDDEN", "Only merchants or staff can view dine-in tables")
+		return
+	}
+	merchantID, err := s.merchantIDForSession(r)
+	if err != nil {
+		s.writeMerchantError(w, err)
+		return
+	}
+	table, err := dinein.NewStore(s.db.Pool()).GetTable(r.Context(), tableId)
+	if errors.Is(err, dinein.ErrTableNotFound) {
+		writeError(w, http.StatusNotFound, "DINE_IN_TABLE_NOT_FOUND", "Dine-in table not found")
+		return
+	}
+	if err != nil {
+		s.logger.Error("get dine-in table failed", "error", err)
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+		return
+	}
+	if !table.Active || (merchantID != uuid.Nil && table.MerchantID != merchantID) {
+		writeError(w, http.StatusNotFound, "DINE_IN_TABLE_NOT_FOUND", "Dine-in table not found")
+		return
+	}
+	writeJSON(w, http.StatusOK, toGenDineInTable(*table))
+}
+
 // CreateDineInTable creates a dine-in table (POST /dine-in/tables, 201).
 // Only merchant sessions may create tables, and the table is bound to the
 // merchant id of the session.
@@ -191,6 +228,10 @@ func (s *Server) GetDineInTableQr(w http.ResponseWriter, r *http.Request, tableI
 	if err != nil {
 		s.logger.Error("get table qr failed", "error", err)
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+		return
+	}
+	if !table.Active {
+		writeError(w, http.StatusNotFound, "DINE_IN_TABLE_NOT_FOUND", "Dine-in table not found")
 		return
 	}
 	writeJSON(w, http.StatusOK, struct {
@@ -523,10 +564,6 @@ func (s *Server) CreateReservation(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "partySize must be between 1 and 50")
 		return
 	}
-	if body.TableId == uuid.Nil {
-		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "tableId is required")
-		return
-	}
 	if body.MerchantId == uuid.Nil {
 		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "merchantId is required")
 		return
@@ -534,6 +571,16 @@ func (s *Server) CreateReservation(w http.ResponseWriter, r *http.Request) {
 	if _, err := resolveMerchantID(r.Context(), s.db.Pool(), body.MerchantId); err != nil {
 		writeError(w, http.StatusNotFound, "MERCHANT_NOT_FOUND", "Merchant not found")
 		return
+	}
+	// tableId is optional per the contract (the app's reservations.ts never
+	// sends one): without it the merchant's first table is auto-picked.
+	if body.TableId == uuid.Nil {
+		if err := s.db.Pool().QueryRow(r.Context(),
+			`SELECT id FROM dine_in_tables WHERE merchant_id = $1 ORDER BY label, id LIMIT 1`,
+			body.MerchantId).Scan(&body.TableId); err != nil {
+			writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "merchant has no bookable table")
+			return
+		}
 	}
 	row, err := dinein.NewStore(s.db.Pool()).CreateReservation(r.Context(), dinein.CreateReservationInput{
 		CustomerUserID: userID,
