@@ -16,10 +16,11 @@
       "env": {
         "EXPO_PUBLIC_ENV": "development",
         "EXPO_PUBLIC_API_URL": "https://staging-api.hudumika.co.tz/api/v1",
-        "EXPO_PUBLIC_MOCK_AUTH": "true",
-        "EXPO_PUBLIC_MOCK_HOME": "true",
-        "EXPO_PUBLIC_MOCK_ORDERS": "true",
-        "EXPO_PUBLIC_MOCK_WALLET": "true"
+        "EXPO_PUBLIC_MOCK_AUTH": "false",
+        "EXPO_PUBLIC_MOCK_HOME": "false",
+        "EXPO_PUBLIC_MOCK_ORDERS": "false",
+        "EXPO_PUBLIC_MOCK_WALLET": "false",
+        "EXPO_PUBLIC_MOCK_ASSISTANT": "false"
       }
     },
     "staging": {
@@ -34,7 +35,8 @@
         "EXPO_PUBLIC_MOCK_AUTH": "false",
         "EXPO_PUBLIC_MOCK_HOME": "false",
         "EXPO_PUBLIC_MOCK_ORDERS": "false",
-        "EXPO_PUBLIC_MOCK_WALLET": "false"
+        "EXPO_PUBLIC_MOCK_WALLET": "false",
+        "EXPO_PUBLIC_MOCK_ASSISTANT": "false"
       }
     },
     "production": {
@@ -48,7 +50,8 @@
         "EXPO_PUBLIC_MOCK_AUTH": "false",
         "EXPO_PUBLIC_MOCK_HOME": "false",
         "EXPO_PUBLIC_MOCK_ORDERS": "false",
-        "EXPO_PUBLIC_MOCK_WALLET": "false"
+        "EXPO_PUBLIC_MOCK_WALLET": "false",
+        "EXPO_PUBLIC_MOCK_ASSISTANT": "false"
       }
     }
   }
