@@ -64,10 +64,14 @@ func (s *Store) Apply(ctx context.Context, userID uuid.UUID, name, cityID, vehic
 // user has no rider row.
 func (s *Store) GetByOwner(ctx context.Context, userID uuid.UUID) (*Rider, error) {
 	var r Rider
+	var cityID *string
 	err := s.pool.QueryRow(ctx,
 		`SELECT id, name, city_id, vehicle, verification, online, rating, review_count
 		 FROM riders WHERE owner_user_id = $1`,
-		userID).Scan(&r.ID, &r.Name, &r.CityID, &r.Vehicle, &r.Verification, &r.Online, &r.Rating, &r.ReviewCount)
+		userID).Scan(&r.ID, &r.Name, &cityID, &r.Vehicle, &r.Verification, &r.Online, &r.Rating, &r.ReviewCount)
+	if cityID != nil {
+		r.CityID = *cityID
+	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -81,10 +85,14 @@ func (s *Store) GetByOwner(ctx context.Context, userID uuid.UUID) (*Rider, error
 // exists. Dispatch uses it to verify a manual-override target.
 func (s *Store) GetRider(ctx context.Context, riderID uuid.UUID) (*Rider, error) {
 	var r Rider
+	var cityID *string
 	err := s.pool.QueryRow(ctx,
 		`SELECT id, name, city_id, vehicle, verification, online, rating, review_count
 		 FROM riders WHERE id = $1`,
-		riderID).Scan(&r.ID, &r.Name, &r.CityID, &r.Vehicle, &r.Verification, &r.Online, &r.Rating, &r.ReviewCount)
+		riderID).Scan(&r.ID, &r.Name, &cityID, &r.Vehicle, &r.Verification, &r.Online, &r.Rating, &r.ReviewCount)
+	if cityID != nil {
+		r.CityID = *cityID
+	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}

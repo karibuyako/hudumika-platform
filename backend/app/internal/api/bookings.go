@@ -546,8 +546,13 @@ func (s *Server) releaseBookingEarning(r *http.Request, row bookings.BookingRow)
 		s.logger.Warn("booking earning skipped: no database configured", "bookingId", row.ID)
 		return
 	}
+	ownerID := row.ProviderID
+	var resolved uuid.UUID
+	if err := s.db.Pool().QueryRow(r.Context(), `SELECT owner_user_id FROM providers WHERE id = $1`, row.ProviderID).Scan(&resolved); err == nil {
+		ownerID = resolved
+	}
 	applied, err := payouts.NewStore(s.db.Pool()).AppendEntry(r.Context(), payouts.LedgerEntryInput{
-		AccountOwnerID: row.ProviderID,
+		AccountOwnerID: ownerID,
 		AccountType:    "provider",
 		Type:           "booking_earning",
 		AmountTZS:      row.TotalTZS,

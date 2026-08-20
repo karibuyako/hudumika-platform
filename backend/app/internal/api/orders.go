@@ -614,13 +614,20 @@ func (s *Server) AdvanceOrder(w http.ResponseWriter, r *http.Request, orderId op
 // appendOrderEarning appends the merchant's order_earning ledger entry for a
 // completed order. Failures are logged, never fatal: the order transition
 // has already committed, and the idempotency_key makes a retry safe.
+// AccountOwnerID is the merchant's owner_user_id (users.id), not the
+// merchants.id — wallets/payouts query by users.id, so ledger must match.
 func (s *Server) appendOrderEarning(r *http.Request, row *orders.OrderRow) {
 	if s.db == nil {
 		s.logger.Warn("order earning skipped: database not configured", "orderId", row.ID)
 		return
 	}
+	ownerID := row.MerchantID
+	var resolved uuid.UUID
+	if err := s.db.Pool().QueryRow(r.Context(), `SELECT owner_user_id FROM merchants WHERE id = $1`, row.MerchantID).Scan(&resolved); err == nil {
+		ownerID = resolved
+	}
 	applied, err := payouts.NewStore(s.db.Pool()).AppendEntry(r.Context(), payouts.LedgerEntryInput{
-		AccountOwnerID: row.MerchantID,
+		AccountOwnerID: ownerID,
 		AccountType:    "merchant",
 		Type:           "order_earning",
 		AmountTZS:      row.TotalTZS,
