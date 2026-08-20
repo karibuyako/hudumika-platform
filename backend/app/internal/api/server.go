@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -75,6 +76,10 @@ func (s *Server) RequestOtp(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Invalid request body")
+		return
+	}
+	if strings.TrimSpace(body.Destination) == "" {
+		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "destination is required")
 		return
 	}
 	switch body.Channel {
@@ -229,6 +234,7 @@ func (s *Server) VerifyOtp(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		RequestId string `json:"requestId"`
 		Code      string `json:"code"`
+		Role      string `json:"role"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Invalid request body")
@@ -268,8 +274,29 @@ func (s *Server) VerifyOtp(w http.ResponseWriter, r *http.Request) {
 	}
 	s.RecordOtpOutcome("unknown", "verified")
 
+	// Role-aware session minting: if client explicitly requests a role, honor
+	// it — validate via requestedRole then check active assignment (roles
+	// table). A missing assignment answers 422 ROLE_NOT_ACTIVE per contract.
+	// Without an explicit role, fall back to the historical "customer" mint.
+	var role string
+	if strings.TrimSpace(body.Role) != "" {
+		trimmed := strings.TrimSpace(body.Role)
+		canonical, ok := requestedRole(trimmed)
+		if !ok {
+			writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "role is invalid")
+			return
+		}
+		if canonical != RoleCustomer && !s.hasActiveRole(r.Context(), userID, result.Destination, canonical) {
+			writeRoleNotActive(w, canonical)
+			return
+		}
+		role = canonical
+	} else {
+		role = RoleCustomer
+	}
+
 	now := time.Now()
-	session, err := s.buildSession(r.Context(), result.Destination, "customer", now)
+	session, err := s.buildSession(r.Context(), result.Destination, role, now)
 	if err != nil {
 		s.logger.Error("session issue failed", "error", err)
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
@@ -283,7 +310,7 @@ func (s *Server) VerifyOtp(w http.ResponseWriter, r *http.Request) {
 	if s.auth != nil {
 		if err := s.auth.PersistSession(r.Context(), auth.SessionRow{
 			UserID:           userID,
-			Role:             "customer",
+			Role:             role,
 			AccessTokenHash:  session.record.AccessTokenHash,
 			RefreshTokenHash: session.record.RefreshTokenHash,
 			ExpiresAt:        session.record.ExpiresAt,
@@ -294,6 +321,38 @@ func (s *Server) VerifyOtp(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, http.StatusOK, session.session)
+}
+
+// hasActiveRole reports whether the verified identity holds the requested
+// active role. Customer is always active (every identity is at least a
+// customer via EnsureRole). All other checks query the roles table for an
+// active row; without a DB or userID the check fails closed.
+func (s *Server) hasActiveRole(ctx context.Context, userID uuid.UUID, phone, role string) bool {
+	if role == RoleCustomer {
+		return true
+	}
+	if s.db == nil || userID == uuid.Nil {
+		return false
+	}
+	var exists bool
+	if err := s.db.Pool().QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM roles WHERE user_id = $1 AND role = $2 AND active)`, userID, role).Scan(&exists); err != nil {
+		s.logger.Warn("role check failed", "error", err)
+		return false
+	}
+	if exists {
+		return true
+	}
+	if role == RoleAdmin {
+		if err := s.db.Pool().QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM roles WHERE user_id = $1 AND role = $2 AND active)`, userID, RoleStaff).Scan(&exists); err == nil && exists {
+			return true
+		}
+	}
+	if role == RoleStaff {
+		if err := s.db.Pool().QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM roles WHERE user_id = $1 AND role = $2 AND active)`, userID, RoleAdmin).Scan(&exists); err == nil && exists {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Server) RefreshToken(w http.ResponseWriter, r *http.Request) {

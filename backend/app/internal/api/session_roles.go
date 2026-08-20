@@ -35,7 +35,7 @@ func requestedRole(role string) (string, bool) {
 	switch role {
 	case "", RoleCustomer:
 		return RoleCustomer, true
-	case RoleMerchant, RoleProvider, RoleRider, RoleAdmin, RoleFinance, RoleOps, RoleCompliance:
+	case RoleMerchant, RoleProvider, RoleRider, RoleStaff, RoleAdmin, RoleFinance, RoleOps, RoleCompliance:
 		return role, true
 	default:
 		return "", false
@@ -47,7 +47,7 @@ func requestedRole(role string) (string, bool) {
 // demands verification for /admin/*.
 func staffRole(role string) bool {
 	switch role {
-	case RoleAdmin, RoleFinance, RoleOps, RoleCompliance:
+	case RoleAdmin, RoleStaff, RoleFinance, RoleOps, RoleCompliance:
 		return true
 	}
 	return false

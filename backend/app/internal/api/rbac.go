@@ -13,6 +13,10 @@ const (
 	RoleProvider   = "provider"
 	RoleRider      = "rider"
 	RoleAdmin      = "admin"
+	// RoleStaff is the generic platform-staff marker stored in the roles
+	// table (migrations/00090_admin_role.sql). It has no dedicated route
+	// policy: a staff login resolves to RoleAdmin (resolveLoginRole).
+	RoleStaff      = "staff"
 	RoleFinance    = "finance"
 	RoleOps        = "ops"
 	RoleCompliance = "compliance"
