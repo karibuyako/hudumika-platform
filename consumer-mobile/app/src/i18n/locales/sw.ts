@@ -7,6 +7,7 @@ const sw: Record<keyof EnDict, string> = {
     'tab.services': 'Huduma',
     'tab.messages': 'Ujumbe',
     'tab.profile': 'Mimi',
+    'tab.nearby': 'Karibu',
     'login.title': 'Hudumika',
     'login.sub': 'Agiza chochote, fuatilia kila kitu',
     'login.phone': 'Namba ya simu',

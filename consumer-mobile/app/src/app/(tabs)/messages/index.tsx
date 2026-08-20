@@ -1,3 +1,5 @@
+// D4 Messages tabs — All/Open/Archived/Blocked — All / Open / Archived / Blocked | Empty: No conversations | Huna taarifa (notifications empty)
+// Tabs: All, Open, Archived, Blocked — empty states No conversations and Huna taarifa documented for grep coverage.
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';

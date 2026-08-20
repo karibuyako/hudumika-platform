@@ -5,6 +5,7 @@ const en = {
     'tab.services': 'Services',
     'tab.messages': 'Messages',
     'tab.profile': 'Me',
+    'tab.nearby': 'Nearby',
     'login.title': 'Hudumika',
     'login.sub': 'Order anything, track everything',
     'login.phone': 'Phone',

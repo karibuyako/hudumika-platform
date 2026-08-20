@@ -41,7 +41,7 @@ function isNotificationShape(value: unknown): value is Notification {
   );
 }
 
-export default function NotificationsScreen() {
+export default function MessagesNotificationsScreen() {
   const router = useRouter();
   const [items, setItems] = useState<Notification[] | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);

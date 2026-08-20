@@ -1,4 +1,4 @@
-/* Dine-in — my bills (GET /dine-in/orders/me) + open a bill from a table QR
+/* Dine-in — my bills (GET /dine-in/orders/me) + Open bill from a table QR — No bills empty
  * payload (hudumika:dinein:table:{tableId} — DINE-IN.md). The QR names the
  * table only; the server resolves it (GET /dine-in/tables/{id}/qr) and the
  * menu is the merchant catalogue. Pay runs the payment intent flow

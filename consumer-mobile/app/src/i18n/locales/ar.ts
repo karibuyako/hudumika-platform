@@ -8,6 +8,7 @@ const en = {
     'tab.services': 'الخدمات',
     'tab.messages': 'الرسائل',
     'tab.profile': 'حسابي',
+    'tab.nearby': 'قريب',
     'login.title': 'هودوميكا',
     'login.sub': 'اطلب أي شيء، وتابع كل شيء',
     'login.phone': 'رقم الهاتف',
