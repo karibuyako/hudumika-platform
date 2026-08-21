@@ -13,7 +13,9 @@
       "bundleIdentifier": "co.tz.hudumika.customer",
       "buildNumber": "1",
       "infoPlist": {
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
       }
     },
     "android": {
@@ -21,7 +23,11 @@
       "predictiveBackGestureEnabled": false,
       "versionCode": 1,
       "googleServicesFile": "./google-services.json",
-      "useNextNotificationsApi": true
+      "useNextNotificationsApi": true,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "static",
@@ -58,7 +64,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "bde50bb7-9aab-45bb-9c1f-5558f3bccc66"
+        "projectId": "34d28d5d-0cb0-4fad-a6b3-ddab4185c088"
       }
     },
     "owner": "hudumika"

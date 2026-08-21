@@ -1,5 +1,4 @@
 {
-  "_comment": "Push creds: APNS p8 + FCM google-services.json provisioned via 'eas credentials' (never committed). See docs/NOTIFICATIONS.md steps 2-4 and docs/DEPLOYMENT.md. Set EXPO_PUBLIC_EAS_PROJECT_ID from the EAS projectId below.",
   "cli": {
     "version": ">= 5.0.0"
   },
@@ -38,8 +37,8 @@
         "EXPO_PUBLIC_MOCK_ORDERS": "false",
         "EXPO_PUBLIC_MOCK_WALLET": "false",
         "EXPO_PUBLIC_MOCK_ASSISTANT": "false",
-        "EXPO_PUBLIC_SENTRY_DSN": "https://bde50bb7e85f9c1e7b9a4b9a9c1f5558f3bccc66@o4500000000000000.ingest.sentry.io/4500000000000001",
-        "EXPO_PUBLIC_EAS_PROJECT_ID": "bde50bb7-9aab-45bb-9c1f-5558f3bccc66"
+        "EXPO_PUBLIC_SENTRY_DSN": "https://34d28d5d0cb04fada6b3ddab4185c088@o4500000000000000.ingest.sentry.io/4500000000000001",
+        "EXPO_PUBLIC_EAS_PROJECT_ID": "34d28d5d-0cb0-4fad-a6b3-ddab4185c088"
       }
     },
     "preview": {
@@ -56,8 +55,8 @@
         "EXPO_PUBLIC_MOCK_ORDERS": "false",
         "EXPO_PUBLIC_MOCK_WALLET": "false",
         "EXPO_PUBLIC_MOCK_ASSISTANT": "false",
-        "EXPO_PUBLIC_SENTRY_DSN": "https://bde50bb7e85f9c1e7b9a4b9a9c1f5558f3bccc66@o4500000000000000.ingest.sentry.io/4500000000000001",
-        "EXPO_PUBLIC_EAS_PROJECT_ID": "bde50bb7-9aab-45bb-9c1f-5558f3bccc66"
+        "EXPO_PUBLIC_SENTRY_DSN": "https://34d28d5d0cb04fada6b3ddab4185c088@o4500000000000000.ingest.sentry.io/4500000000000001",
+        "EXPO_PUBLIC_EAS_PROJECT_ID": "34d28d5d-0cb0-4fad-a6b3-ddab4185c088"
       }
     },
     "production": {
@@ -73,8 +72,8 @@
         "EXPO_PUBLIC_MOCK_ORDERS": "false",
         "EXPO_PUBLIC_MOCK_WALLET": "false",
         "EXPO_PUBLIC_MOCK_ASSISTANT": "false",
-        "EXPO_PUBLIC_SENTRY_DSN": "https://bde50bb7e85f9c1e7b9a4b9a9c1f5558f3bccc66@o4500000000000000.ingest.sentry.io/4500000000000001",
-        "EXPO_PUBLIC_EAS_PROJECT_ID": "bde50bb7-9aab-45bb-9c1f-5558f3bccc66"
+        "EXPO_PUBLIC_SENTRY_DSN": "https://34d28d5d0cb04fada6b3ddab4185c088@o4500000000000000.ingest.sentry.io/4500000000000001",
+        "EXPO_PUBLIC_EAS_PROJECT_ID": "34d28d5d-0cb0-4fad-a6b3-ddab4185c088"
       }
     }
   }
