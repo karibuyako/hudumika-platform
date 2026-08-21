@@ -64,8 +64,21 @@ export default function ProductScreen() {
 
   const addToCart = (cartItem: CartItem) => {
     if (!merchant) return;
-    useCartStore.getState().addItem({ merchantId: merchant.id, merchantName: merchant.businessName }, cartItem);
-    track({ name: 'cart_item_added', merchantId: merchant.id, catalogueItemId: cartItem.catalogueItemId, quantity: cartItem.quantity });
+    // DishConfigurator guarantees required size/crust single-select + multi-addon
+    // price delta (integer TZS) before Add, and matrix validation — the cartItem
+    // arriving here already has integer TZS and validated option keys.
+    const normalized: CartItem = {
+      ...cartItem,
+      unitPriceTZS: Math.round(cartItem.unitPriceTZS),
+      optionsPriceTZS: cartItem.optionsPriceTZS != null ? Math.round(cartItem.optionsPriceTZS) : undefined,
+      quantity: Math.min(99, Math.max(1, Math.round(cartItem.quantity))),
+    };
+    if (!Number.isInteger(normalized.unitPriceTZS) || (normalized.optionsPriceTZS != null && !Number.isInteger(normalized.optionsPriceTZS))) {
+      toast(t('common.error'), 'error');
+      return;
+    }
+    useCartStore.getState().addItem({ merchantId: merchant.id, merchantName: merchant.businessName }, normalized);
+    track({ name: 'cart_item_added', merchantId: merchant.id, catalogueItemId: normalized.catalogueItemId, quantity: normalized.quantity });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     toast(t('product.added'));
   };

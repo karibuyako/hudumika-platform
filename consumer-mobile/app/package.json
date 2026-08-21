@@ -54,6 +54,7 @@
     "test:unit": "NODE_OPTIONS=--experimental-vm-modules jest --ci",
     "test:contract": "node tests/run.mjs consumer-contract.test.ts",
     "test:milestones": "node tests/run.mjs m1-auth.test.ts m2-home.test.ts m3-cart.test.ts m4-payments.test.ts m5-orders.test.ts m6-engagement.test.ts m7-hardening.test.ts",
+    "test:browser": "node e2e-browser/run.mjs",
     "e2e:build": "detox build --configuration android.emu",
     "e2e:test": "detox test --configuration android.emu",
     "typecheck": "tsc --noEmit && tsc -p component-tests/tsconfig.json --noEmit && tsc -p e2e/tsconfig.json --noEmit"

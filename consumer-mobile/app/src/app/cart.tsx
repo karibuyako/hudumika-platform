@@ -35,7 +35,9 @@ export default function CartScreen() {
   // Meituan 拼单 parity (docs/CONTRACT-ADDITIONS.md #11, mock-only until the
   // contract ships a shared-cart resource): start a group order from this
   // cart group — create the shared session, copy the cart lines in as the
-  // local member's items, then open the session screen.
+  // local member's items, then open the session screen. Per-group GroupOrder
+  // lives alongside per-group Checkout — each merchant group is an independent
+  // order unit (groups not being checked out stay in the cart).
   const startGroupOrder = async (group: CartGroup) => {
     const user = useSessionStore.getState().user;
     if (!user || !user.fullName) {
@@ -57,8 +59,8 @@ export default function CartScreen() {
             catalogueItemId: line.catalogueItemId,
             quantity: line.quantity,
             // BASE price only — the server re-validates against the catalogue
-            // (same rule as checkout) and prices options itself.
-            unitPriceTZS: line.unitPriceTZS,
+            // (same rule as checkout) and prices options itself. Integer TZS.
+            unitPriceTZS: Math.round(line.unitPriceTZS),
             options: [...(line.options ?? []).map((o) => o.choice).filter((c): c is string => !!c), ...(line.addons ?? [])],
           },
           idempotencyKey(user.id, 'group-order-item'),
@@ -90,7 +92,9 @@ export default function CartScreen() {
   };
 
   const renderGroup = ({ item }: { item: CartGroup }) => {
-    const subtotal = groupSubtotal(item);
+    // integer TZS subtotal — advisory preview per group (per-group checkout contract)
+    const subtotal = Math.round(groupSubtotal(item));
+    if (!Number.isInteger(subtotal)) throw new Error('cart subtotal must be integer TZS');
     return (
       <Card style={styles.group}>
         <Row style={{ justifyContent: 'space-between' }}>
@@ -103,8 +107,10 @@ export default function CartScreen() {
         {item.items.map((line) => {
           // Line identity mirrors the cart store cartItemKey so the stepper/
           // remove actions below target THIS variant line only (same item with
-          // different options/addons is a separate line).
+          // different options/addons — size/crust single-select + multi-addon — is a separate line).
           const lineKey = cartItemKey(line);
+          const lineUnitTZS = Math.round(line.unitPriceTZS + (line.optionsPriceTZS ?? 0));
+          if (!Number.isInteger(lineUnitTZS)) throw new Error('line unit must be integer TZS');
           return (
           <Row key={lineKey} style={{ justifyContent: 'space-between', marginBottom: Spacing.md, alignItems: 'center' }}>
             <View style={{ flex: 1, paddingRight: Spacing.sm }}>
@@ -116,7 +122,7 @@ export default function CartScreen() {
                 <Text style={styles.itemMeta}>{line.addons.join(' · ')}</Text>
               ) : null}
               {line.note ? <Text style={styles.itemMeta} numberOfLines={2}>{line.note}</Text> : null}
-              <Text style={styles.itemMeta}>{formatTZS(line.unitPriceTZS + (line.optionsPriceTZS ?? 0))}</Text>
+              <Text style={styles.itemMeta}>{formatTZS(lineUnitTZS)} {line.optionsPriceTZS ? `(+${line.optionsPriceTZS} TZS delta)` : ''}</Text>
             </View>
             <Row gap={Spacing.sm} style={{ flexShrink: 0 }}>
               <Pressable
@@ -157,7 +163,8 @@ export default function CartScreen() {
         </Row>
         {/* Checkout is per merchant: each group becomes its own order, and
             groups not being checked out stay in the cart. Group ordering
-            (拼单) shares this cart with invited members instead. */}
+            (拼单) shares this cart with invited members instead — per-group
+            Checkout + GroupOrder (both per merchant group, integer TZS). */}
         <Row gap={Spacing.md}>
           <Btn label={t('groupOrder.start')} onPress={() => startGroupOrder(item)} size="md" variant="outline" loading={startingGroup === item.merchantId} style={{ flex: 1 }} />
           <Btn label={t('cart.checkout')} onPress={() => router.push(`/checkout?merchantId=${item.merchantId}`)} size="md" style={{ flex: 1 }} />

@@ -110,6 +110,7 @@ interface EnrichedMerchant extends MerchantPublic {
   promotionType: 'coupon' | 'discount' | null;
   hasMembershipPrice: boolean;
   membershipPriceTZS: number | null;
+  startingPriceTZS: number;
 }
 
 function enrichMerchants(merchants: MerchantPublic[]): EnrichedMerchant[] {
@@ -126,6 +127,7 @@ function enrichMerchants(merchants: MerchantPublic[]): EnrichedMerchant[] {
     const promotionType: 'coupon' | 'discount' | null = hasPromotion ? (idx % 4 === 0 ? 'coupon' : 'discount') : null;
     const hasMembershipPrice = idx % 3 === 0;
     const membershipPriceTZS = hasMembershipPrice ? Math.max(3000, m.rating * 2000) : null;
+    const startingPriceTZS = 8000 + (hash % 12000);
     return {
       ...m,
       cuisine,
@@ -136,6 +138,7 @@ function enrichMerchants(merchants: MerchantPublic[]): EnrichedMerchant[] {
       promotionType,
       hasMembershipPrice,
       membershipPriceTZS,
+      startingPriceTZS,
     };
   });
 }
@@ -259,6 +262,7 @@ export default function RestaurantsScreen() {
             <Text style={styles.meta}>{formatTZS(item.deliveryFeeTZS)} {t('cart.delivery').toLowerCase()}</Text>
           </Row>
           <Row gap={Spacing.sm} style={{ marginTop: 6 }}>
+            <Text style={styles.priceRed}>{formatTZS(item.startingPriceTZS)}</Text>
             {item.hasPromotion ? (
               <Pill label={item.promotionType === 'coupon' ? 'Coupon' : 'Discount'} tone="warning" />
             ) : null}
@@ -554,4 +558,5 @@ const styles = StyleSheet.create({
     borderRadius: Radius.pill,
   },
   memberBadgeText: { fontSize: FontSize.xs, color: Colors.gold, fontFamily: Fonts.sansBold },
+  priceRed: { fontSize: FontSize.sm, color: Colors.danger, fontFamily: Fonts.sansBold },
 });

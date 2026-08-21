@@ -3,6 +3,7 @@
  *
  * Money is integer minor units of TZS (1 TZS = 1 unit). Never floats. */
 const TZS_FORMAT = new Intl.NumberFormat('en-TZ');
+const NUMBER_FORMAT = new Intl.NumberFormat('en-US');
 
 export function tzs(n: number): string {
   const sign = n < 0 ? '−' : '';
@@ -12,6 +13,15 @@ export function tzs(n: number): string {
 
 export function formatTZS(n: number): string {
   return tzs(n);
+}
+
+/** Format integer points/counts with en-US grouping (no currency). */
+export function formatNumber(n: number): string {
+  return NUMBER_FORMAT.format(Math.round(n));
+}
+
+export function formatPoints(n: number): string {
+  return formatNumber(n);
 }
 
 export function minutesLabel(minutes: number): string {

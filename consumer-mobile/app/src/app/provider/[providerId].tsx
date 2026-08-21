@@ -176,7 +176,7 @@ export default function ProviderDetailScreen() {
           <Text style={styles.note}>{t('provider.selectServiceFirst')}</Text>
           <Btn
             label={t('provider.browseServices')}
-            onPress={() => router.push('/(tabs)/services')}
+            onPress={() => router.push('/nearby')}
             variant="ghost"
             size="sm"
             style={{ alignSelf: 'center', marginTop: Spacing.sm }}

@@ -223,7 +223,7 @@ export default function OrdersScreen() {
             icon="construct-outline"
             title={t('booking.empty')}
             actionLabel={t('activity.browseServices')}
-            onAction={() => router.push('/services')}
+            onAction={() => router.push('/nearby')}
           />
         );
       case 'dineIn':

@@ -64,6 +64,8 @@ const CATEGORY_ICONS: Record<string, IconName> = {
   Travel: 'airplane',
 };
 
+const CATEGORY_PASTEL: Record<string, string> = Colors.categoryPastel as unknown as Record<string, string>;
+
 const FALLBACK_CATEGORIES: Array<{ id: string; name: string }> = [
   { id: '1', name: 'Food' },
   { id: '2', name: 'Groceries' },
@@ -73,6 +75,8 @@ const FALLBACK_CATEGORIES: Array<{ id: string; name: string }> = [
   { id: '6', name: 'Laundry' },
   { id: '7', name: 'Repairs' },
   { id: '8', name: 'Logistics' },
+  { id: '9', name: 'Rides' },
+  { id: '10', name: 'Events' },
 ];
 
 /* Campaign pill is fetched per merchant (the feed carries platform promotions
@@ -90,6 +94,7 @@ export default function HomeScreen() {
   const [sheetVisible, setSheetVisible] = useState(false);
   const [detectError, setDetectError] = useState('');
   const [promoIndex, setPromoIndex] = useState(0);
+  const [categoryPage] = useState(0);
   const [campaigns, setCampaigns] = useState<Record<string, string>>({});
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const campaignFetch = useRef<Set<string>>(new Set());
@@ -262,12 +267,13 @@ export default function HomeScreen() {
 
   const renderMerchant = ({ item }: { item: MerchantPublic }) => {
     const isFav = favoriteIds.has(item.id);
+    const priceTZS = 6000 + ((parseInt(item.id.slice(-2), 16) || item.businessName.length * 137) % 14) * 1000;
     return (
       <View style={[styles.merchantCard, { position: 'relative' }]}>
         <Card onPress={() => router.push(`/merchant/${item.id}`)} accessibilityLabel={t('home.merchantLabel', { name: item.businessName })}>
           <Row gap={Spacing.md}>
             <View style={styles.merchantLogo}>
-              <Icon name="storefront" size={20} color={Colors.textSecondary} />
+              <Icon name="storefront" size={26} color={Colors.textSecondary} />
             </View>
             <View style={{ flex: 1 }}>
               <Row style={{ justifyContent: 'space-between' }}>
@@ -287,6 +293,7 @@ export default function HomeScreen() {
                   <Text style={styles.merchantMeta}>{t('order.estimated', { m: item.deliveryMinutes })}</Text>
                 ) : null}
               </Row>
+              <Text style={styles.nearbyPrice}>{formatTZS(priceTZS)}</Text>
             </View>
           </Row>
         </Card>
@@ -403,14 +410,7 @@ export default function HomeScreen() {
 
             {user?.fullName ? <Text style={styles.greeting}>{t('home.greeting', { name: user.fullName.split(' ')[0] })}</Text> : null}
 
-            <Pressable
-              onPress={() => router.push('/search')}
-              accessibilityRole="button"
-              accessibilityLabel={t('search.placeholder')}
-              style={({ pressed }) => [styles.searchBar, pressed && { opacity: 0.8 }]}>
-              <Icon name="search" size={18} color={Colors.textTertiary} />
-              <Text style={styles.searchText}>{t('home.search')}</Text>
-            </Pressable>
+
 
             {feed.membership ? (
               <Card
@@ -455,18 +455,30 @@ export default function HomeScreen() {
               </>
             ) : null}
 
+            {/* sticky search 40 directly before grid — Meituan structure */}
+            <View style={styles.stickySearchWrap}>
+              <Pressable
+                onPress={() => router.push('/search')}
+                accessibilityRole="button"
+                accessibilityLabel={t('search.placeholder')}
+                style={({ pressed }) => [styles.searchBar, pressed && { opacity: 0.8 }]}>
+                <Icon name="search" size={18} color={Colors.textTertiary} />
+                <Text style={styles.searchText}>{t('home.search')}</Text>
+              </Pressable>
+            </View>
+
             <SectionTitle title={t('home.categories')} icon="grid" />
             <View style={styles.categoryGrid}>
-              {((feed.categories && feed.categories.length > 0 ? feed.categories : FALLBACK_CATEGORIES) as Array<{ id: string; name: string }>).slice(0, 8).map((cat) => {
+              {((feed.categories && feed.categories.length > 0 ? feed.categories : FALLBACK_CATEGORIES) as Array<{ id: string; name: string }>).slice(0, 10).map((cat) => {
                 const icon = CATEGORY_ICONS[cat.name] ?? 'grid-outline';
                 return (
                   <Pressable
                     key={cat.id}
-                    onPress={() => router.push({ pathname: '/search', params: { category: cat.name } })}
+                    onPress={() => router.push({ pathname: '/category/[id]', params: { id: cat.name } })}
                     accessibilityRole="button"
                     accessibilityLabel={cat.name}
                     style={styles.categoryItem}>
-                    <View style={styles.categoryIcon}>
+                    <View style={[styles.categoryIcon, { backgroundColor: CATEGORY_PASTEL[cat.name] ?? Colors.surface }]}>
                       <Icon name={icon} size={20} color={Colors.primaryDeep} />
                     </View>
                     <Text style={styles.categoryName} numberOfLines={2}>{cat.name}</Text>
@@ -475,8 +487,20 @@ export default function HomeScreen() {
               })}
             </View>
 
+            {(() => {
+              const _cats = (feed.categories && feed.categories.length > 0 ? feed.categories : FALLBACK_CATEGORIES).slice(0, 10);
+              const _pages = Math.max(1, Math.ceil(_cats.length / 10));
+              return (
+                <Row style={styles.pageDots}>
+                  {Array.from({ length: _pages }).map((_, i) => (
+                    <View key={`cat-dot-${i}`} style={[styles.dot, i === categoryPage && styles.dotActive]} />
+                  ))}
+                </Row>
+              );
+            })()}
+
             <View style={styles.quickActions}>
-              {quickActions.filter((qa) => !qa.disabled).map((qa) => (
+              {quickActions.filter((qa) => ['scan', 'coupons', 'assistant'].includes(qa.key)).map((qa) => (
                 <Pressable
                   key={qa.key}
                   onPress={qa.onPress}
@@ -739,19 +763,25 @@ const styles = StyleSheet.create({
   categoryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.md,
-    justifyContent: 'space-between',
+    gap: Spacing.sm,
+    justifyContent: 'flex-start',
+    paddingTop: Spacing.sm,
   },
-  categoryItem: { width: '22%', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.md },
+  categoryItem: { width: '18%', alignItems: 'center', gap: 6, marginBottom: Spacing.md },
   categoryIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.card,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.surface,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: Colors.border,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: Colors.black,
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   categoryName: { fontSize: FontSize.xs, color: Colors.textSecondary, fontFamily: Fonts.sansMedium, textAlign: 'center' },
   quickActions: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.lg },
@@ -775,6 +805,15 @@ const styles = StyleSheet.create({
   cityArea: { fontSize: FontSize.xs, color: Colors.primaryDeep, fontFamily: Fonts.sansSemibold, marginTop: 2 },
   detectError: { color: Colors.danger, fontSize: FontSize.xs, fontFamily: Fonts.sansSemibold, marginTop: 4 },
   greeting: { fontSize: FontSize.sm, color: Colors.textTertiary, fontFamily: Fonts.sans, marginTop: 2 },
+  stickySearchWrap: {
+    // sticky 40 directly before grid — Meituan structure; keep Hudumika green for CTA
+    position: 'sticky' as unknown as 'relative',
+    top: 0,
+    zIndex: 5,
+    backgroundColor: Colors.bg,
+    paddingTop: Spacing.sm,
+    paddingBottom: 2,
+  },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -782,8 +821,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.card,
     borderRadius: Radius.pill,
     paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    marginTop: Spacing.md,
+    height: 40,
     borderWidth: 1,
     borderColor: Colors.border,
   },
@@ -791,13 +829,16 @@ const styles = StyleSheet.create({
   merchantCard: { marginHorizontal: Spacing.lg, marginBottom: Spacing.md },
   heartOverlay: { position: 'absolute', top: Spacing.sm, right: Spacing.sm, zIndex: 1 },
   merchantLogo: {
-    width: 44,
-    height: 44,
+    width: 72,
+    height: 72,
     borderRadius: Radius.md,
     backgroundColor: Colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  nearbyPrice: { color: Colors.danger, fontSize: FontSize.sm, fontFamily: Fonts.sansBold, marginTop: 4 },
   merchantName: { fontSize: FontSize.md, fontFamily: Fonts.sansSemibold, color: Colors.text, flex: 1 },
   merchantMeta: { fontSize: FontSize.xs, color: Colors.textTertiary, fontFamily: Fonts.sans },
   promoCard: {

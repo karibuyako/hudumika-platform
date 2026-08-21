@@ -218,7 +218,10 @@ async function request<T>(method: string, path: string, opts: RequestOptions = {
       };
       const token = getToken();
       if (token) headers.authorization = `Bearer ${token}`;
-      if (opts.idempotencyKey) headers['idempotency-key'] = opts.idempotencyKey;
+      if (opts.idempotencyKey) {
+        headers['Idempotency-Key'] = opts.idempotencyKey;
+        headers['idempotency-key'] = opts.idempotencyKey;
+      }
 
       const res = await fetch(`${API_BASE}${path}`, {
         method,

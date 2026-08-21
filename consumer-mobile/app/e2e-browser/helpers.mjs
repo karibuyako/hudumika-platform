@@ -10,9 +10,12 @@
  * on /home. Tests reuse their context for all operations.
  */
 import { createRequire } from 'node:module';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
 
-const require = createRequire('/home/devagent/Desktop/Hudumika Platform/');
+const PLATFORM_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
+const require = createRequire(resolve(PLATFORM_ROOT, 'package.json'));
 const { chromium } = require('playwright');
 
 export const APP_URL = 'http://localhost:8082';
@@ -46,8 +49,9 @@ export async function fillPlaceholder(page, placeholder, value) {
 }
 
 export async function screenshot(page, name) {
-  mkdirSync('/home/devagent/Desktop/Hudumika Platform/consumer-mobile/app/e2e-browser/shots', { recursive: true });
-  const p = `/home/devagent/Desktop/Hudumika Platform/consumer-mobile/app/e2e-browser/shots/${name}.png`;
+  const dir = resolve(PLATFORM_ROOT, 'consumer-mobile/app/e2e-browser/shots');
+  mkdirSync(dir, { recursive: true });
+  const p = resolve(dir, `${name}.png`);
   await page.screenshot({ path: p, fullPage: false });
   return p;
 }

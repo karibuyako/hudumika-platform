@@ -60,6 +60,7 @@ export type { Key as I18nKey };
 
 /* Money is integer minor units of TZS (1 TZS = 1 unit). Never floats. */
 const TZS_FORMAT = new Intl.NumberFormat('en-TZ');
+const NUMBER_FORMAT = new Intl.NumberFormat('en-US');
 
 export function tzsMinor(n: number): number {
   return Math.round(n);
@@ -67,4 +68,8 @@ export function tzsMinor(n: number): number {
 
 export function formatTZS(n: number): string {
   return `TZS ${TZS_FORMAT.format(Math.round(n))}`;
+}
+
+export function formatNumber(n: number): string {
+  return NUMBER_FORMAT.format(Math.round(n));
 }

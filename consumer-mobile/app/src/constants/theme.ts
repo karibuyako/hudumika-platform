@@ -38,13 +38,15 @@ export const Colors = {
   info: color.info,
   infoSoft: color.infoSoft,
 
-  tabActive: color.ink900,
+  tabActive: color.brand500,
   tabInactive: color.ink300,
   white: color.white,
   overlay: color.overlay,
   black: color.ink900,
   gold: color.accent,
   goldSoft: color.accentSoft,
+
+  categoryPastel: color.categoryPastel,
 } as const;
 
 export const Spacing = {

@@ -17,11 +17,11 @@
       "env": {
         "EXPO_PUBLIC_ENV": "development",
         "EXPO_PUBLIC_API_URL": "http://127.0.0.1:8080",
-        "EXPO_PUBLIC_MOCK_AUTH": "false",
-        "EXPO_PUBLIC_MOCK_HOME": "false",
-        "EXPO_PUBLIC_MOCK_ORDERS": "false",
-        "EXPO_PUBLIC_MOCK_WALLET": "false",
-        "EXPO_PUBLIC_MOCK_ASSISTANT": "false"
+        "EXPO_PUBLIC_MOCK_AUTH": "true",
+        "EXPO_PUBLIC_MOCK_HOME": "true",
+        "EXPO_PUBLIC_MOCK_ORDERS": "true",
+        "EXPO_PUBLIC_MOCK_WALLET": "true",
+        "EXPO_PUBLIC_MOCK_ASSISTANT": "true"
       }
     },
     "staging": {
@@ -38,7 +38,26 @@
         "EXPO_PUBLIC_MOCK_ORDERS": "false",
         "EXPO_PUBLIC_MOCK_WALLET": "false",
         "EXPO_PUBLIC_MOCK_ASSISTANT": "false",
-        "EXPO_PUBLIC_SENTRY_DSN": ""
+        "EXPO_PUBLIC_SENTRY_DSN": "https://bde50bb7e85f9c1e7b9a4b9a9c1f5558f3bccc66@o4500000000000000.ingest.sentry.io/4500000000000001",
+        "EXPO_PUBLIC_EAS_PROJECT_ID": "bde50bb7-9aab-45bb-9c1f-5558f3bccc66"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "channel": "preview",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_ENV": "staging",
+        "EXPO_PUBLIC_API_URL": "https://staging-api.hudumika.co.tz/api/v1",
+        "EXPO_PUBLIC_MOCK_AUTH": "false",
+        "EXPO_PUBLIC_MOCK_HOME": "false",
+        "EXPO_PUBLIC_MOCK_ORDERS": "false",
+        "EXPO_PUBLIC_MOCK_WALLET": "false",
+        "EXPO_PUBLIC_MOCK_ASSISTANT": "false",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://bde50bb7e85f9c1e7b9a4b9a9c1f5558f3bccc66@o4500000000000000.ingest.sentry.io/4500000000000001",
+        "EXPO_PUBLIC_EAS_PROJECT_ID": "bde50bb7-9aab-45bb-9c1f-5558f3bccc66"
       }
     },
     "production": {
@@ -54,7 +73,8 @@
         "EXPO_PUBLIC_MOCK_ORDERS": "false",
         "EXPO_PUBLIC_MOCK_WALLET": "false",
         "EXPO_PUBLIC_MOCK_ASSISTANT": "false",
-        "EXPO_PUBLIC_SENTRY_DSN": ""
+        "EXPO_PUBLIC_SENTRY_DSN": "https://bde50bb7e85f9c1e7b9a4b9a9c1f5558f3bccc66@o4500000000000000.ingest.sentry.io/4500000000000001",
+        "EXPO_PUBLIC_EAS_PROJECT_ID": "bde50bb7-9aab-45bb-9c1f-5558f3bccc66"
       }
     }
   }

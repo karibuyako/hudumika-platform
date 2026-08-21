@@ -242,12 +242,12 @@ export default function WalletScreen() {
             <Card style={[styles.balanceCard, { backgroundColor: Colors.primaryDeep }]}>
               <Text style={{ color: Colors.gold, fontSize: FontSize.xs, fontFamily: Fonts.sansSemibold }}>{t('wallet.balance')}</Text>
               <Text style={{ color: Colors.white, fontSize: 30, fontFamily: Fonts.displayBold, marginTop: 4, fontVariant: NumberStyle.fontVariant }}>
-                {formatTZS(wallet.totalTZS)}
+                {formatTZS(wallet.totalTZS ?? 0)}
               </Text>
               <Row gap={Spacing.md} style={{ marginTop: Spacing.md }}>
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: Colors.white, fontSize: FontSize.xs, fontFamily: Fonts.sans, opacity: 0.75 }}>{t('wallet.withdrawAvailable')}</Text>
-                  <Text style={{ color: Colors.white, fontSize: FontSize.md, fontFamily: Fonts.sansBold, marginTop: 2, fontVariant: NumberStyle.fontVariant }}>{formatTZS(wallet.withdrawableTZS)}</Text>
+                  <Text style={{ color: Colors.white, fontSize: FontSize.md, fontFamily: Fonts.sansBold, marginTop: 2, fontVariant: NumberStyle.fontVariant }}>{formatTZS(wallet.withdrawableTZS ?? 0)}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: Colors.white, fontSize: FontSize.xs, fontFamily: Fonts.sans, opacity: 0.75 }}>{t('status.pending')}</Text>
@@ -397,7 +397,7 @@ export default function WalletScreen() {
         <View style={{ gap: Spacing.md }}>
           <Text style={styles.sheetLabel}>{t('wallet.withdrawAvailable')}</Text>
           <Text style={{ fontSize: FontSize.xxl, fontFamily: Fonts.displayBold, color: Colors.text }}>
-            {formatTZS(wallet.withdrawableTZS)}
+            {formatTZS(wallet.withdrawableTZS ?? 0)}
           </Text>
           <Text style={styles.sheetLabel}>{t('wallet.withdrawAmount')}</Text>
           <View style={styles.chipWrap}>
@@ -414,7 +414,7 @@ export default function WalletScreen() {
           </View>
           <View style={styles.chipWrap}>
             {WITHDRAW_PERCENTS.map((p) => {
-              const value = Math.floor(wallet.withdrawableTZS * p);
+              const value = Math.floor((wallet.withdrawableTZS ?? 0) * p);
               if (value < 1) return null;
               return (
                 <Pressable

@@ -7,7 +7,7 @@ import { t } from '@/i18n';
 import { getMembershipsRepository, getWalletRepository, REDEMPTION_CATALOG } from '@/repos';
 import type { RedemptionReward } from '@/repos';
 import { dateISO } from '@/lib/dates';
-import { formatTZS } from '@/lib/format';
+import { formatNumber, formatTZS } from '@/lib/format';
 import { idempotencyKey } from '@/lib/idempotency';
 import { nextBonusDay, streakDots, WEEKLY_STREAK_BONUS_POINTS } from '@/lib/streak';
 import { useSessionStore } from '@/store/session';
@@ -89,7 +89,7 @@ function prettyLevel(level: string | undefined): string {
 
 function signedPoints(points: number): string {
   const sign = points >= 0 ? '+' : '−';
-  return `${sign}${Math.abs(points).toLocaleString('en-US')}`;
+  return `${sign}${formatNumber(Math.abs(points))}`;
 }
 
 export default function MembershipScreen() {
@@ -234,7 +234,7 @@ export default function MembershipScreen() {
           </Text>
         </Row>
         <Text style={{ color: Colors.white, fontSize: 30, fontFamily: Fonts.displayBold, marginTop: Spacing.md, fontVariant: NumberStyle.fontVariant }}>
-          {t('membership.points', { n: (membership?.points ??0).toLocaleString('en-US') })}
+          {t('membership.points', { n: formatNumber(membership?.points ?? 0) })}
         </Text>
       </Card>
 
@@ -378,7 +378,7 @@ export default function MembershipScreen() {
         {confirmReward ? (
           <>
             <Text style={styles.redeemSheetLine}>{t('membership.redeemCost', { n: confirmReward.points })}</Text>
-            <Text style={styles.redeemSheetLine}>{t('membership.redeemBalance', { n: (membership?.points ??0).toLocaleString('en-US') })}</Text>
+            <Text style={styles.redeemSheetLine}>{t('membership.redeemBalance', { n: formatNumber(membership?.points ?? 0) })}</Text>
             {confirmReward.valueTZS !== null ? (
               <Text style={styles.redeemSheetLine}>{t('membership.redeemWallet', { amount: formatTZS(confirmReward.valueTZS) })}</Text>
             ) : null}

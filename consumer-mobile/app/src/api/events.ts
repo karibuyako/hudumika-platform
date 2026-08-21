@@ -37,8 +37,9 @@ export function startEventStream() {
 async function poll() {
   if (stopped) return;
   try {
-    const qs = lastEventId !== null ? `?lastEventId=${lastEventId}` : '';
-    const events = await api.get<GetServerEvents200EventsItem[]>(`/events${qs}`, { timeoutMs: POLL_TIMEOUT_MS, skipAuthRefresh: false });
+    const qs = lastEventId !== null ? `?after=${lastEventId}` : '';
+    const res = await api.get<{ events: GetServerEvents200EventsItem[]; latestSeq?: number } | GetServerEvents200EventsItem[]>(`/events${qs}`, { timeoutMs: POLL_TIMEOUT_MS, skipAuthRefresh: false });
+    const events: GetServerEvents200EventsItem[] = Array.isArray(res) ? res : (res as { events: GetServerEvents200EventsItem[] }).events ?? [];
     for (const ev of events) {
       lastEventId = ev.id;
       eventBus.publish(ev.type as ServerEventType, ev.payload as Record<string, unknown> | undefined);

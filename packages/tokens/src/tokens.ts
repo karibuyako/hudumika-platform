@@ -42,6 +42,22 @@ export const color = {
   overlay: 'rgba(16, 20, 18, 0.4)',
   white: '#ffffff',
   black: '#101412',
+
+  /** Category pastels — home grid icon backgrounds (tokenized, no ad-hoc hex in screens). */
+  categoryPastel: {
+    Food: '#FFF7E6',
+    Groceries: '#EFFFF2',
+    Pharmacy: '#EFF6FF',
+    'Home Services': '#F5F3FF',
+    Beauty: '#FFF0F5',
+    Laundry: '#EAF6FF',
+    Repairs: '#FFF7ED',
+    Logistics: '#FEFCE8',
+    Rides: '#ECFDF5',
+    Events: '#FDF2F8',
+    Retail: '#F0FDF4',
+    Travel: '#EFF6FF',
+  } as const,
 } as const;
 
 /** Typography — Plus Jakarta Sans for UI, Space Grotesk for display; 11–56px scale. */
