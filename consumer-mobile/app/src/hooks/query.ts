@@ -20,7 +20,7 @@ export { clearQueryCache, getCacheEntry, invalidateQuery, peekQuery, registerQue
 export type { CacheKey, QueryCacheEntry, QueryLoader };
 
 export const queryKeys = {
-  home: { all: ['home'] as const, feed: ['home', 'feed'] as const, cities: ['cities'] as const },
+  home: { all: ['home'] as const, feed: ['home', 'feed'] as const, cities: ['cities'] as const, recommendations: (cityId?: string) => ['home', 'recommendations', cityId ?? ''] as const },
   search: { results: (q: string) => ['search', q] as const, suggest: (q: string) => ['search', 'suggest', q] as const },
   merchants: {
     list: (params?: { cityId?: string; category?: string }) => ['merchants', params ?? {}] as const,

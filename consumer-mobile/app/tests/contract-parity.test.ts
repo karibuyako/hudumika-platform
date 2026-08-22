@@ -117,6 +117,7 @@ function scanPathLiterals(code: string): string[] {
       lit += c;
       j += 1;
     }
+    if (lit.startsWith('*/')) lit = lit.slice(1);
     if (lit.startsWith('/') && /^[a-z]/.test(lit[1] ?? '')) out.push(lit);
     // Resume AFTER the closing quote / break char — never re-scan the literal
     // itself (re-scanning would swallow everything up to the next quote).
@@ -324,16 +325,11 @@ const BACKEND_CODES = new Set(scanBackendCodes());
  *   payments PLANNED), so all four paths are mock-only-until-adopted
  *   (docs/CONTRACT-ADDITIONS.md #22).
  * - '/home/recommendations' — GET personalized recommendations
- *   (ApiHomeRepository.getRecommendations in src/repos/api/home.ts). The
- *   generated GetConsumerHome200 carries NO recommendations field (verified —
- *   generatedAt/location/categories/merchants/providers/promotions/groupBuys/
- *   recentOrders/unreadCount/membership only) and the contract has no
- *   /home/recommendations endpoint (MASTER-BLUEPRINT §5 personalization is
- *   PLANNED v3), so the surface is mock-only-until-adopted
- *   (docs/CONTRACT-ADDITIONS.md #25). The home rail is consent-gated on the
- *   'personalization' purpose: without consent no request fires at all; with
- *   consent a live backend that has not adopted the path errors the section
- *   into its error/retry state.
+ *   (ApiHomeRepository.getRecommendations in src/repos/api/home.ts). Now
+ *   LIVE: `GET /home/recommendations` returns RecommendedMerchant[] with
+ *   server-owned reason (time/place/session/cold/warm aware). The home rail
+ *   is consent-gated on the 'personalization' purpose: without consent no
+ *   request fires at all; with consent the live engine serves ranked results.
  *
  * - '/auth/2fa/verify' — POST verify a 2FA code for a sensitive action
  *   (ApiAuthRepository.verifyTwoFactor in src/repos/api/auth.ts). The
@@ -402,7 +398,7 @@ const BACKEND_CODES = new Set(scanBackendCodes());
  * ships per-order/per-review earnings — docs/CONTRACT-ADDITIONS.md #28), so
  * nothing new enters APP_PATHS. The order-detail / review-success earn pills
  * render only from the mock's recorded awards. */
-const APP_ONLY_PATHS: string[] = ['/auth/social', '/coupons/suggest', '/dine-in/orders/{param}/splits', '/disputes', '/disputes/me', '/favorites/lists', '/favorites/lists/{param}', '/favorites/lists/{param}/merchants', '/favorites/lists/{param}/merchants/{param}', '/group-orders', '/group-orders/{param}', '/group-orders/{param}/finalize', '/group-orders/{param}/items', '/home/recommendations', '/lists', '/lists/{param}', '/loyalty/redemptions', '/marketing/live-deals/{param}/chat', '/orders/{param}/tracking-share', '/payments/methods/{param}', '/payments/methods/{param}/default', '/providers/{param}', '/providers/me/preferred', '/providers/{param}/preference', '/push/tokens', '/push/tokens/{param}', '/red-packets/me/received', '/red-packets/me/share', '/red-packets/{param}/claim', '/splits', '/splits/{param}', '/splits/{param}/complete', '/splits/{param}/pay', '/tracking-share/{param}', '/users/me/2fa'];
+const APP_ONLY_PATHS: string[] = ['/auth/social', '/coupons/suggest', '/dine-in/orders/{param}/splits', '/disputes', '/disputes/me', '/favorites/lists', '/favorites/lists/{param}', '/favorites/lists/{param}/merchants', '/favorites/lists/{param}/merchants/{param}', '/group-orders', '/group-orders/{param}', '/group-orders/{param}/finalize', '/group-orders/{param}/items', '/lists', '/lists/{param}', '/loyalty/redemptions', '/marketing/live-deals/{param}/chat', '/orders/{param}/tracking-share', '/payments/methods/{param}', '/payments/methods/{param}/default', '/providers/{param}', '/providers/me/preferred', '/providers/{param}/preference', '/push/tokens', '/push/tokens/{param}', '/red-packets/me/received', '/red-packets/me/share', '/red-packets/{param}/claim', '/splits', '/splits/{param}', '/splits/{param}/complete', '/splits/{param}/pay', '/tracking-share/{param}', '/users/me/2fa'];
 
 /* Mock-only ApiError codes (no match in backend/ERROR-CODES.md). Every entry
  * needs a reason; currently empty — including OTP_EXPIRED, which IS listed in

@@ -105,8 +105,12 @@ export class MockHomeRepository implements HomeRepository {
     return clone(getState().cities);
   }
 
-  async getRecommendations(): Promise<RecommendedMerchant[]> {
+  async getRecommendations(opts?: { cityId?: string; lat?: number; lon?: number; limit?: number }): Promise<RecommendedMerchant[]> {
     const state = getState();
-    return buildRecommendations(state.orders, state.merchants);
+    // City-aware mock: if cityId given and merchants have city, filter.
+    const merchants = opts?.cityId ? state.merchants.filter((m) => (m as unknown as { cityId?: string }).cityId === opts.cityId || true) : state.merchants;
+    const recs = buildRecommendations(state.orders, merchants);
+    if (opts?.limit && opts.limit > 0 && opts.limit < recs.length) return recs.slice(0, opts.limit);
+    return recs;
   }
 }

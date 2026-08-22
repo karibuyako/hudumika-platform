@@ -141,7 +141,18 @@ export function getAuthRepository(): AuthRepository {
 }
 
 export function getHomeRepository(): HomeRepository {
-  return MOCK_HOME ? new MockHomeRepository() : new ApiHomeRepository();
+  if (MOCK_HOME) {
+    // Hybrid: home feed + cities stay mock for static export (no live DB needed at build),
+    // but recommendations are always live (time/place/session/cold/warm engine).
+    const mock = new MockHomeRepository();
+    const api = new ApiHomeRepository();
+    return {
+      getHomeFeed: () => mock.getHomeFeed(),
+      listCities: () => mock.listCities(),
+      getRecommendations: (opts) => api.getRecommendations(opts),
+    };
+  }
+  return new ApiHomeRepository();
 }
 
 export function getHotelsRepository(): HotelsRepository {

@@ -308,6 +308,34 @@ paths:
                   unreadCount: { type: integer }
                   membership: { $ref: "#/components/schemas/CustomerMembership" }
 
+  /home/recommendations:
+    get:
+      tags: [users]
+      summary: Personalized merchant recommendations (time, place, session, cold/warm start)
+      operationId: getHomeRecommendations
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: cityId, in: query, schema: { type: string, format: uuid } }
+        - { name: lat, in: query, schema: { type: number, format: float } }
+        - { name: lon, in: query, schema: { type: number, format: float } }
+        - { name: limit, in: query, schema: { type: integer, default: 5, minimum: 1, maximum: 20 } }
+        - { name: cursor, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/RecommendedMerchant" }
+                  nextCursor: { type: string, nullable: true }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
   /search:
     get:
       tags: [users]
@@ -510,6 +538,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/User"
+
+  /users/me/events:
+    post:
+      tags: [users]
+      summary: Record a user behavior event for recommendations (view, search, cart, heart, order)
+      operationId: postUserEvent
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type]
+              properties:
+                type: { type: string, enum: [view_merchant, search, cart_add, heart, order_paid, booking] }
+                merchantId: { type: string, format: uuid, nullable: true }
+                query: { type: string, maxLength: 200, nullable: true }
+                cityId: { type: string, format: uuid, nullable: true }
+                lat: { type: number, format: float, nullable: true }
+                lon: { type: number, format: float, nullable: true }
+      responses:
+        "204": { description: Recorded }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/ValidationError" }
 
   /users/me/roles:
     get:
@@ -13014,6 +13067,18 @@ components:
         isOpen: { type: boolean }
         deliveryMinutes: { type: integer, nullable: true }
 
+    RecommendedMerchant:
+      type: object
+      required: [merchantId, businessName, rating, reviewCount, reason]
+      properties:
+        merchantId: { type: string, format: uuid }
+        businessName: { type: string }
+        rating: { type: number, format: float }
+        reviewCount: { type: integer }
+        reason: { type: string, description: "Server-owned reason, rendered verbatim" }
+        deliveryMinutes: { type: integer, nullable: true }
+        score: { type: number, format: float, nullable: true, description: "Ranking score for debugging, not rendered" }
+
     MerchantPrivate:
       allOf:
         - $ref: "#/components/schemas/MerchantPublic"
@@ -13090,6 +13155,30 @@ components:
             availability:
               type: array
               items: { $ref: "#/components/schemas/AvailabilityWindow" }
+            # Enterprise P3: Dianping Manager model — tradeRequirements, NIDA/liveness, UBO/sanctions
+            tradeRequirements:
+              type: array
+              nullable: true
+              items:
+                type: object
+                required: [trade, requiredDocuments]
+                properties:
+                  trade: { type: string }
+                  requiredDocuments: { type: array, items: { type: string } }
+                  requiredCertifications: { type: array, items: { type: string } }
+                  sanctionsScreening: { type: boolean, default: true }
+                  uboThresholdPct: { type: integer, default: 25 }
+            kycVerification:
+              type: object
+              nullable: true
+              properties:
+                nidaNumber: { type: string }
+                nidaVerified: { type: boolean, default: false }
+                livenessScore: { type: integer, minimum: 0, maximum: 100, nullable: true }
+                livenessResult: { type: string, enum: [pass, fail, pending], default: pending }
+                status: { type: string, enum: [unverified, pending, verified, rejected, expired], default: unverified }
+                sanctionsStatus: { type: string, enum: [clear, flagged, pending], default: pending }
+                uboStatus: { type: string, enum: [not_required, pending, clear, flagged], default: not_required }
 
     ProviderUpdate:
       type: object

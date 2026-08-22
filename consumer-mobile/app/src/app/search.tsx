@@ -6,6 +6,7 @@ import { Chip, Icon, Row, Screen, SectionTitle, SkeletonCard } from '@/component
 import { Colors, Fonts, FontSize, Radius, Spacing } from '@/constants/theme';
 import { t } from '@/i18n';
 import { track } from '@/lib/analytics';
+import { trackRecommendationEvent } from '@/lib/recommendations';
 import { startVoiceInput } from '@/lib/speech';
 import { getHomeRepository, getSearchRepository } from '@/repos';
 import { useSavedSearchesStore } from '@/store/savedSearches';
@@ -88,6 +89,7 @@ export default function SearchScreen() {
     const cat = categoryOverride ?? activeCategory;
     await getSearchRepository().addToHistory(trimmed);
     track({ name: 'search_submitted', query: trimmed, category: cat ?? undefined });
+    trackRecommendationEvent('search', { query: trimmed });
     router.push({
       pathname: '/search-results',
       params: cat ? { q: trimmed, category: cat } : { q: trimmed },
@@ -107,6 +109,7 @@ export default function SearchScreen() {
           /* non-fatal */
         });
       track({ name: 'search_submitted', query: trimmed });
+      trackRecommendationEvent('search', { query: trimmed });
       router.push({ pathname: '/search-results', params: { q: trimmed, voice: '1' } });
     },
     [router],
@@ -163,6 +166,7 @@ export default function SearchScreen() {
         /* the results screen surfaces the failure with retry */
       }
       track({ name: 'search_submitted', query: t('search.image') });
+      trackRecommendationEvent('search', { query: t('search.image') });
       router.push({ pathname: '/search-results', params: { q: t('search.image'), image: uri } });
     } catch {
       toast(t('common.error'), 'error');

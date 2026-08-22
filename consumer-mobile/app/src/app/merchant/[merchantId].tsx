@@ -27,6 +27,7 @@ import { toast } from '@/store/ui';
 import { useSessionStore } from '@/store/session';
 import { idempotencyKey } from '@/lib/idempotency';
 import { track } from '@/lib/analytics';
+import { trackRecommendationEvent } from '@/lib/recommendations';
 import type { Catalogue, CatalogueItem, MerchantPublic, Promotion } from '@hudumika/contract';
 import { PromotionType } from '@hudumika/contract';
 
@@ -67,6 +68,7 @@ export default function MerchantScreen() {
 
   useEffect(() => {
     track({ name: 'merchant_viewed', merchantId });
+    trackRecommendationEvent('view_merchant', { merchantId });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -74,8 +76,10 @@ export default function MerchantScreen() {
     const next = !favorited;
     setFavorited(next);
     try {
-      if (next) await getFavoritesRepository().add(merchantId, `fav-${merchantId}-${Date.now()}`);
-      else await getFavoritesRepository().remove(merchantId, `fav-${merchantId}-${Date.now()}`);
+      if (next) {
+        await getFavoritesRepository().add(merchantId, `fav-${merchantId}-${Date.now()}`);
+        trackRecommendationEvent('heart', { merchantId });
+      } else await getFavoritesRepository().remove(merchantId, `fav-${merchantId}-${Date.now()}`);
     } catch {
       setFavorited(!next); // rollback
     }
@@ -118,6 +122,7 @@ export default function MerchantScreen() {
     if (!merchant || !sheetItem) return;
     useCartStore.getState().addItem({ merchantId: merchant.id, merchantName: merchant.businessName }, cartItem);
     track({ name: 'cart_item_added', merchantId: merchant.id, catalogueItemId: cartItem.catalogueItemId, quantity: cartItem.quantity });
+    trackRecommendationEvent('cart_add', { merchantId: merchant.id });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setSheetItem(null);
   };

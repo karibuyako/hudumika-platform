@@ -117,11 +117,11 @@ export default function HomeScreen() {
     if (!canShowRecommendations(personalizationConsent)) return;
     setRecommendationsError('');
     try {
-      setRecommendations(await getHomeRepository().getRecommendations());
+      setRecommendations(await getHomeRepository().getRecommendations({ cityId: city?.id, limit: 5 }));
     } catch {
       setRecommendationsError(t('home.recommendedError'));
     }
-  }, [personalizationConsent]);
+  }, [personalizationConsent, city?.id]);
 
   useEffect(() => {
     if (!canShowRecommendations(personalizationConsent)) {

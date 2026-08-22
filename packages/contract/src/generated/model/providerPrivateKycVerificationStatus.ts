@@ -8,17 +8,14 @@
  *
  * OpenAPI spec version: 1.0.0
  */
-import type { AvailabilityWindow } from './availabilityWindow';
-import type { ProviderPrivateKycVerification } from './providerPrivateKycVerification';
-import type { ProviderPrivateTradeRequirementsItem } from './providerPrivateTradeRequirementsItem';
-import type { ProviderPublic } from './providerPublic';
-import type { VerificationState } from './verificationState';
 
-export type ProviderPrivate = ProviderPublic & ({
-  verification: VerificationState;
-  payoutCycleDays: number;
-  bio?: string;
-  availability?: AvailabilityWindow[];
-  tradeRequirements?: ProviderPrivateTradeRequirementsItem[] | null;
-  kycVerification?: ProviderPrivateKycVerification;
-});
+export type ProviderPrivateKycVerificationStatus = typeof ProviderPrivateKycVerificationStatus[keyof typeof ProviderPrivateKycVerificationStatus];
+
+
+export const ProviderPrivateKycVerificationStatus = {
+  unverified: 'unverified',
+  pending: 'pending',
+  verified: 'verified',
+  rejected: 'rejected',
+  expired: 'expired',
+} as const;

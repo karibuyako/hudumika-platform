@@ -8,17 +8,14 @@
  *
  * OpenAPI spec version: 1.0.0
  */
-import type { AvailabilityWindow } from './availabilityWindow';
-import type { ProviderPrivateKycVerification } from './providerPrivateKycVerification';
-import type { ProviderPrivateTradeRequirementsItem } from './providerPrivateTradeRequirementsItem';
-import type { ProviderPublic } from './providerPublic';
-import type { VerificationState } from './verificationState';
+import type { PostUserEventBodyType } from './postUserEventBodyType';
 
-export type ProviderPrivate = ProviderPublic & ({
-  verification: VerificationState;
-  payoutCycleDays: number;
-  bio?: string;
-  availability?: AvailabilityWindow[];
-  tradeRequirements?: ProviderPrivateTradeRequirementsItem[] | null;
-  kycVerification?: ProviderPrivateKycVerification;
-});
+export type PostUserEventBody = {
+  type: PostUserEventBodyType;
+  merchantId?: string | null;
+  /** @maxLength 200 */
+  query?: string | null;
+  cityId?: string | null;
+  lat?: number | null;
+  lon?: number | null;
+};

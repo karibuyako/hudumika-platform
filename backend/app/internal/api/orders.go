@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -15,6 +16,7 @@ import (
 	"github.com/hudumika/api-backend/internal/gen"
 	"github.com/hudumika/api-backend/internal/orders"
 	"github.com/hudumika/api-backend/internal/payouts"
+	"github.com/hudumika/api-backend/internal/recommendations"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
@@ -231,6 +233,10 @@ func (s *Server) CreateOrder(w http.ResponseWriter, r *http.Request, params gen.
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
+	// Record behavior event for recommendations (warm-start signal) — best-effort.
+	_, _ = s.db.Pool().Exec(r.Context(),
+		`INSERT INTO user_behavior_events (user_id, event_type, merchant_id, daypart) VALUES ($1, 'order_paid', $2, $3)`,
+		userID, body.MerchantId, recommendations.DaypartFor(time.Now()))
 	writeJSON(w, http.StatusCreated, toGenOrder(row))
 }
 

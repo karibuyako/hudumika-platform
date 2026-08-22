@@ -242,13 +242,10 @@ export function canShowRecommendations(consentGranted: boolean): boolean {
 export interface HomeRepository {
   getHomeFeed(): Promise<GetConsumerHome200>;
   listCities(): Promise<City[]>;
-  /** GET /home/recommendations — mock-only-until-adopted path
-   * (docs/CONTRACT-ADDITIONS.md #25, parity harness allow-list): the consumer
-   * contract exposes no recommendations surface, so the api repo calls the
-   * not-yet-contract path and the mock is the server. The screen gates this
-   * on the 'personalization' consent purpose — the repo itself never checks
-   * consent (server-side concern on adoption). */
-  getRecommendations(): Promise<RecommendedMerchant[]>;
+  /** GET /home/recommendations — live engine (time/place/session/cold/warm).
+   * The server computes daypart from request time and uses city/lat/lon for
+   * place-aware ranking; the client passes them via query params. */
+  getRecommendations(opts?: { cityId?: string; lat?: number; lon?: number; limit?: number }): Promise<RecommendedMerchant[]>;
 }
 
 /* ---------------- Search ---------------- */

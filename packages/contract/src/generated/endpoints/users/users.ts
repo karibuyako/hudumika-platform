@@ -39,6 +39,8 @@ import type {
   GetCustomerDistribution200Item,
   GetCustomerInsights200,
   GetCustomerInsightsParams,
+  GetHomeRecommendations200,
+  GetHomeRecommendationsParams,
   GetHourlyTrends200Item,
   GetHourlyTrendsParams,
   GetMarketAnalysisParams,
@@ -77,6 +79,7 @@ import type {
   NotFoundResponse,
   OnboardingStatus,
   PairMerchantDeviceBody,
+  PostUserEventBody,
   PrintJob,
   ProductPerformance,
   PutCommissionRulesBody,
@@ -106,6 +109,7 @@ import type {
   TestMerchantDevice200,
   TopUpLoyaltyMemberBody,
   TrafficAnalysis,
+  UnauthorizedResponse,
   UnifiedSearchParams,
   UpdateTaskStatusBody,
   User,
@@ -162,6 +166,67 @@ export const getConsumerHome = async (params?: GetConsumerHomeParams, options?: 
 
   const data: getConsumerHomeResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getConsumerHomeResponse
+}
+
+
+export type getHomeRecommendationsResponse200 = {
+  data: GetHomeRecommendations200
+  status: 200
+}
+
+export type getHomeRecommendationsResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type getHomeRecommendationsResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type getHomeRecommendationsResponseSuccess = (getHomeRecommendationsResponse200) & {
+  headers: Headers;
+};
+export type getHomeRecommendationsResponseError = (getHomeRecommendationsResponse401 | getHomeRecommendationsResponse422) & {
+  headers: Headers;
+};
+
+export type getHomeRecommendationsResponse = (getHomeRecommendationsResponseSuccess | getHomeRecommendationsResponseError)
+
+export const getGetHomeRecommendationsUrl = (params?: GetHomeRecommendationsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/home/recommendations?${stringifiedParams}` : `/home/recommendations`
+}
+
+/**
+ * @summary Personalized merchant recommendations (time, place, session, cold/warm start)
+ */
+export const getHomeRecommendations = async (params?: GetHomeRecommendationsParams, options?: RequestInit): Promise<getHomeRecommendationsResponse> => {
+
+  const res = await fetch(getGetHomeRecommendationsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getHomeRecommendationsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getHomeRecommendationsResponse
 }
 
 
@@ -610,6 +675,60 @@ export const updateMe = async (userUpdate: UserUpdate, options?: RequestInit): P
 
   const data: updateMeResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as updateMeResponse
+}
+
+
+export type postUserEventResponse204 = {
+  data: void
+  status: 204
+}
+
+export type postUserEventResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type postUserEventResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type postUserEventResponseSuccess = (postUserEventResponse204) & {
+  headers: Headers;
+};
+export type postUserEventResponseError = (postUserEventResponse401 | postUserEventResponse422) & {
+  headers: Headers;
+};
+
+export type postUserEventResponse = (postUserEventResponseSuccess | postUserEventResponseError)
+
+export const getPostUserEventUrl = () => {
+
+
+
+
+  return `/users/me/events`
+}
+
+/**
+ * @summary Record a user behavior event for recommendations (view, search, cart, heart, order)
+ */
+export const postUserEvent = async (postUserEventBody: PostUserEventBody, options?: RequestInit): Promise<postUserEventResponse> => {
+
+  const res = await fetch(getPostUserEventUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(postUserEventBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postUserEventResponse['data'] = body ? JSON.parse(body) : undefined
+  return { data, status: res.status, headers: res.headers } as postUserEventResponse
 }
 
 

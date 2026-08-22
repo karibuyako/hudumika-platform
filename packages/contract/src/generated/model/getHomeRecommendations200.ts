@@ -8,17 +8,9 @@
  *
  * OpenAPI spec version: 1.0.0
  */
-import type { AvailabilityWindow } from './availabilityWindow';
-import type { ProviderPrivateKycVerification } from './providerPrivateKycVerification';
-import type { ProviderPrivateTradeRequirementsItem } from './providerPrivateTradeRequirementsItem';
-import type { ProviderPublic } from './providerPublic';
-import type { VerificationState } from './verificationState';
+import type { RecommendedMerchant } from './recommendedMerchant';
 
-export type ProviderPrivate = ProviderPublic & ({
-  verification: VerificationState;
-  payoutCycleDays: number;
-  bio?: string;
-  availability?: AvailabilityWindow[];
-  tradeRequirements?: ProviderPrivateTradeRequirementsItem[] | null;
-  kycVerification?: ProviderPrivateKycVerification;
-});
+export type GetHomeRecommendations200 = {
+  items: RecommendedMerchant[];
+  nextCursor?: string | null;
+};
