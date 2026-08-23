@@ -297,6 +297,56 @@ func (s *Server) Router() http.Handler {
 		r.Post("/red-packets/me/share", s.MthShareRedPacket)
 		r.Get("/tracking-share/{id}", s.MthGetTrackingShare)
 		r.Post("/orders/{id}/tracking-share", s.MthCreateTrackingShare)
+
+		// Transport bounded context (bus / bikes / rides): hand-written
+		// handlers. These endpoints were previously absent from the backend
+		// contract and returned a raw 404, so the consumer app could not use
+		// them.
+		r.Get("/bus/routes", s.ListBusRoutes)
+		r.Get("/bus/routes/{routeId}", func(w http.ResponseWriter, rq *http.Request) {
+			s.GetBusRoute(w, rq, uuidParam(rq, "routeId"))
+		})
+		r.Get("/bus/routes/{routeId}/vehicles", func(w http.ResponseWriter, rq *http.Request) {
+			s.GetBusRouteVehicles(w, rq, uuidParam(rq, "routeId"))
+		})
+		r.Get("/bus/vehicles/{vehicleId}", func(w http.ResponseWriter, rq *http.Request) {
+			s.GetBusVehicle(w, rq, uuidParam(rq, "vehicleId"))
+		})
+		r.Get("/bus/reminders", s.ListBusReminders)
+		r.Post("/bus/reminders", s.CreateBusReminder)
+
+		r.Get("/bikes/nearby", s.ListNearbyBikes)
+		r.Get("/bikes/{bikeId}", func(w http.ResponseWriter, rq *http.Request) {
+			s.GetBike(w, rq, uuidParam(rq, "bikeId"))
+		})
+		r.Get("/bikes/rides/active", s.GetActiveBikeRide)
+		r.Post("/bikes/unlock", s.UnlockBike)
+		r.Post("/bikes/rides/{rideId}/lock", func(w http.ResponseWriter, rq *http.Request) {
+			s.LockBikeRide(w, rq, uuidParam(rq, "rideId"))
+		})
+		r.Post("/bikes/rides/{rideId}/unlock", func(w http.ResponseWriter, rq *http.Request) {
+			s.UnlockBikeRide(w, rq, uuidParam(rq, "rideId"))
+		})
+		r.Post("/bikes/rides/{rideId}/finish", func(w http.ResponseWriter, rq *http.Request) {
+			s.FinishBikeRide(w, rq, uuidParam(rq, "rideId"))
+		})
+		r.Post("/bikes/rides/{rideId}/pay", func(w http.ResponseWriter, rq *http.Request) {
+			s.PayBikeRide(w, rq, uuidParam(rq, "rideId"))
+		})
+		r.Get("/bikes/rides/me", s.ListMyBikeRides)
+		r.Get("/bikes/rides/{rideId}", func(w http.ResponseWriter, rq *http.Request) {
+			s.GetBikeRide(w, rq, uuidParam(rq, "rideId"))
+		})
+
+		r.Post("/rides/estimate", s.EstimateRide)
+		r.Post("/rides", s.CreateRide)
+		r.Get("/rides/me", s.ListMyRides)
+		r.Get("/rides/{rideId}", func(w http.ResponseWriter, rq *http.Request) {
+			s.GetRide(w, rq, uuidParam(rq, "rideId"))
+		})
+		r.Post("/rides/{rideId}/cancel", func(w http.ResponseWriter, rq *http.Request) {
+			s.CancelRide(w, rq, uuidParam(rq, "rideId"))
+		})
 		r.Delete("/payments/methods/{id}", s.MthDeletePaymentMethod)
 		r.Post("/payments/methods", s.MthAddPaymentMethod)
 		r.Get("/push/tokens", s.MthListPushTokens)
