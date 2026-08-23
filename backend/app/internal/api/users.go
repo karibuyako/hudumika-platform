@@ -6,6 +6,7 @@ import (
 
 	"github.com/hudumika/api-backend/internal/auth"
 	"github.com/hudumika/api-backend/internal/gen"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // Sentinel errors from currentUser, mapped to HTTP envelopes by
@@ -122,6 +123,11 @@ func (s *Server) UpdateMe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := repo.UpdateUserProfile(r.Context(), user.ID, email, &fullName, avatarURL, locale); err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			writeError(w, http.StatusConflict, "EMAIL_ALREADY_IN_USE", "That email is already in use")
+			return
+		}
 		s.logger.Error("update user profile failed", "error", err)
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
