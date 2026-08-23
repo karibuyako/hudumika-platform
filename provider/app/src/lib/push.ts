@@ -1,13 +1,11 @@
-/* Push registration — degrades gracefully.
+/* Push registration — enterprise P6 deepLink wiring.
  *
- * M5: push token is registered at login via the Expo Push Service. There is
- * NO push-token endpoint in API-CONTRACT.yaml yet (tracked Team 6 gap), so the
- * token is never sent anywhere live. expo-notifications is also not a declared
- * dependency in this build; the dynamic loader below resolves it only when it
- * exists, so bundling and node tests are unaffected.
- *
- * Until both land: token stays client-side (in-memory) and in-app polling
- * keeps the notification center live.
+ * Expo Push Service token is registered at login and synced to
+ * POST /notifications/me/push-token (API-CONTRACT.yaml: registerPushToken).
+ * DeepLink routing is handled in notifications.tsx openDeepLink() — all
+ * Notification.deepLink values are whitelisted and router.push() with fallback.
+ * In-app polling (useFocusEffect every 15s in jobs/*) keeps the center live
+ * when push is unavailable (web / permissions denied).
  */
 
 let pushToken: string | null = null;
@@ -29,9 +27,15 @@ export async function registerPushToken(): Promise<string | null> {
     }
     const token = await mod.getExpoPushTokenAsync();
     pushToken = token.data;
+    // Sync to backend (best-effort) — enables server push via FCM/APNs
+    try {
+      const { api } = await import('@/api/client');
+      await api.post<void>('/notifications/me/push-token', { token: pushToken, platform: 'expo' });
+    } catch {
+      /* backend sync best-effort — token still usable client-side */
+    }
     return pushToken;
   } catch {
-    // Module absent or permissions unavailable — in-app polling still works.
     pushToken = null;
     return null;
   }

@@ -20,3 +20,11 @@ tools/
 # go build artifacts (none in-tree, safety)
 backend/app/bin/
 backend/app/backups/selfcheck-report-2026-08-20.txt
+
+# e2e / build artifacts (generated, do not commit)
+consumer-mobile/app/dist_test/
+consumer-mobile/app/e2e-browser/shots/
+merchant/app/playwright-report/
+merchant/app/test-results/
+provider/app/test-results/
+rider-mobile/app/e2e-browser/shots/

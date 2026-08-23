@@ -354,12 +354,33 @@ export interface OrderTipInput {
   note?: string;
 }
 
+export interface OrderEstimate {
+  deliveryFeeTZS: number;
+  platformFeeTZS: number;
+  taxTZS: number;
+  discountTZS?: number;
+  totalTZS?: number;
+}
+
+export interface OrderEstimateInput {
+  merchantId: string;
+  items?: { catalogueItemId: string; quantity: number; options?: string[] }[];
+  subtotalTZS?: number;
+  deliveryAddress?: OrderCreate['deliveryAddress'];
+}
+
 export interface OrdersRepository {
   create(input: OrderCreateInput, idempotencyKey: string): Promise<Order>;
   list(params?: { status?: string; cursor?: string; limit?: number }): Promise<Order[]>;
   get(orderId: string): Promise<OrderDetail>;
   cancel(orderId: string, reason: string, idempotencyKey: string): Promise<Order>;
   rush(orderId: string, idempotencyKey: string): Promise<void>;
+  /** GET /orders/estimate — fee preview for a cart (delivery + platform + tax).
+   * Mock-first until the contract ships the endpoint: the api repo calls the
+   * not-yet-contract path (parity allow-list) and the mock computes from
+   * catalogue/merchant metadata. Money is integer TZS; the server is authority
+   * at order create — the preview is advisory. */
+  estimate(input: OrderEstimateInput): Promise<OrderEstimate>;
   /** POST /orders/{id}/modify-request — request a change to an active order
    * (202 {requestId, status: pending_approval}); 409 ORDER_MODIFICATION_NOT_ALLOWED
    * outside the modifiable window / ORDER_MODIFICATION_PENDING while one is open. */
@@ -1040,6 +1061,12 @@ export interface MembershipsRepository {
   /** GET /loyalty-transactions — signed points ledger (earn/check_in/bonus/
    * redeem/expire/adjust), cursor-paginated. */
   listLoyaltyTransactions(params?: { cursor?: string; limit?: number }): Promise<ListLoyaltyTransactions200Item[]>;
+  /** GET /loyalty/rewards or GET /loyalty/catalog — server-driven redemption
+   * catalog. Tries GET /loyalty/rewards first, then GET /loyalty/catalog if
+   * the first is not available; falls back to the static REDEMPTION_CATALOG
+   * when neither endpoint is shipped or on network/offline errors. The mock
+   * returns the static catalog. Keep REDEMPTION_CATALOG as offline/dev fallback. */
+  getRedemptionCatalog(): Promise<RedemptionReward[]>;
   /** POST /loyalty/redemptions — redeem points for a reward from
    * REDEMPTION_CATALOG. Mock-only until the contract ships the redemption
    * mutation (docs/CONTRACT-ADDITIONS.md #16): the api repo calls the
@@ -1277,6 +1304,91 @@ export interface TravelRepository {
   listMyBookings(): Promise<TravelBooking[]>;
 }
 
+/* ---------------- Bus — public transport (Meituan bus) ---------------- */
+
+/** One physical stop on a city bus route (sequence = order along the route). */
+export interface BusStop {
+  id: string;
+  name: string;
+  sequence: number;
+  lat: number;
+  lon: number;
+}
+
+/** City bus route — the static timetable + stop list (server-owned). */
+export interface BusRoute {
+  id: string;
+  routeNumber: string;
+  routeName: string;
+  origin: string;
+  destination: string;
+  stops: BusStop[];
+  fareTZS: number;
+  durationMinutes: number;
+  frequencyMinutes: number;
+  operatingHours: string;
+}
+
+/** Live vehicle position for a bus on a route (poll ~15s, like order tracking). */
+export interface BusVehicle {
+  id: string;
+  routeId: string;
+  routeNumber: string;
+  plateNumber: string;
+  lat: number;
+  lon: number;
+  heading: number;
+  nextStopId: string;
+  nextStopName: string;
+  nextStopSequence: number;
+  occupancy: 'low' | 'medium' | 'high';
+  lastUpdatedAt: string;
+  etaMinutes?: number;
+}
+
+/** One search hit — the route plus its next arrivals & live vehicles. */
+export interface BusOption {
+  route: BusRoute;
+  nextArrivalMinutes: number;
+  followingArrivalMinutes: number | null;
+  vehicles: BusVehicle[];
+  available: boolean;
+}
+
+export interface BusSearchParams {
+  origin: string;
+  destination: string;
+}
+
+/** Stop reminder — buzz/notify when the bus is N minutes from a chosen stop. */
+export interface StopReminder {
+  id: string;
+  routeId: string;
+  routeNumber: string;
+  stopId: string;
+  stopName: string;
+  enabled: boolean;
+  createdAt: string;
+}
+
+export interface BusRepository {
+  /** GET /bus/routes?origin=&destination= — search city bus routes (case-insensitive
+   * substring on stop names / route name; empty origin/destination → VALIDATION_FAILED). */
+  search(params: BusSearchParams): Promise<BusOption[]>;
+  /** GET /bus/routes/{routeId} — route detail with stops; unknown id → 404 NOT_FOUND. */
+  getRoute(routeId: string): Promise<BusRoute>;
+  /** GET /bus/routes/{routeId}/vehicles — live vehicle positions for a route. */
+  getVehicles(routeId: string): Promise<BusVehicle[]>;
+  /** GET /bus/vehicles/{vehicleId} — single vehicle live position. */
+  trackVehicle(vehicleId: string): Promise<BusVehicle>;
+  /** GET /bus/reminders — my stop reminders. */
+  listReminders(): Promise<StopReminder[]>;
+  /** POST /bus/reminders — toggle a stop reminder (enabled true → create/enable,
+   * false → disable/remove). Idempotent per key. Returns the reminder when
+   * enabled, null when disabled (the caller hides the pill). */
+  setReminder(routeId: string, stopId: string, enabled: boolean, idempotencyKey: string): Promise<StopReminder | null>;
+}
+
 /* ---------------- Hotels (P6d) ---------------- */
 
 /** Contract listHotels params (cityId/checkIn/checkOut/guests/cursor/limit).
@@ -1304,6 +1416,165 @@ export interface HotelsRepository {
   listMyBookings(): Promise<HotelBooking[]>;
 }
 
+/* ---------------- Ride-hailing (Meituan ride) ---------------- */
+
+/** Ride type chips — Meituan-style: Express (economy), Premier (comfort), Taxi (metered). */
+export type RideType = 'express' | 'premier' | 'taxi';
+
+/** Fare estimate for a ride — mock-first until the contract ships the ride surface. */
+export interface RideEstimate {
+  fareTZS: number;
+  distanceKm: number;
+  durationMin: number;
+}
+
+/** Assigned driver details — shown after matching. */
+export interface RideDriver {
+  id: string;
+  name: string;
+  phone: string;
+  plate: string;
+  carModel: string;
+  carColor: string;
+  rating: number;
+  avatar?: string;
+}
+
+/** Ride lifecycle: matching → matched (driver assigned) → arriving → in_ride → completed → cancelled. */
+export type RideStatus = 'matching' | 'matched' | 'arriving' | 'in_ride' | 'completed' | 'cancelled';
+
+/** A ride order — covers Meituan flow: pickup → destination → type → fare → matching → ride → payment → rating. */
+export interface Ride {
+  id: string;
+  pickup: string;
+  destination: string;
+  pickupCoord?: { lat: number; lon: number };
+  destinationCoord?: { lat: number; lon: number };
+  rideType: RideType;
+  fareTZS: number;
+  distanceKm: number;
+  durationMin: number;
+  status: RideStatus;
+  driver?: RideDriver;
+  etaMin?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RideCreateInput {
+  pickup: string;
+  destination: string;
+  rideType: RideType;
+  pickupCoord?: { lat: number; lon: number };
+  destinationCoord?: { lat: number; lon: number };
+}
+
+export interface RideRepository {
+  /** Fare estimate for pickup → destination + ride type. */
+  estimate(input: { pickup: string; destination: string; rideType: RideType }): Promise<RideEstimate>;
+  /** POST /rides — create a ride (Idempotency-Key). */
+  create(input: RideCreateInput, idempotencyKey: string): Promise<Ride>;
+  /** GET /rides/{rideId} — ride detail + live status. */
+  get(rideId: string): Promise<Ride>;
+  /** GET /rides/me — my rides, newest first. */
+  list(): Promise<Ride[]>;
+  /** POST /rides/{rideId}/cancel — cancel a ride before pickup. */
+  cancel(rideId: string, idempotencyKey: string): Promise<Ride>;
+}
+
+/* ---------------- Bike / e-bike rental (Meituan bike) ---------------- */
+
+/** Bike type — manual vs electric (battery). */
+export type BikeType = 'bike' | 'ebike';
+
+/** Bike availability status. */
+export type BikeStatus = 'available' | 'reserved' | 'riding' | 'disabled';
+
+/** A nearby bike/e-bike as surfaced to the map + list. Money is integer TZS. */
+export interface Bike {
+  id: string;
+  code: string;
+  type: BikeType;
+  status: BikeStatus;
+  lat: number;
+  lon: number;
+  /** Battery 0–100 for ebike, undefined for manual bikes. */
+  batteryPct?: number;
+  /** Straight-line distance from the user in meters (server-computed). */
+  distanceM?: number;
+  pricePerMinuteTZS: number;
+  unlockFeeTZS: number;
+}
+
+/** Ride lock status (Meituan temporary lock vs riding). */
+export type BikeLockStatus = 'unlocked' | 'locked';
+
+/** Ride lifecycle: riding → locked (temporary) → completed (locked + billed). */
+export type BikeRideStatus = 'riding' | 'locked' | 'completed';
+
+/** Fare breakdown for a completed ride (integer TZS). */
+export interface BikeFareBreakdown {
+  unlockFeeTZS: number;
+  rideFeeTZS: number;
+  geofenceSurchargeTZS: number;
+  totalTZS: number;
+}
+
+/** An active or completed bike ride — covers Meituan flow: Map →
+ * Nearby bikes → Select bike → Scan QR/Bluetooth unlock → Ride →
+ * Temporary lock → Finish → Lock → Geofence → Fare → Payment → History.
+ * Money is integer TZS. */
+export interface BikeRide {
+  id: string;
+  bikeId: string;
+  bikeCode: string;
+  bikeType: BikeType;
+  status: BikeRideStatus;
+  lockStatus: BikeLockStatus;
+  startAt: string;
+  endAt?: string;
+  startLat: number;
+  startLon: number;
+  endLat?: number;
+  endLon?: number;
+  durationMinutes?: number;
+  distanceKm?: number;
+  fareTZS?: number;
+  fareBreakdown?: BikeFareBreakdown;
+  geofenceViolation?: boolean;
+  paymentStatus?: 'pending' | 'paid' | 'failed';
+  paymentMethod?: string;
+}
+
+export interface BikeRepository {
+  /** GET /bikes/nearby — nearby bikes within radiusKm of lat/lon (Dar hub default). */
+  listNearby(params?: { lat?: number; lon?: number; radiusKm?: number }): Promise<Bike[]>;
+  /** GET /bikes/{bikeId} — bike detail; 404 → BIKE_NOT_FOUND. */
+  getBike(bikeId: string): Promise<Bike>;
+  /** GET /bikes/rides/active — current ride or null (one active ride at a time). */
+  getActiveRide(): Promise<BikeRide | null>;
+  /** POST /bikes/unlock — Scan QR/Bluetooth unlock (bikeId or code). Mock-only until the
+   * contract ships the bike surface: the api repo calls the not-yet-contract path
+   * (parity harness allow-list) and the mock is the server. 409 BIKE_NOT_AVAILABLE
+   * when the bike is riding/disabled, 409 RIDE_ALREADY_ACTIVE when a ride is open.
+   * Idempotent per key. */
+  unlock(input: { bikeId?: string; code?: string }, idempotencyKey: string): Promise<BikeRide>;
+  /** POST /bikes/rides/{id}/lock — temporary lock (Meituan "Lock" while parked). */
+  temporaryLock(rideId: string, idempotencyKey: string): Promise<BikeRide>;
+  /** POST /bikes/rides/{id}/unlock — temporary unlock (Bluetooth). */
+  temporaryUnlock(rideId: string, idempotencyKey: string): Promise<BikeRide>;
+  /** POST /bikes/rides/{id}/finish — Finish ride: Lock → Geofence → Fare.
+   * The server computes duration, distance, fare + geofence violation
+   * (outside 7km Dar zone → surcharge). 404 RIDE_NOT_FOUND for unknown ride. */
+  finish(input: { rideId: string; lat: number; lon: number }, idempotencyKey: string): Promise<BikeRide>;
+  /** POST /bikes/rides/{id}/pay — pay the fare (wallet/mpesa/etc.). */
+  pay(rideId: string, method: string, idempotencyKey: string): Promise<BikeRide>;
+  /** GET /bikes/rides/me — ride history, newest first. */
+  listHistory(): Promise<BikeRide[]>;
+  /** GET /bikes/rides/{id} — single ride (active or history). 404 → RIDE_NOT_FOUND. */
+  getRide(rideId: string): Promise<BikeRide>;
+}
+
 /* ---------------- Factories ---------------- */
 
 // Deliberately imported at the bottom (rider pattern): factories.ts imports
@@ -1312,7 +1583,9 @@ export interface HotelsRepository {
 import {
   getAssistantRepository,
   getAuthRepository,
+  getBikeRepository,
   getBookingsRepository,
+  getBusRepository,
   getConversationsRepository,
   getCouponsRepository,
   getDineInRepository,
@@ -1336,6 +1609,7 @@ import {
   getReservationsRepository,
   getReviewsRepository,
   getRewardsRepository,
+  getRideRepository,
   getSearchRepository,
   getShipmentsRepository,
   getSplitPaymentsRepository,
@@ -1348,7 +1622,9 @@ import {
 export {
   getAssistantRepository,
   getAuthRepository,
+  getBikeRepository,
   getBookingsRepository,
+  getBusRepository,
   getConversationsRepository,
   getCouponsRepository,
   getDineInRepository,
@@ -1372,6 +1648,7 @@ export {
   getReservationsRepository,
   getReviewsRepository,
   getRewardsRepository,
+  getRideRepository,
   getSearchRepository,
   getShipmentsRepository,
   getSplitPaymentsRepository,

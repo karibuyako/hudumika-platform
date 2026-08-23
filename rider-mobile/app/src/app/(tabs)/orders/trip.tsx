@@ -15,8 +15,7 @@ import { Colors, FontSize, LogisticsTokens, NumberStyle, Radius, Spacing } from 
 import { t, formatTZS } from '@/i18n';
 import { clockISO } from '@/lib/format';
 import { capacityBarTone, capacityPercent } from '@/lib/logistics';
-import { getTripsRepository } from '@/repos';
-import { MockLogisticsRepository } from '@/repos/mock/logistics';
+import { getLogisticsRepository, getTripsRepository } from '@/repos';
 import type { LogisticsTrip, Trip, TripStopsItem, Vehicle } from '@hudumika/contract';
 
 const STOP_TONE: Record<TripStopsItem['status'], 'neutral' | 'success' | 'info' | 'danger'> = {
@@ -71,7 +70,7 @@ export default function TripScreen() {
     try {
       setTrip(await getTripsRepository().getActiveTrip());
       try {
-        const logisticsRepo = new MockLogisticsRepository();
+        const logisticsRepo = getLogisticsRepository();
         const trips = await logisticsRepo.listLogisticsTrips();
         if (trips.length > 0) {
           const lt = trips[0];
@@ -206,7 +205,7 @@ export default function TripScreen() {
     if (!vehicle) return;
     setCapacityError(null);
     try {
-      const repo = new MockLogisticsRepository();
+      const repo = getLogisticsRepository();
       await repo.checkVehicleCapacity(vehicle.id, pkgId);
     } catch (e) {
       if (e instanceof ApiError) {

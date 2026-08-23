@@ -66,7 +66,6 @@ const QUICK_LINKS = [
   { label: 'st.qlWebhooks', icon: 'link-outline', route: '/ops/webhooks' },
   { label: 'st.qlIntegrations', icon: 'git-merge-outline', route: '/ops/integrations' },
   { label: 'st.qlTasks', icon: 'checkmark-done-outline', route: '/ops/tasks' },
-  { label: 'st.qlSettings', icon: 'settings-outline', route: '/store/settings' },
 ] as const;
 
 export default function StoreScreen() {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import {
   Btn,
@@ -14,7 +14,7 @@ import {
   SheetModal,
 } from '@/components/ui';
 import { MapView } from '@/components/MapView';
-import { Colors, Fonts, FontSize, Spacing } from '@/constants/theme';
+import { Colors, Fonts, FontSize, Radius, Spacing } from '@/constants/theme';
 import { t } from '@/i18n';
 import { GeoError, getCurrentPosition, isServiceable } from '@/lib/geolocation';
 import { accuracyKmFor, type Coordinate } from '@/lib/maps';
@@ -36,6 +36,10 @@ export default function AddressesScreen() {
   const [label, setLabel] = useState('');
   const [lines, setLines] = useState('');
   const [landmark, setLandmark] = useState('');
+  const [building, setBuilding] = useState('');
+  const [unit, setUnit] = useState('');
+  const [floor, setFloor] = useState('');
+  const [door, setDoor] = useState('');
   const [instructions, setInstructions] = useState('');
   const [area, setArea] = useState('');
   const [phone, setPhone] = useState('');
@@ -52,6 +56,10 @@ export default function AddressesScreen() {
     setLabel('');
     setLines('');
     setLandmark('');
+    setBuilding('');
+    setUnit('');
+    setFloor('');
+    setDoor('');
     setInstructions('');
     setArea('');
     setPhone('');
@@ -73,6 +81,10 @@ export default function AddressesScreen() {
     setLabel(address.label);
     setLines(address.lines);
     setLandmark(address.landmark ?? '');
+    setBuilding(address.building ?? '');
+    setUnit(address.unit ?? '');
+    setFloor(address.floor ?? '');
+    setDoor(address.door ?? '');
     setInstructions(address.deliveryInstructions ?? '');
     setPhone(address.contactPhone);
     setLat(address.lat);
@@ -134,6 +146,10 @@ export default function AddressesScreen() {
       label: label.trim(),
       lines: lines.trim(),
       landmark: landmark.trim() || undefined,
+      building: building.trim() || undefined,
+      unit: unit.trim() || undefined,
+      floor: floor.trim() || undefined,
+      door: door.trim() || undefined,
       deliveryInstructions: instructions.trim() || undefined,
       serviceArea: area.trim() || undefined,
       contactPhone: phone.trim(),
@@ -196,6 +212,10 @@ export default function AddressesScreen() {
                     </Row>
                     <Text style={styles.meta}>{item.lines}</Text>
                     {item.landmark ? <Text style={styles.meta}>{item.landmark}</Text> : null}
+                    {item.building ? <Text style={styles.meta}>Building: {item.building}</Text> : null}
+                    {item.unit ? <Text style={styles.meta}>Unit: {item.unit}</Text> : null}
+                    {item.floor ? <Text style={styles.meta}>Floor: {item.floor}</Text> : null}
+                    {item.door ? <Text style={styles.meta}>Door: {item.door}</Text> : null}
                     {item.deliveryInstructions ? <Text style={styles.meta}>{item.deliveryInstructions}</Text> : null}
                     <Text style={styles.meta}>{item.contactPhone}</Text>
                   </Pressable>
@@ -226,6 +246,22 @@ export default function AddressesScreen() {
           <Field label={t('addresses.label')} value={label} onChangeText={setLabel} placeholder="Home" maxLength={60} />
           <Field label={t('addresses.lines')} value={lines} onChangeText={setLines} multiline maxLength={500} />
           <Field label={t('addresses.landmark')} value={landmark} onChangeText={setLandmark} maxLength={200} />
+          <View style={{ gap: Spacing.xs }}>
+            <Text style={styles.fieldLabel}>Building</Text>
+            <TextInput value={building} onChangeText={setBuilding} placeholder="Building" placeholderTextColor={Colors.textTertiary} style={styles.input} accessibilityLabel="Building" maxLength={100} />
+          </View>
+          <View style={{ gap: Spacing.xs }}>
+            <Text style={styles.fieldLabel}>Unit</Text>
+            <TextInput value={unit} onChangeText={setUnit} placeholder="Unit" placeholderTextColor={Colors.textTertiary} style={styles.input} accessibilityLabel="Unit" maxLength={100} />
+          </View>
+          <View style={{ gap: Spacing.xs }}>
+            <Text style={styles.fieldLabel}>Floor</Text>
+            <TextInput value={floor} onChangeText={setFloor} placeholder="Floor" placeholderTextColor={Colors.textTertiary} style={styles.input} accessibilityLabel="Floor" maxLength={100} />
+          </View>
+          <View style={{ gap: Spacing.xs }}>
+            <Text style={styles.fieldLabel}>Door</Text>
+            <TextInput value={door} onChangeText={setDoor} placeholder="Door" placeholderTextColor={Colors.textTertiary} style={styles.input} accessibilityLabel="Door" maxLength={100} />
+          </View>
           <Field
             label={t('address.instructions')}
             value={instructions}
@@ -292,4 +328,15 @@ const styles = StyleSheet.create({
   fieldHint: { fontSize: FontSize.xs, color: Colors.textFaint, fontFamily: Fonts.sans },
   hint: { color: Colors.success, fontSize: FontSize.xs, fontFamily: Fonts.sansSemibold },
   error: { color: Colors.danger, fontSize: FontSize.sm, fontFamily: Fonts.sansSemibold },
+  input: {
+    borderWidth: 1,
+    borderColor: Colors.borderStrong,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 12,
+    fontSize: FontSize.md,
+    color: Colors.text,
+    fontFamily: Fonts.sans,
+    backgroundColor: Colors.card,
+  },
 });

@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Redirect, Tabs, usePathname } from 'expo-router';
+import { Redirect, Tabs, usePathname, type Href } from 'expo-router';
 import { useSyncExternalStore } from 'react';
 
 import { Colors } from '@/constants/theme';
@@ -16,7 +16,7 @@ export default function TabsLayout() {
   const inBookingDetail = pathname.startsWith('/jobs/') && !!jobSegment && !STATIC_JOB_ROUTES.includes(jobSegment);
 
   if (status !== 'authed') {
-    return <Redirect href={status === 'onboarding' ? '/onboarding' : '/login'} />;
+    return <Redirect href={(status === 'onboarding' ? '/onboarding' : '/login') as Href} />;
   }
 
   return (

@@ -71,7 +71,7 @@ export default function LoginScreen() {
       await verifyOtp(requestId, code);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       const target = useSessionStore.getState().status === 'authed' ? '/home' : '/onboarding';
-      router.replace(target);
+      router.replace(target as never);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : t('login.signinFailed'));
     } finally {

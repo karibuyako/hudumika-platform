@@ -24,7 +24,7 @@ export const Colors = {
   text: color.ink900,
   textSecondary: color.ink500,
   textTertiary: color.ink300,
-  textFaint: '#c9cdca',
+  textFaint: color.ink100,
 
   border: color.line,
   borderStrong: color.lineStrong,

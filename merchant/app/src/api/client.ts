@@ -29,10 +29,99 @@ export interface RequestOptions {
 const DEFAULT_RETRIES = 2;
 const DEFAULT_TIMEOUT = 15000;
 
+/* Sensitive actions (MASTER-BLUEPRINT §26): payment, cancellation, wallet
+ * withdrawal/payout and privacy ops always require fresh server confirmation —
+ * they are never queued offline. Failing fast keeps the user's money and
+ * account state safe; everything else queues and replays when connectivity
+ * returns. Mirrors consumer-mobile/src/api/client.ts:44 */
+const SENSITIVE_PATHS: RegExp[] = [
+  /^\/payments\/intent(?:s)?(?:\/|$)/,
+  /^\/payments\/[^/]+\/confirm/,
+  /^\/payments\/[^/]+\/reverse/,
+  /^\/payments\/qr(?:\/|$)/,
+  /^\/orders\/[^/]+\/cancel/,
+  /^\/bookings\/[^/]+\/(cancel|complete|quote)/,
+  /^\/reservations\/[^/]+\/cancel/,
+  /^\/group-buys\/[^/]+\/purchase/,
+  /^\/wallet\/me\/top-up/,
+  /^\/wallet\/withdrawals/,
+  /^\/payouts\//,
+  /^\/finance\/settlements\//,
+  /^\/privacy\/(delete|export)/,
+  /^\/auth\/change-password/,
+];
+
+export function isSensitivePath(path: string): boolean {
+  return SENSITIVE_PATHS.some((re) => re.test(path));
+}
+
 // Web: empty base → same-origin, MSW intercepts. Native/device: point at the
 // mock gateway (e.g. EXPO_PUBLIC_API_URL=http://192.168.1.20:3001) or a live
 // backend (which includes /api/v1 per docs/API-BASE-CONVENTION.md).
-const API_BASE = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/$/, '');
+export const API_BASE = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/$/, '');
+
+export function isValidApiBase(): boolean {
+  if (!API_BASE) return false;
+  try {
+    const u = new URL(API_BASE);
+    return (u.protocol === 'https:' || u.protocol === 'http:') && !!u.hostname;
+  } catch {
+    return false;
+  }
+}
+
+export function getApiBasePath(): string {
+  if (!API_BASE) return '/api';
+  try {
+    const u = new URL(API_BASE);
+    const path = u.pathname.replace(/\/$/, '');
+    if (path === '/api/v1' || path === '/api') return path;
+    return '/api';
+  } catch {
+    return '/api';
+  }
+}
+
+export function buildApiUrl(path: string): string {
+  const basePath = getApiBasePath();
+  const cleanPath = path.startsWith('/') ? path : '/' + path;
+  if (!API_BASE) {
+    return basePath + cleanPath;
+  }
+  try {
+    const u = new URL(API_BASE);
+    const origin = u.origin;
+    const isLocalhost = u.hostname === 'localhost' || u.hostname === '127.0.0.1';
+    const hasApiV1Prefix = u.pathname === '/api/v1' || u.pathname === '/api';
+    if (isLocalhost && hasApiV1Prefix) {
+      return origin + cleanPath;
+    }
+    if (hasApiV1Prefix) {
+      return origin + u.pathname + cleanPath;
+    }
+    return origin + basePath + cleanPath;
+  } catch {
+    return basePath + cleanPath;
+  }
+}
+
+// Enterprise guard: native production must have an HTTPS API base.
+// Supports both EXPO_PUBLIC_ENV and EXPO_PUBLIC_ENVIRONMENT for production gate (consumer vs merchant naming).
+const ENV_FOR_API_CHECK = (process.env.EXPO_PUBLIC_ENV ?? process.env.EXPO_PUBLIC_ENVIRONMENT ?? 'development') as string;
+export const forceMockForMissingUrl = !isValidApiBase() && (ENV_FOR_API_CHECK === 'staging' || ENV_FOR_API_CHECK === 'production');
+if (!API_BASE) {
+  const isProdLike = ENV_FOR_API_CHECK === 'production' || ENV_FOR_API_CHECK === 'staging';
+  const isNativeLike = typeof window === 'undefined' || typeof (globalThis as unknown as { expo?: unknown }).expo !== 'undefined';
+  if (isProdLike && isNativeLike) {
+    console.warn('[api] EXPO_PUBLIC_API_URL is empty — app will run in mock/offline mode until a valid URL is configured. Set https://api.hudumika.co.tz/api/v1 via `eas update` when DNS is ready');
+  } else if (isProdLike && !isNativeLike) {
+    console.warn('[api] EXPO_PUBLIC_API_URL empty with EXPO_PUBLIC_ENV=' + ENV_FOR_API_CHECK + ' (web); requests use /api same-origin');
+  }
+} else if (!isValidApiBase()) {
+  console.warn('[api] EXPO_PUBLIC_API_URL is not a valid http(s) URL — falling back to mock mode: ' + API_BASE);
+} else if (!API_BASE.startsWith('https://') && ENV_FOR_API_CHECK === 'production' && !API_BASE.includes('localhost')) {
+  console.error('[api] EXPO_PUBLIC_API_URL must be https in production: ' + API_BASE);
+}
 
 /** Base-path resolution (docs/API-BASE-CONVENTION.md, rule 4).
  * - empty base (mock mode, MSW intercepts): '/api' + path
@@ -273,9 +362,14 @@ async function request<T>(method: string, path: string, opts: RequestOptions = {
   let attempt = 0;
   let refreshed = false;
 
-  // Offline-first: mutations are queued and replayed on reconnect.
+  // Offline-first: non-sensitive mutations are queued and replayed on
+  // reconnect; sensitive ones (payment, cancellation, wallet withdrawal,
+  // payout, privacy ops) fail fast — never queued (blueprint §26).
   const isMutation = method === 'POST' || method === 'PATCH';
   if (isMutation && isOffline()) {
+    if (isSensitivePath(path)) {
+      throw new ApiError(0, 'OFFLINE', 'You are offline — this action needs a connection and fresh server confirmation. Nothing was changed.', true);
+    }
     const { enqueue } = await import('@/api/queue');
     enqueue({ method: method as 'POST' | 'PATCH', path, body: opts.body });
     throw new ApiError(0, 'OFFLINE_QUEUED', 'Queued — will sync when back online', true);

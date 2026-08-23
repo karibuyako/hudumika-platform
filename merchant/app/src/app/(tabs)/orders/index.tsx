@@ -307,65 +307,67 @@ export default function OrdersScreen() {
   };
 
   const renderQueueCard = ({ item }: { item: Order }) => (
-    <Card
-      style={[styles.orderCard, selectMode && selected.has(item.id) && styles.orderCardSelected]}
-      onPress={() => (selectMode ? toggleSelect(item.id) : router.push(`/orders/${item.id}`))}>
-      {selectMode ? (
-        <View style={[styles.checkbox, selected.has(item.id) && styles.checkboxOn]}>
-          {selected.has(item.id) ? <Icon name="checkmark" size={13} color={Colors.white} /> : null}
-        </View>
-      ) : null}
-      <Row style={{ justifyContent: 'space-between' }}>
-        <Row gap={8} style={{ flexWrap: 'wrap' }}>
-          <Text style={styles.orderNo}>{item.no}</Text>
-          {!item.seen ? <Pill label={t('orders.seenBadge')} tone="danger" /> : null}
-          {item.source ? <Pill label={t(`orders.source.${item.source}` as I18nKey)} tone={SOURCE_TONE[item.source] ?? 'neutral'} /> : null}
-          {item.scheduledAt ? <Pill label={t('orders.preorder')} tone="warning" /> : null}
-          {item.hold ? <Pill label={t('orders.hold').toUpperCase()} tone="warning" /> : null}
-          <StatusPill status={item.status} />
-        </Row>
-        <Text style={styles.time}>{clock(item.createdAt)}</Text>
-      </Row>
-
-      <View style={styles.itemRows}>
-        {item.items.slice(0, 3).map((it, i) => (
-          <Text key={i} style={styles.itemText} numberOfLines={1}>
-            {it.emoji} {it.name} ×{it.qty}
-            {it.variants.length ? ` (${it.variants.join('/')})` : ''}
-          </Text>
-        ))}
-        {item.items.length > 3 ? (
-          <Text style={styles.itemMore}>{t('orders.moreItems', { n: item.items.length - 3 })}</Text>
+    <Card style={[styles.orderCard, selectMode && selected.has(item.id) && styles.orderCardSelected]}>
+      <Pressable
+        onPress={() => (selectMode ? toggleSelect(item.id) : router.push(`/orders/${item.id}`))}
+        accessibilityRole="button"
+        accessibilityLabel={`${item.no} ${item.status}`}
+        style={{ gap: 10 }}>
+        {selectMode ? (
+          <View style={[styles.checkbox, selected.has(item.id) && styles.checkboxOn]}>
+            {selected.has(item.id) ? <Icon name="checkmark" size={13} color={Colors.white} /> : null}
+          </View>
         ) : null}
-      </View>
-
-      {item.status === 'cancelled' && item.cancelReason ? (
-        <Text style={styles.itemMore}>{t('orders.cancelledReason', { reason: item.cancelReason })}</Text>
-      ) : null}
-      {item.status === 'disputed' ? (
-        <Text style={styles.itemMore}>{t('od.heldPayout')}</Text>
-      ) : null}
-
-      <Row style={{ justifyContent: 'space-between' }}>
-        <Row gap={6}>
-          {item.deliveryType === 'pickup' ? (
-            <Pill label={t('orders.pickup')} tone="info" />
-          ) : (
-            <Text style={styles.delivery}>{t('orders.deliveryName', { name: item.customer.name })}</Text>
-          )}
-          {item.scheduledAt ? (
-            <Text style={styles.scheduled}>{preorderIn(item.scheduledAt)}</Text>
-          ) : item.status === 'new' ? (
-            <OrderTimer deadlineAt={item.deadlineAt} />
-          ) : null}
+        <Row style={{ justifyContent: 'space-between' }}>
+          <Row gap={8} style={{ flexWrap: 'wrap' }}>
+            <Text style={styles.orderNo}>{item.no}</Text>
+            {!item.seen ? <Pill label={t('orders.seenBadge')} tone="danger" /> : null}
+            {item.source ? <Pill label={t(`orders.source.${item.source}` as I18nKey)} tone={SOURCE_TONE[item.source] ?? 'neutral'} /> : null}
+            {item.scheduledAt ? <Pill label={t('orders.preorder')} tone="warning" /> : null}
+            {item.hold ? <Pill label={t('orders.hold').toUpperCase()} tone="warning" /> : null}
+            <StatusPill status={item.status} />
+          </Row>
+          <Text style={styles.time}>{clock(item.createdAt)}</Text>
         </Row>
-        <Text style={styles.total}>
-          <Text style={styles.totalNum}>{tzs(item.total)}</Text>
-        </Text>
-      </Row>
-      {item.status === 'new' && item.deadlineAt ? (
-        <Text style={{ fontSize: FontSize.xs, color: Colors.textTertiary }}>{t('orders.deadlineHint')}</Text>
-      ) : null}
+
+        <View style={styles.itemRows}>
+          {item.items.slice(0, 3).map((it, i) => (
+            <Text key={i} style={styles.itemText} numberOfLines={1}>
+              {it.emoji} {it.name} ×{it.qty}
+              {it.variants.length ? ` (${it.variants.join('/')})` : ''}
+            </Text>
+          ))}
+          {item.items.length > 3 ? (
+            <Text style={styles.itemMore}>{t('orders.moreItems', { n: item.items.length - 3 })}</Text>
+          ) : null}
+        </View>
+
+        {item.status === 'cancelled' && item.cancelReason ? (
+          <Text style={styles.itemMore}>{t('orders.cancelledReason', { reason: item.cancelReason })}</Text>
+        ) : null}
+        {item.status === 'disputed' ? <Text style={styles.itemMore}>{t('od.heldPayout')}</Text> : null}
+
+        <Row style={{ justifyContent: 'space-between' }}>
+          <Row gap={6}>
+            {item.deliveryType === 'pickup' ? (
+              <Pill label={t('orders.pickup')} tone="info" />
+            ) : (
+              <Text style={styles.delivery}>{t('orders.deliveryName', { name: item.customer.name })}</Text>
+            )}
+            {item.scheduledAt ? (
+              <Text style={styles.scheduled}>{preorderIn(item.scheduledAt)}</Text>
+            ) : item.status === 'new' ? (
+              <OrderTimer deadlineAt={item.deadlineAt} />
+            ) : null}
+          </Row>
+          <Text style={styles.total}>
+            <Text style={styles.totalNum}>{tzs(item.total)}</Text>
+          </Text>
+        </Row>
+        {item.status === 'new' && item.deadlineAt ? (
+          <Text style={{ fontSize: FontSize.xs, color: Colors.textTertiary }}>{t('orders.deadlineHint')}</Text>
+        ) : null}
+      </Pressable>
 
       {item.rushAt && !item.rushReplied && item.status !== 'cancelled' ? (
         <View style={styles.rushBanner}>
@@ -422,39 +424,43 @@ export default function OrdersScreen() {
 
   const renderRushCard = ({ item }: { item: Order }) => {
     const rush = rushOrders.find((r) => r.orderId === item.id);
-    // Urgency is honest UI over contract data — no urgency field; dwell = now - createdAt.
-    // Helper per spec: getUrgencyTier(createdAt) -> tier (<2m Low, <5m Medium, <10m High, >=10m Critical).
     const urgency = getUrgencyTier(item.createdAt);
     return (
-      <Card style={styles.orderCard} onPress={() => router.push(`/orders/${item.id}`)}>
-        <Row style={{ justifyContent: 'space-between' }}>
-          <Row gap={8}>
-            <Text style={styles.orderNo}>{item.no}</Text>
-            <Pill label={t(`orders.urgency.${urgency}` as I18nKey)} tone={URGENCY_TONE[urgency]} />
-            {item.source ? <Pill label={t(`orders.source.${item.source}` as I18nKey)} tone={SOURCE_TONE[item.source] ?? 'neutral'} /> : null}
-            <StatusPill status={item.status} />
+      <Card style={styles.orderCard}>
+        <Pressable
+          onPress={() => router.push(`/orders/${item.id}`)}
+          accessibilityRole="button"
+          accessibilityLabel={`${item.no} ${item.status}`}
+          style={{ gap: 10 }}>
+          <Row style={{ justifyContent: 'space-between' }}>
+            <Row gap={8}>
+              <Text style={styles.orderNo}>{item.no}</Text>
+              <Pill label={t(`orders.urgency.${urgency}` as I18nKey)} tone={URGENCY_TONE[urgency]} />
+              {item.source ? <Pill label={t(`orders.source.${item.source}` as I18nKey)} tone={SOURCE_TONE[item.source] ?? 'neutral'} /> : null}
+              <StatusPill status={item.status} />
+            </Row>
+            <Text style={styles.time}>{clock(item.createdAt)}</Text>
           </Row>
-          <Text style={styles.time}>{clock(item.createdAt)}</Text>
-        </Row>
-        {item.enterprise ? (
-          <Row gap={6}>
-            <Pill label={t('orders.enterprise')} tone="info" />
-            <Text style={styles.delivery}>{item.enterprise.companyName}</Text>
-          </Row>
-        ) : null}
-        <View style={styles.itemRows}>
-          {item.items.slice(0, 2).map((it, i) => (
-            <Text key={i} style={styles.itemText} numberOfLines={1}>
-              {it.emoji} {it.name} ×{it.qty}
+          {item.enterprise ? (
+            <Row gap={6}>
+              <Pill label={t('orders.enterprise')} tone="info" />
+              <Text style={styles.delivery}>{item.enterprise.companyName}</Text>
+            </Row>
+          ) : null}
+          <View style={styles.itemRows}>
+            {item.items.slice(0, 2).map((it, i) => (
+              <Text key={i} style={styles.itemText} numberOfLines={1}>
+                {it.emoji} {it.name} ×{it.qty}
+              </Text>
+            ))}
+          </View>
+          <Row style={{ justifyContent: 'space-between' }}>
+            <Text style={styles.delivery}>{t('orders.deliveryName', { name: item.customer.name })}</Text>
+            <Text style={styles.total}>
+              <Text style={styles.totalNum}>{tzs(item.total)}</Text>
             </Text>
-          ))}
-        </View>
-        <Row style={{ justifyContent: 'space-between' }}>
-          <Text style={styles.delivery}>{t('orders.deliveryName', { name: item.customer.name })}</Text>
-          <Text style={styles.total}>
-            <Text style={styles.totalNum}>{tzs(item.total)}</Text>
-          </Text>
-        </Row>
+          </Row>
+        </Pressable>
         {rush && rush.status === 'open' ? (
           <View style={styles.rushBanner}>
             <View style={{ flex: 1, gap: 2 }}>
@@ -471,7 +477,12 @@ export default function OrdersScreen() {
   };
 
   const renderAdvanceCard = ({ item }: { item: Order }) => (
-    <Card style={styles.orderCard} onPress={() => router.push(`/orders/${item.id}`)}>
+    <Card style={styles.orderCard}>
+      <Pressable
+        onPress={() => router.push(`/orders/${item.id}`)}
+        accessibilityRole="button"
+        accessibilityLabel={`${item.no} ${item.status}`}
+        style={{ gap: 10 }}>
       <Row style={{ justifyContent: 'space-between' }}>
         <Row gap={8}>
           <Text style={styles.orderNo}>{item.no}</Text>
@@ -496,6 +507,7 @@ export default function OrdersScreen() {
           <Text style={styles.totalNum}>{tzs(item.total)}</Text>
         </Text>
       </Row>
+      </Pressable>
     </Card>
   );
 

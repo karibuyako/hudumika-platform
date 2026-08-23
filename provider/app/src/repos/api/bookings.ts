@@ -10,6 +10,7 @@
  *   POST /bookings/{bookingId}/cancel              → Booking
  *   POST /bookings/{bookingId}/check-in            → Booking
  *   POST /bookings/{bookingId}/pause               → Booking
+ *   POST /bookings/{bookingId}/resume              → Booking
  *   POST /bookings/{bookingId}/quote               → Booking
  *   POST /bookings/{bookingId}/quote/decision      → Booking
  *   POST /bookings/{bookingId}/proof-of-service    → Booking
@@ -19,11 +20,10 @@
  *   GET  /bookings/estimate?serviceId              → BookingEstimate
  *
  * Booking mutations respond with Booking per the contract; the interface needs
- * BookingDetail, so responses are cast. resume(), getInvoice() and getWarranty()
- * have no read path in the contract: resume() throws ApiError(404,
- * NOT_IMPLEMENTED) and the reads resolve to null until the backend exposes them.
+ * BookingDetail, so responses are cast. getInvoice() and getWarranty() have no
+ * dedicated read path — they resolve to null until the backend exposes them.
  */
-import { api, ApiError } from '@/api/client';
+import { api } from '@/api/client';
 import { idemKey } from '@/lib/booking';
 import type { BookingsRepository } from '../index';
 import type {
@@ -98,8 +98,11 @@ export class ApiBookingsRepository implements BookingsRepository {
     return res as unknown as BookingDetail;
   }
 
-  async resume(_bookingId: string): Promise<BookingDetail> {
-    throw new ApiError(404, 'NOT_IMPLEMENTED', 'Resuming a paused booking is not available yet (no /bookings/{bookingId}/resume in the contract)');
+  async resume(bookingId: string): Promise<BookingDetail> {
+    const res = await api.post<Booking>(`/bookings/${bookingId}/resume`, undefined, {
+      idempotencyKey: idemKey('booking'),
+    });
+    return res as unknown as BookingDetail;
   }
 
   async submitQuote(bookingId: string, quote: BookingQuote): Promise<BookingDetail> {

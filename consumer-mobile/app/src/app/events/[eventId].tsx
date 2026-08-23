@@ -47,15 +47,23 @@ export default function EventDetailScreen() {
     setQty(1);
   };
 
+  const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
+  const toggleSeat = (seat: string) => {
+    setSelectedSeats((prev) => (prev.includes(seat) ? prev.filter((s) => s !== seat) : [...prev, seat].slice(0, 6)));
+  };
+
   const purchase = async () => {
+    const isCinema = detail?.event.category === 'Cinema' || detail?.event.title.toLowerCase().includes('movie');
+    const finalQty = isCinema && selectedSeats.length > 0 ? selectedSeats.length : qty;
     if (!detail || !selectedTier) return;
     setBusy(true);
     try {
       const issued = await getEventsRepository().purchase(
-        { eventId: detail.event.id, tierId: selectedTier.id, quantity: qty },
+        { eventId: detail.event.id, tierId: selectedTier.id, quantity: finalQty },
         idempotencyKey('cus_1', 'event-tickets'),
       );
       setSelectedTier(null);
+      setSelectedSeats([]);
       toast(t('events.purchased', { n: issued.length }));
       router.push('/events/tickets');
     } catch (e) {
@@ -142,6 +150,41 @@ export default function EventDetailScreen() {
       <SheetModal visible={selectedTier !== null} onClose={() => setSelectedTier(null)} title={selectedTier?.name}>
         {selectedTier ? (
           <>
+            {(() => {
+              const isCinema = detail?.event.category === 'Cinema' || detail?.event.title.toLowerCase().includes('movie');
+              if (isCinema) {
+                const rows = 6;
+                const cols = 8;
+                const occupied = new Set(['A2', 'B5', 'C3', 'D7', 'E1', 'F4', 'F8', 'G2', 'H6', 'H7']);
+                return (
+                  <>
+                    <Text style={styles.sectionLabel}>Select seats (max 6)</Text>
+                    <View style={styles.seatGrid}>
+                      {Array.from({ length: rows }).map((_, r) => (
+                        <View key={r} style={styles.seatRow}>
+                          {Array.from({ length: cols }).map((_, c) => {
+                            const seat = `${String.fromCharCode(65 + r)}${c + 1}`;
+                            const isOcc = occupied.has(seat);
+                            const isSel = selectedSeats.includes(seat);
+                            return (
+                              <Pressable
+                                key={seat}
+                                onPress={() => !isOcc && toggleSeat(seat)}
+                                disabled={isOcc}
+                                style={[styles.seat, isOcc && styles.seatOccupied, isSel && styles.seatSelected]}>
+                                <Icon name={isOcc ? 'close' : isSel ? 'checkmark' : 'square-outline'} size={12} color={isOcc ? Colors.textFaint : isSel ? Colors.white : Colors.textSecondary} />
+                              </Pressable>
+                            );
+                          })}
+                        </View>
+                      ))}
+                    </View>
+                    <Text style={styles.meta}>{selectedSeats.length > 0 ? `Selected: ${selectedSeats.join(', ')}` : 'Tap to select seats'}</Text>
+                  </>
+                );
+              }
+              return null;
+            })()}
             <Row style={{ justifyContent: 'space-between' }}>
               <Text style={styles.sectionLabel}>{t('events.quantity')}</Text>
               <Row gap={Spacing.md}>
@@ -163,7 +206,7 @@ export default function EventDetailScreen() {
             </Row>
             <Row style={{ justifyContent: 'space-between' }}>
               <Text style={styles.sectionLabel}>{t('events.total')}</Text>
-              <Text style={styles.total}>{formatTZS(selectedTier.priceTZS * qty)}</Text>
+              <Text style={styles.total}>{formatTZS(selectedTier.priceTZS * (detail?.event.category === 'Cinema' && selectedSeats.length > 0 ? selectedSeats.length : qty))}</Text>
             </Row>
             <Btn label={t('events.buy')} size="lg" onPress={purchase} loading={busy} />
           </>
@@ -182,4 +225,9 @@ const styles = StyleSheet.create({
   qtyBtn: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: Colors.borderStrong, alignItems: 'center', justifyContent: 'center' },
   qty: { fontSize: FontSize.xl, fontFamily: Fonts.sansBold, color: Colors.text, minWidth: 32, textAlign: 'center' },
   total: { fontSize: FontSize.xl, fontFamily: Fonts.displayBold, color: Colors.text, fontVariant: ['tabular-nums'] },
+  seatGrid: { gap: 6, marginVertical: Spacing.md, alignItems: 'center' },
+  seatRow: { flexDirection: 'row', gap: 6 },
+  seat: { width: 28, height: 28, borderRadius: 6, borderWidth: 1, borderColor: Colors.borderStrong, backgroundColor: Colors.card, alignItems: 'center', justifyContent: 'center' },
+  seatOccupied: { backgroundColor: Colors.surface, borderColor: Colors.border, opacity: 0.6 },
+  seatSelected: { backgroundColor: Colors.primary, borderColor: Colors.primary },
 });

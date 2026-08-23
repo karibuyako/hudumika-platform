@@ -11,6 +11,7 @@ import type { I18nKey } from '@/i18n';
 import { announce } from '@/lib/motion';
 import { DECLINE_REASONS } from '@/lib/format';
 import { ApiError } from '@/api/client';
+import { STALE_OFFER_CODES } from '@/lib/booking';
 import { getBookingsRepository } from '@/repos';
 import { useJobsStore } from '@/store/jobs';
 import type { Booking } from '@hudumika/contract';
@@ -39,8 +40,6 @@ const EMPTY_ICONS: Record<Tab, 'file-tray-outline' | 'briefcase-outline' | 'chec
 };
 
 const POLL_MS = 15000;
-/** 409 codes that mean the offer is no longer actionable. */
-const STALE_OFFER_CODES = ['BOOKING_ALREADY_ACCEPTED', 'JOB_OFFER_EXPIRED', 'DISPATCH_ACCEPTANCE_TIMEOUT'];
 
 const RESPONDABLE = ['offered', 'provider_requested'];
 
@@ -71,7 +70,7 @@ function IncomingBookingRow({ booking }: { booking: Booking }) {
       }
       await refreshBookings();
     } catch (e) {
-      if (e instanceof ApiError && e.status === 409 && STALE_OFFER_CODES.includes(e.code)) {
+      if (e instanceof ApiError && e.status === 409 && (STALE_OFFER_CODES as readonly string[]).includes(e.code)) {
         setRowError(e.message);
         void refreshBookings();
       } else {

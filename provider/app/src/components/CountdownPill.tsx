@@ -28,7 +28,7 @@ export function CountdownPill({ expiresAt, dangerUnder = 30, onExpire }: {
   const danger = remaining <= dangerUnder;
 
   return (
-    <View style={[styles.pill, danger && styles.pillDanger]}>
+    <View testID="countdown" style={[styles.pill, danger && styles.pillDanger]}>
       <Icon name="timer" size={14} color={danger ? Colors.danger : Colors.textTertiary} />
       <Text style={[styles.text, { color: danger ? Colors.danger : Colors.text }, { fontVariant: NumberStyle.fontVariant }]}>{mmss(remaining)}</Text>
     </View>

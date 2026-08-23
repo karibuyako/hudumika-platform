@@ -38,12 +38,16 @@ import type {
   BenchmarkSummary,
   BirthdayReward,
   CommissionRule,
+  CuratedList,
   CustomerJourney,
   CustomerMembership,
   CustomerSegment,
   DailyCheckIn200,
   DataExportJob,
+  DisableMyTwoFactor200,
+  EnableMyTwoFactor200,
   ExportAnalyticsReport200,
+  FavoriteList,
   GetAnalyticsDiagnostics200Item,
   GetConsumerHome200,
   GetCustomerDistribution200Item,
@@ -67,6 +71,8 @@ import type {
   OnboardingStatus,
   PrintJob,
   ProductPerformance,
+  RedPacket,
+  RedPacketClaim,
   ReferralReward,
   ReferralSummary,
   RequestAccountDeletion202,
@@ -84,6 +90,7 @@ import type {
   TaskItem,
   TestMerchantDevice200,
   TrafficAnalysis,
+  TwoFactorStatus,
   User,
   WebhookDelivery,
   WebhookSubscription
@@ -281,6 +288,34 @@ export const getClaimReferralResponseMock = (overrideResponse: Partial<Extract<R
 export const getGetBirthdayRewardResponseMock = (overrideResponse: Partial<Extract<BirthdayReward, object>> = {}): BirthdayReward => ({available: faker.datatype.boolean(), claimed: faker.datatype.boolean(), rewardTitle: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), rewardTZS: faker.helpers.arrayElement([faker.number.int(), null]), expiresAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), ...overrideResponse})
 
 export const getClaimBirthdayRewardResponseMock = (overrideResponse: Partial<Extract<BirthdayReward, object>> = {}): BirthdayReward => ({available: faker.datatype.boolean(), claimed: faker.datatype.boolean(), rewardTitle: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), rewardTZS: faker.helpers.arrayElement([faker.number.int(), null]), expiresAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), ...overrideResponse})
+
+export const getGetMyTwoFactorStatusResponseMock = (overrideResponse: Partial<Extract<TwoFactorStatus, object>> = {}): TwoFactorStatus => ({enabled: faker.datatype.boolean(), method: faker.helpers.arrayElement([faker.helpers.arrayElement(['otp','totp'] as const), null]), ...overrideResponse})
+
+export const getEnableMyTwoFactorResponseMock = (overrideResponse: Partial<Extract<EnableMyTwoFactor200, object>> = {}): EnableMyTwoFactor200 => ({enabled: true, demoCode: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), ...overrideResponse})
+
+export const getDisableMyTwoFactorResponseMock = (overrideResponse: Partial<Extract<DisableMyTwoFactor200, object>> = {}): DisableMyTwoFactor200 => ({enabled: false, ...overrideResponse})
+
+export const getListFavoriteListsResponseMock = (): FavoriteList[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 40}}), merchantIds: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.uuid())), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z'})))
+
+export const getCreateFavoriteListResponseMock = (overrideResponse: Partial<Extract<FavoriteList, object>> = {}): FavoriteList => ({id: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 40}}), merchantIds: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.uuid())), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
+
+export const getGetFavoriteListResponseMock = (overrideResponse: Partial<Extract<FavoriteList, object>> = {}): FavoriteList => ({id: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 40}}), merchantIds: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.uuid())), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
+
+export const getAddFavoriteListMerchantResponseMock = (overrideResponse: Partial<Extract<FavoriteList, object>> = {}): FavoriteList => ({id: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 40}}), merchantIds: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.uuid())), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
+
+export const getRemoveFavoriteListMerchantResponseMock = (overrideResponse: Partial<Extract<FavoriteList, object>> = {}): FavoriteList => ({id: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 40}}), merchantIds: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.uuid())), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
+
+export const getListCuratedListsResponseMock = (): CuratedList[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), titleKey: faker.string.alpha({length: {min: 10, max: 20}}), taglineKey: faker.string.alpha({length: {min: 10, max: 20}}), merchantIds: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.uuid()))})))
+
+export const getGetCuratedListResponseMock = (overrideResponse: Partial<Extract<CuratedList, object>> = {}): CuratedList => ({id: faker.string.alpha({length: {min: 10, max: 20}}), titleKey: faker.string.alpha({length: {min: 10, max: 20}}), taglineKey: faker.string.alpha({length: {min: 10, max: 20}}), merchantIds: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.uuid())), ...overrideResponse})
+
+export const getCreateLoyaltyRedemptionResponseMock = (overrideResponse: Partial<Extract<CustomerMembership, object>> = {}): CustomerMembership => ({points: faker.number.int(), level: faker.string.alpha({length: {min: 10, max: 20}}), memberSince: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 10), null]), benefits: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), undefined]), ...overrideResponse})
+
+export const getListRedPacketsReceivedResponseMock = (): RedPacket[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), totalTZS: faker.number.int(), claimedCount: faker.helpers.arrayElement([faker.number.int(), undefined]), count: faker.number.int(), claimed: faker.datatype.boolean(), expiresAt: faker.date.past().toISOString().slice(0, 19) + 'Z', shareCode: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null])})))
+
+export const getShareRedPacketResponseMock = (overrideResponse: Partial<Extract<RedPacket, object>> = {}): RedPacket => ({id: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.string.alpha({length: {min: 10, max: 20}}), totalTZS: faker.number.int(), claimedCount: faker.helpers.arrayElement([faker.number.int(), undefined]), count: faker.number.int(), claimed: faker.datatype.boolean(), expiresAt: faker.date.past().toISOString().slice(0, 19) + 'Z', shareCode: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), ...overrideResponse})
+
+export const getClaimRedPacketResponseMock = (overrideResponse: Partial<Extract<RedPacketClaim, object>> = {}): RedPacketClaim => ({id: faker.string.alpha({length: {min: 10, max: 20}}), creditedTZS: faker.number.int(), ...overrideResponse})
 
 
 export const getGetConsumerHomeMockHandler = (overrideResponse?: GetConsumerHome200 | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<GetConsumerHome200> | GetConsumerHome200), options?: RequestHandlerOptions) => {
@@ -1534,6 +1569,184 @@ export const getClaimBirthdayRewardMockHandler = (overrideResponse?: BirthdayRew
       })
   }, options)
 }
+
+export const getGetMyTwoFactorStatusMockHandler = (overrideResponse?: TwoFactorStatus | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<TwoFactorStatus> | TwoFactorStatus), options?: RequestHandlerOptions) => {
+  return http.get('*/users/me/2fa', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetMyTwoFactorStatusResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getEnableMyTwoFactorMockHandler = (overrideResponse?: EnableMyTwoFactor200 | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<EnableMyTwoFactor200> | EnableMyTwoFactor200), options?: RequestHandlerOptions) => {
+  return http.post('*/users/me/2fa', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getEnableMyTwoFactorResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getDisableMyTwoFactorMockHandler = (overrideResponse?: DisableMyTwoFactor200 | ((info: Parameters<Parameters<typeof http.delete>[1]>[0]) => Promise<DisableMyTwoFactor200> | DisableMyTwoFactor200), options?: RequestHandlerOptions) => {
+  return http.delete('*/users/me/2fa', async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getDisableMyTwoFactorResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getListFavoriteListsMockHandler = (overrideResponse?: FavoriteList[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<FavoriteList[]> | FavoriteList[]), options?: RequestHandlerOptions) => {
+  return http.get('*/favorites/lists', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getListFavoriteListsResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getCreateFavoriteListMockHandler = (overrideResponse?: FavoriteList | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<FavoriteList> | FavoriteList), options?: RequestHandlerOptions) => {
+  return http.post('*/favorites/lists', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getCreateFavoriteListResponseMock(),
+      { status: 201
+      })
+  }, options)
+}
+
+export const getGetFavoriteListMockHandler = (overrideResponse?: FavoriteList | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<FavoriteList> | FavoriteList), options?: RequestHandlerOptions) => {
+  return http.get('*/favorites/lists/:listId', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetFavoriteListResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getDeleteFavoriteListMockHandler = (overrideResponse?: void | ((info: Parameters<Parameters<typeof http.delete>[1]>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
+  return http.delete('*/favorites/lists/:listId', async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
+  if (typeof overrideResponse === 'function') {await overrideResponse(info); }
+
+    return new HttpResponse(null,
+      { status: 204
+      })
+  }, options)
+}
+
+export const getAddFavoriteListMerchantMockHandler = (overrideResponse?: FavoriteList | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<FavoriteList> | FavoriteList), options?: RequestHandlerOptions) => {
+  return http.post('*/favorites/lists/:listId/merchants', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAddFavoriteListMerchantResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getRemoveFavoriteListMerchantMockHandler = (overrideResponse?: FavoriteList | ((info: Parameters<Parameters<typeof http.delete>[1]>[0]) => Promise<FavoriteList> | FavoriteList), options?: RequestHandlerOptions) => {
+  return http.delete('*/favorites/lists/:listId/merchants/:merchantId', async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getRemoveFavoriteListMerchantResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getListCuratedListsMockHandler = (overrideResponse?: CuratedList[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<CuratedList[]> | CuratedList[]), options?: RequestHandlerOptions) => {
+  return http.get('*/lists', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getListCuratedListsResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getGetCuratedListMockHandler = (overrideResponse?: CuratedList | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<CuratedList> | CuratedList), options?: RequestHandlerOptions) => {
+  return http.get('*/lists/:listId', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetCuratedListResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getCreateLoyaltyRedemptionMockHandler = (overrideResponse?: CustomerMembership | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<CustomerMembership> | CustomerMembership), options?: RequestHandlerOptions) => {
+  return http.post('*/loyalty/redemptions', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getCreateLoyaltyRedemptionResponseMock(),
+      { status: 201
+      })
+  }, options)
+}
+
+export const getListRedPacketsReceivedMockHandler = (overrideResponse?: RedPacket[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<RedPacket[]> | RedPacket[]), options?: RequestHandlerOptions) => {
+  return http.get('*/red-packets/me/received', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getListRedPacketsReceivedResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getShareRedPacketMockHandler = (overrideResponse?: RedPacket | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<RedPacket> | RedPacket), options?: RequestHandlerOptions) => {
+  return http.post('*/red-packets/me/share', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getShareRedPacketResponseMock(),
+      { status: 201
+      })
+  }, options)
+}
+
+export const getClaimRedPacketMockHandler = (overrideResponse?: RedPacketClaim | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<RedPacketClaim> | RedPacketClaim), options?: RequestHandlerOptions) => {
+  return http.post('*/red-packets/:packetId/claim', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getClaimRedPacketResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
 export const getUsersMock = () => [
   getGetConsumerHomeMockHandler(),
   getGetHomeRecommendationsMockHandler(),
@@ -1640,5 +1853,20 @@ export const getUsersMock = () => [
   getGetMyReferralMockHandler(),
   getClaimReferralMockHandler(),
   getGetBirthdayRewardMockHandler(),
-  getClaimBirthdayRewardMockHandler()
+  getClaimBirthdayRewardMockHandler(),
+  getGetMyTwoFactorStatusMockHandler(),
+  getEnableMyTwoFactorMockHandler(),
+  getDisableMyTwoFactorMockHandler(),
+  getListFavoriteListsMockHandler(),
+  getCreateFavoriteListMockHandler(),
+  getGetFavoriteListMockHandler(),
+  getDeleteFavoriteListMockHandler(),
+  getAddFavoriteListMerchantMockHandler(),
+  getRemoveFavoriteListMerchantMockHandler(),
+  getListCuratedListsMockHandler(),
+  getGetCuratedListMockHandler(),
+  getCreateLoyaltyRedemptionMockHandler(),
+  getListRedPacketsReceivedMockHandler(),
+  getShareRedPacketMockHandler(),
+  getClaimRedPacketMockHandler()
 ]

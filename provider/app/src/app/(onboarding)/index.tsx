@@ -3,11 +3,12 @@ import { useEffect, useState, type PropsWithChildren } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { ApiError } from '@/api/client';
-import { Btn, Card, Chip, ErrorCard, Field, Icon, Screen, Segmented, type IconName } from '@/components/ui';
+import { Btn, Card, Chip, ErrorCard, Field, Icon, Pill, Screen, Segmented, type IconName } from '@/components/ui';
 import { Colors, Fonts, FontSize, Radius, Spacing } from '@/constants/theme';
 import { t } from '@/i18n';
 import { hapticSuccess } from '@/lib/motion';
-import { getCatalogRepository, getProviderRepository } from '@/repos';
+import { isValidNIDA, requirementsFor } from '@/lib/tradeRequirements';
+import { getCatalogRepository, getKycRepository, getProviderRepository } from '@/repos';
 import { useSessionStore } from '@/store/session';
 import type { City, ProviderApplicationTrade, ProviderPrivate } from '@hudumika/contract';
 
@@ -56,6 +57,10 @@ export default function OnboardingScreen() {
   const [trade, setTrade] = useState<ProviderApplicationTrade>('plumbing');
   const [serviceArea, setServiceArea] = useState('');
   const [bio, setBio] = useState('');
+  const [nida, setNida] = useState('');
+  const [selfieDone, setSelfieDone] = useState(false);
+  const [kycLoading, setKycLoading] = useState(false);
+  const [kycMsg, setKycMsg] = useState('');
 
   useEffect(() => {
     let mounted = true;
@@ -111,6 +116,27 @@ export default function OnboardingScreen() {
       setActionError(e instanceof ApiError ? e.message : t('misc.error'));
     } finally {
       setBusy(false);
+    }
+  };
+
+  const onVerifyKyc = async () => {
+    if (!isValidNIDA(nida)) {
+      setKycMsg('Enter a valid 20-digit NIDA number');
+      return;
+    }
+    if (!selfieDone) {
+      setKycMsg('Capture selfie for liveness check');
+      return;
+    }
+    setKycLoading(true);
+    setKycMsg('');
+    try {
+      const res = await getKycRepository().verify({ nidaNumber: nida, selfieCaptured: selfieDone });
+      setKycMsg(res.nidaVerified && res.livenessResult === 'pass' ? 'KYC verified — pending sanctions screening' : 'KYC check failed — verify NIDA and retry');
+    } catch (e) {
+      setKycMsg(e instanceof ApiError ? e.message : t('misc.error'));
+    } finally {
+      setKycLoading(false);
     }
   };
 
@@ -210,6 +236,27 @@ export default function OnboardingScreen() {
             <Text style={styles.fieldLabel}>{t('onboard.trade')}</Text>
             <Segmented options={TRADES} value={trade} onChange={setTrade} />
           </View>
+          {/* Enterprise KYC & tradeRequirements (Meituan Dianping parity) */}
+          <Card style={{ gap: Spacing.md }}>
+            <Text style={styles.kycTitle}>Verification requirements for {trade}</Text>
+            {requirementsFor(trade).requiredDocuments.map((d) => (
+              <View key={d.type} style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+                <Icon name={d.gov ? 'shield-checkmark-outline' : 'document-text-outline'} size={16} color={Colors.textSecondary} />
+                <Text style={{ flex: 1, fontSize: FontSize.sm, color: Colors.textSecondary }}>{d.label}</Text>
+                <Pill label={d.gov ? 'GOV' : 'REQ'} tone={d.gov ? 'info' : 'neutral'} />
+              </View>
+            ))}
+            <Text style={{ fontSize: FontSize.xs, color: Colors.textTertiary }}>UBO threshold: {requirementsFor(trade).uboThresholdPct}% • Sanctions: {requirementsFor(trade).sanctionsScreening ? 'required' : 'not required'}</Text>
+          </Card>
+          <Card style={{ gap: Spacing.md }}>
+            <Text style={styles.kycTitle}>Identity verification (NIDA + liveness)</Text>
+            <Field label="NIDA number (20 digits)" value={nida} onChangeText={setNida} placeholder="e.g. 19800101234567890012" keyboardType="number-pad" maxLength={20} />
+            <View style={{ flexDirection: 'row', gap: Spacing.md }}>
+              <Btn label={selfieDone ? 'Selfie captured' : 'Capture selfie'} variant={selfieDone ? 'success' : 'outline'} size="sm" icon="camera" onPress={() => setSelfieDone((v) => !v)} style={{ flex: 1 }} />
+              <Btn label="Verify KYC" variant="ghost" size="sm" onPress={onVerifyKyc} loading={kycLoading} style={{ flex: 1 }} />
+            </View>
+            {kycMsg ? <Text style={{ fontSize: FontSize.xs, color: isValidNIDA(nida) && selfieDone ? Colors.success : Colors.warning }}>{kycMsg}</Text> : null}
+          </Card>
           <View style={{ gap: Spacing.xs }}>
             <Text style={styles.fieldLabel}>{t('onboard.city')}</Text>
             <View style={styles.chipRow}>
@@ -231,6 +278,7 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   title: { fontSize: FontSize.xxl, fontFamily: Fonts.sansExtraBold, color: Colors.text, marginTop: 24 },
   sub: { fontSize: FontSize.sm, color: Colors.textSecondary, fontFamily: Fonts.sans, marginTop: 4 },
+  kycTitle: { fontSize: FontSize.sm, fontFamily: Fonts.sansBold, color: Colors.text },
   statusIcon: {
     width: 56,
     height: 56,

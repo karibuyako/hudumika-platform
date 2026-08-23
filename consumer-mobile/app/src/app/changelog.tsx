@@ -13,6 +13,7 @@ import { Colors, Fonts, FontSize, Spacing } from '@/constants/theme';
 import { t, type I18nKey } from '@/i18n';
 
 const RELEASES: { key: string; title: I18nKey; notes: I18nKey }[] = [
+  { key: 'v0.3.0', title: 'changelog.v0.3.0', notes: 'changelog.v0.3.0.notes' },
   { key: 'v0.2.0', title: 'changelog.v0.2.0', notes: 'changelog.v0.2.0.notes' },
   { key: 'v0.1.0', title: 'changelog.v0.1.0', notes: 'changelog.v0.1.0.notes' },
 ];

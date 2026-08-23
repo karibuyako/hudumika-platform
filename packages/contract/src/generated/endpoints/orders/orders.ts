@@ -11,6 +11,7 @@
 import type {
   AcceptOrderBody,
   AcceptOrdersBatchBody,
+  AddGroupOrderItemBody,
   AdvanceOrderBody,
   AdvanceRouteLegBody,
   ApproveRefundRequestBody,
@@ -18,15 +19,22 @@ import type {
   CancelOrderBody,
   ConflictResponse,
   Container,
+  CreateDineInSplitBody,
+  CreateGroupOrderBody,
   CreateShipmentBody,
+  CreateSplitBody,
   CustodyEntry,
   DamageClaim,
+  DineInSplit,
   EnterpriseOrder,
   FailDeliveryBody,
+  FinalizeGroupOrderBody,
   ForbiddenResponse,
   FulfillFromWarehouseBody,
   GetOrderTimeline200,
   GetOrderWaybill200,
+  GetTrackingShare200,
+  GroupOrder,
   Handoff,
   ListAdvanceOrdersParams,
   ListEnterpriseOrdersParams,
@@ -40,11 +48,13 @@ import type {
   Order,
   OrderCreate,
   OrderDetail,
+  PaySplitShareBody,
   ProofOfDelivery,
   RefundRequest,
   RejectOrderBody,
   RejectOrdersBatchBody,
   RejectRefundRequestBody,
+  RemoveGroupOrderItemBody,
   ReplyToRushBody,
   RequestOrderModification202,
   RequestOrderModificationBody,
@@ -54,9 +64,11 @@ import type {
   ScanShipmentBody,
   SearchOrdersParams,
   Shipment,
+  SplitPlan,
   TipRiderBody,
   TrackingEvent,
   TrackingPhase,
+  TrackingShare,
   TransferOrder202,
   TransferOrderBody,
   ValidationErrorResponse
@@ -2143,6 +2155,683 @@ export const fulfillFromWarehouse = async (warehouseId: string,
 
   const data: fulfillFromWarehouseResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as fulfillFromWarehouseResponse
+}
+
+
+export type createTrackingShareResponse201 = {
+  data: TrackingShare
+  status: 201
+}
+
+export type createTrackingShareResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type createTrackingShareResponseSuccess = (createTrackingShareResponse201) & {
+  headers: Headers;
+};
+export type createTrackingShareResponseError = (createTrackingShareResponse404) & {
+  headers: Headers;
+};
+
+export type createTrackingShareResponse = (createTrackingShareResponseSuccess | createTrackingShareResponseError)
+
+export const getCreateTrackingShareUrl = (orderId: string,) => {
+
+
+
+
+  return `/orders/${orderId}/tracking-share`
+}
+
+/**
+ * @summary Create a view-only tracking share link
+ */
+export const createTrackingShare = async (orderId: string, options?: RequestInit): Promise<createTrackingShareResponse> => {
+
+  const res = await fetch(getCreateTrackingShareUrl(orderId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: createTrackingShareResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as createTrackingShareResponse
+}
+
+
+export type getTrackingShareResponse200 = {
+  data: GetTrackingShare200
+  status: 200
+}
+
+export type getTrackingShareResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type getTrackingShareResponseSuccess = (getTrackingShareResponse200) & {
+  headers: Headers;
+};
+export type getTrackingShareResponseError = (getTrackingShareResponse404) & {
+  headers: Headers;
+};
+
+export type getTrackingShareResponse = (getTrackingShareResponseSuccess | getTrackingShareResponseError)
+
+export const getGetTrackingShareUrl = (token: string,) => {
+
+
+
+
+  return `/tracking-share/${token}`
+}
+
+/**
+ * @summary Resolve a tracking share token
+ */
+export const getTrackingShare = async (token: string, options?: RequestInit): Promise<getTrackingShareResponse> => {
+
+  const res = await fetch(getGetTrackingShareUrl(token),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getTrackingShareResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getTrackingShareResponse
+}
+
+
+export type createSplitResponse201 = {
+  data: SplitPlan
+  status: 201
+}
+
+export type createSplitResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type createSplitResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type createSplitResponseSuccess = (createSplitResponse201) & {
+  headers: Headers;
+};
+export type createSplitResponseError = (createSplitResponse409 | createSplitResponse422) & {
+  headers: Headers;
+};
+
+export type createSplitResponse = (createSplitResponseSuccess | createSplitResponseError)
+
+export const getCreateSplitUrl = () => {
+
+
+
+
+  return `/splits`
+}
+
+/**
+ * @summary Create a split payment plan
+ */
+export const createSplit = async (createSplitBody: CreateSplitBody, options?: RequestInit): Promise<createSplitResponse> => {
+
+  const res = await fetch(getCreateSplitUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createSplitBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: createSplitResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as createSplitResponse
+}
+
+
+export type getSplitResponse200 = {
+  data: SplitPlan
+  status: 200
+}
+
+export type getSplitResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type getSplitResponseSuccess = (getSplitResponse200) & {
+  headers: Headers;
+};
+export type getSplitResponseError = (getSplitResponse404) & {
+  headers: Headers;
+};
+
+export type getSplitResponse = (getSplitResponseSuccess | getSplitResponseError)
+
+export const getGetSplitUrl = (splitId: string,) => {
+
+
+
+
+  return `/splits/${splitId}`
+}
+
+/**
+ * @summary Get a split plan
+ */
+export const getSplit = async (splitId: string, options?: RequestInit): Promise<getSplitResponse> => {
+
+  const res = await fetch(getGetSplitUrl(splitId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getSplitResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getSplitResponse
+}
+
+
+export type paySplitShareResponse200 = {
+  data: SplitPlan
+  status: 200
+}
+
+export type paySplitShareResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type paySplitShareResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type paySplitShareResponseSuccess = (paySplitShareResponse200) & {
+  headers: Headers;
+};
+export type paySplitShareResponseError = (paySplitShareResponse404 | paySplitShareResponse409) & {
+  headers: Headers;
+};
+
+export type paySplitShareResponse = (paySplitShareResponseSuccess | paySplitShareResponseError)
+
+export const getPaySplitShareUrl = (splitId: string,) => {
+
+
+
+
+  return `/splits/${splitId}/pay`
+}
+
+/**
+ * @summary Pay my share of a split
+ */
+export const paySplitShare = async (splitId: string,
+    paySplitShareBody: PaySplitShareBody, options?: RequestInit): Promise<paySplitShareResponse> => {
+
+  const res = await fetch(getPaySplitShareUrl(splitId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(paySplitShareBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: paySplitShareResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as paySplitShareResponse
+}
+
+
+export type completeSplitResponse200 = {
+  data: SplitPlan
+  status: 200
+}
+
+export type completeSplitResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type completeSplitResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type completeSplitResponseSuccess = (completeSplitResponse200) & {
+  headers: Headers;
+};
+export type completeSplitResponseError = (completeSplitResponse404 | completeSplitResponse409) & {
+  headers: Headers;
+};
+
+export type completeSplitResponse = (completeSplitResponseSuccess | completeSplitResponseError)
+
+export const getCompleteSplitUrl = (splitId: string,) => {
+
+
+
+
+  return `/splits/${splitId}/complete`
+}
+
+/**
+ * @summary Complete a split after all shares paid
+ */
+export const completeSplit = async (splitId: string, options?: RequestInit): Promise<completeSplitResponse> => {
+
+  const res = await fetch(getCompleteSplitUrl(splitId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: completeSplitResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as completeSplitResponse
+}
+
+
+export type getDineInSplitResponse200 = {
+  data: DineInSplit
+  status: 200
+}
+
+export type getDineInSplitResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type getDineInSplitResponseSuccess = (getDineInSplitResponse200) & {
+  headers: Headers;
+};
+export type getDineInSplitResponseError = (getDineInSplitResponse404) & {
+  headers: Headers;
+};
+
+export type getDineInSplitResponse = (getDineInSplitResponseSuccess | getDineInSplitResponseError)
+
+export const getGetDineInSplitUrl = (orderId: string,) => {
+
+
+
+
+  return `/dine-in/orders/${orderId}/splits`
+}
+
+/**
+ * @summary Get dine-in split
+ */
+export const getDineInSplit = async (orderId: string, options?: RequestInit): Promise<getDineInSplitResponse> => {
+
+  const res = await fetch(getGetDineInSplitUrl(orderId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getDineInSplitResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getDineInSplitResponse
+}
+
+
+export type createDineInSplitResponse200 = {
+  data: DineInSplit
+  status: 200
+}
+
+export type createDineInSplitResponse201 = {
+  data: DineInSplit
+  status: 201
+}
+
+export type createDineInSplitResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type createDineInSplitResponseSuccess = (createDineInSplitResponse200 | createDineInSplitResponse201) & {
+  headers: Headers;
+};
+export type createDineInSplitResponseError = (createDineInSplitResponse422) & {
+  headers: Headers;
+};
+
+export type createDineInSplitResponse = (createDineInSplitResponseSuccess | createDineInSplitResponseError)
+
+export const getCreateDineInSplitUrl = (orderId: string,) => {
+
+
+
+
+  return `/dine-in/orders/${orderId}/splits`
+}
+
+/**
+ * @summary Create or pay dine-in split
+ */
+export const createDineInSplit = async (orderId: string,
+    createDineInSplitBody: CreateDineInSplitBody, options?: RequestInit): Promise<createDineInSplitResponse> => {
+
+  const res = await fetch(getCreateDineInSplitUrl(orderId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createDineInSplitBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: createDineInSplitResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as createDineInSplitResponse
+}
+
+
+export type createGroupOrderResponse201 = {
+  data: GroupOrder
+  status: 201
+}
+
+export type createGroupOrderResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type createGroupOrderResponseSuccess = (createGroupOrderResponse201) & {
+  headers: Headers;
+};
+export type createGroupOrderResponseError = (createGroupOrderResponse422) & {
+  headers: Headers;
+};
+
+export type createGroupOrderResponse = (createGroupOrderResponseSuccess | createGroupOrderResponseError)
+
+export const getCreateGroupOrderUrl = () => {
+
+
+
+
+  return `/group-orders`
+}
+
+/**
+ * @summary Create a group order (shared cart)
+ */
+export const createGroupOrder = async (createGroupOrderBody: CreateGroupOrderBody, options?: RequestInit): Promise<createGroupOrderResponse> => {
+
+  const res = await fetch(getCreateGroupOrderUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createGroupOrderBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: createGroupOrderResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as createGroupOrderResponse
+}
+
+
+export type getGroupOrderResponse200 = {
+  data: GroupOrder
+  status: 200
+}
+
+export type getGroupOrderResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type getGroupOrderResponseSuccess = (getGroupOrderResponse200) & {
+  headers: Headers;
+};
+export type getGroupOrderResponseError = (getGroupOrderResponse404) & {
+  headers: Headers;
+};
+
+export type getGroupOrderResponse = (getGroupOrderResponseSuccess | getGroupOrderResponseError)
+
+export const getGetGroupOrderUrl = (groupId: string,) => {
+
+
+
+
+  return `/group-orders/${groupId}`
+}
+
+/**
+ * @summary Get a group order
+ */
+export const getGroupOrder = async (groupId: string, options?: RequestInit): Promise<getGroupOrderResponse> => {
+
+  const res = await fetch(getGetGroupOrderUrl(groupId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getGroupOrderResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getGroupOrderResponse
+}
+
+
+export type addGroupOrderItemResponse200 = {
+  data: GroupOrder
+  status: 200
+}
+
+export type addGroupOrderItemResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type addGroupOrderItemResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type addGroupOrderItemResponseSuccess = (addGroupOrderItemResponse200) & {
+  headers: Headers;
+};
+export type addGroupOrderItemResponseError = (addGroupOrderItemResponse404 | addGroupOrderItemResponse409) & {
+  headers: Headers;
+};
+
+export type addGroupOrderItemResponse = (addGroupOrderItemResponseSuccess | addGroupOrderItemResponseError)
+
+export const getAddGroupOrderItemUrl = (groupId: string,) => {
+
+
+
+
+  return `/group-orders/${groupId}/items`
+}
+
+/**
+ * @summary Add item to group order
+ */
+export const addGroupOrderItem = async (groupId: string,
+    addGroupOrderItemBody: AddGroupOrderItemBody, options?: RequestInit): Promise<addGroupOrderItemResponse> => {
+
+  const res = await fetch(getAddGroupOrderItemUrl(groupId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(addGroupOrderItemBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: addGroupOrderItemResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as addGroupOrderItemResponse
+}
+
+
+export type removeGroupOrderItemResponse200 = {
+  data: GroupOrder
+  status: 200
+}
+
+export type removeGroupOrderItemResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type removeGroupOrderItemResponseSuccess = (removeGroupOrderItemResponse200) & {
+  headers: Headers;
+};
+export type removeGroupOrderItemResponseError = (removeGroupOrderItemResponse404) & {
+  headers: Headers;
+};
+
+export type removeGroupOrderItemResponse = (removeGroupOrderItemResponseSuccess | removeGroupOrderItemResponseError)
+
+export const getRemoveGroupOrderItemUrl = (groupId: string,) => {
+
+
+
+
+  return `/group-orders/${groupId}/items`
+}
+
+/**
+ * @summary Remove item from group order
+ */
+export const removeGroupOrderItem = async (groupId: string,
+    removeGroupOrderItemBody: RemoveGroupOrderItemBody, options?: RequestInit): Promise<removeGroupOrderItemResponse> => {
+
+  const res = await fetch(getRemoveGroupOrderItemUrl(groupId),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(removeGroupOrderItemBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: removeGroupOrderItemResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as removeGroupOrderItemResponse
+}
+
+
+export type finalizeGroupOrderResponse201 = {
+  data: Order
+  status: 201
+}
+
+export type finalizeGroupOrderResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type finalizeGroupOrderResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type finalizeGroupOrderResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type finalizeGroupOrderResponseSuccess = (finalizeGroupOrderResponse201) & {
+  headers: Headers;
+};
+export type finalizeGroupOrderResponseError = (finalizeGroupOrderResponse404 | finalizeGroupOrderResponse409 | finalizeGroupOrderResponse422) & {
+  headers: Headers;
+};
+
+export type finalizeGroupOrderResponse = (finalizeGroupOrderResponseSuccess | finalizeGroupOrderResponseError)
+
+export const getFinalizeGroupOrderUrl = (groupId: string,) => {
+
+
+
+
+  return `/group-orders/${groupId}/finalize`
+}
+
+/**
+ * @summary Finalize group order into a real order
+ */
+export const finalizeGroupOrder = async (groupId: string,
+    finalizeGroupOrderBody: FinalizeGroupOrderBody, options?: RequestInit): Promise<finalizeGroupOrderResponse> => {
+
+  const res = await fetch(getFinalizeGroupOrderUrl(groupId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(finalizeGroupOrderBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: finalizeGroupOrderResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as finalizeGroupOrderResponse
 }
 
 

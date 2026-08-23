@@ -25,8 +25,10 @@ import type {
   ListMyVouchersParams,
   ListServicesParams,
   ListVoucherVerifications200Item,
+  LiveDealChatMessage,
   NotFoundResponse,
   PlatformEvent,
+  PostLiveDealChatBody,
   PrecisionCampaign,
   Promotion,
   PromotionPerformance,
@@ -35,9 +37,12 @@ import type {
   Service,
   ServiceCategoryConfig,
   ServiceQuestion,
+  SuggestCoupon200,
+  SuggestCouponBody,
   ToggleDianjinCampaignBody,
   TogglePromotionBody,
   ToggleSelfServicePromotionBody,
+  ValidationErrorResponse,
   VerifyCouponBody,
   VerifyVoucherBody,
   Voucher
@@ -1836,6 +1841,152 @@ export const getCategoryQuestions = async (categoryId: string, options?: Request
 
   const data: getCategoryQuestionsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getCategoryQuestionsResponse
+}
+
+
+export type suggestCouponResponse200 = {
+  data: SuggestCoupon200
+  status: 200
+}
+
+export type suggestCouponResponseSuccess = (suggestCouponResponse200) & {
+  headers: Headers;
+};
+;
+
+export type suggestCouponResponse = (suggestCouponResponseSuccess)
+
+export const getSuggestCouponUrl = () => {
+
+
+
+
+  return `/coupons/suggest`
+}
+
+/**
+ * @summary Suggest best applicable coupon for a cart
+ */
+export const suggestCoupon = async (suggestCouponBody: SuggestCouponBody, options?: RequestInit): Promise<suggestCouponResponse> => {
+
+  const res = await fetch(getSuggestCouponUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(suggestCouponBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: suggestCouponResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as suggestCouponResponse
+}
+
+
+export type getLiveDealChatResponse200 = {
+  data: LiveDealChatMessage[]
+  status: 200
+}
+
+export type getLiveDealChatResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type getLiveDealChatResponseSuccess = (getLiveDealChatResponse200) & {
+  headers: Headers;
+};
+export type getLiveDealChatResponseError = (getLiveDealChatResponse404) & {
+  headers: Headers;
+};
+
+export type getLiveDealChatResponse = (getLiveDealChatResponseSuccess | getLiveDealChatResponseError)
+
+export const getGetLiveDealChatUrl = (dealId: string,) => {
+
+
+
+
+  return `/marketing/live-deals/${dealId}/chat`
+}
+
+/**
+ * @summary List live deal chat messages
+ */
+export const getLiveDealChat = async (dealId: string, options?: RequestInit): Promise<getLiveDealChatResponse> => {
+
+  const res = await fetch(getGetLiveDealChatUrl(dealId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getLiveDealChatResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getLiveDealChatResponse
+}
+
+
+export type postLiveDealChatResponse201 = {
+  data: LiveDealChatMessage
+  status: 201
+}
+
+export type postLiveDealChatResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type postLiveDealChatResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type postLiveDealChatResponseSuccess = (postLiveDealChatResponse201) & {
+  headers: Headers;
+};
+export type postLiveDealChatResponseError = (postLiveDealChatResponse404 | postLiveDealChatResponse422) & {
+  headers: Headers;
+};
+
+export type postLiveDealChatResponse = (postLiveDealChatResponseSuccess | postLiveDealChatResponseError)
+
+export const getPostLiveDealChatUrl = (dealId: string,) => {
+
+
+
+
+  return `/marketing/live-deals/${dealId}/chat`
+}
+
+/**
+ * @summary Post a live deal chat message
+ */
+export const postLiveDealChat = async (dealId: string,
+    postLiveDealChatBody: PostLiveDealChatBody, options?: RequestInit): Promise<postLiveDealChatResponse> => {
+
+  const res = await fetch(getPostLiveDealChatUrl(dealId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(postLiveDealChatBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: postLiveDealChatResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as postLiveDealChatResponse
 }
 
 

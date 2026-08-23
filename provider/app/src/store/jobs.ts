@@ -1,6 +1,7 @@
 import type { Booking, ProviderJobOffer } from '@hudumika/contract';
 import { create } from 'zustand';
 
+import { ACTIVE_STATUSES_SET, TERMINAL_DEAD_SET, TERMINAL_DONE_SET } from '@/lib/booking';
 import { getBookingsRepository, getDispatchRepository } from '@/repos';
 
 interface JobsState {
@@ -22,17 +23,16 @@ function splitByStatus(bookings: Booking[]) {
   const active: Booking[] = [];
   const completed: Booking[] = [];
   const cancelled: Booking[] = [];
-  const activeStatuses = new Set(['offered', 'provider_requested', 'provider_accepted', 'scheduled', 'reminder_sent', 'en_route', 'provider_arrived', 'check_in', 'diagnosing', 'quote_required', 'quote_submitted', 'quote_accepted', 'in_progress', 'completion_review', 'awaiting_customer_confirmation']);
-  const terminalDone = new Set(['completed', 'settled', 'warranty']);
-  const terminalDead = new Set(['declined', 'cancelled', 'customer_cancelled', 'provider_cancelled', 'refunded', 'disputed', 'escalated', 'reassignment', 'no_show', 'provider_late']);
   for (const b of bookings) {
-    if (activeStatuses.has(b.status)) active.push(b);
-    else if (terminalDone.has(b.status)) completed.push(b);
-    else if (terminalDead.has(b.status)) cancelled.push(b);
+    if (ACTIVE_STATUSES_SET.has(b.status)) active.push(b);
+    else if (TERMINAL_DONE_SET.has(b.status)) completed.push(b);
+    else if (TERMINAL_DEAD_SET.has(b.status)) cancelled.push(b);
     else incoming.push(b);
   }
   return { incoming, active, completed, cancelled };
 }
+
+export { splitByStatus };
 
 export const useJobsStore = create<JobsState>()((set, get) => ({
   marketplace: [],

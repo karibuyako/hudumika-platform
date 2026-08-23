@@ -3,7 +3,7 @@
  * tracking-phases. */
 import { api, ApiError } from '@/api/client';
 import type { GetOrderWaybill200, MaskedCallSession, Order, OrderCreate, OrderDetail, RequestOrderModification202, RequestOrderModificationBody, RouteSegment, TipRiderBody, TrackingEvent, TrackingPhase } from '@hudumika/contract';
-import type { OrderCreateInput, OrderModificationInput, OrderTipInput, OrdersRepository, DeliveryWindow, RouteCities, TrackingShare } from '../index';
+import type { OrderCreateInput, OrderEstimate, OrderEstimateInput, OrderModificationInput, OrderTipInput, OrdersRepository, DeliveryWindow, RouteCities, TrackingShare } from '../index';
 
 export class ApiOrdersRepository implements OrdersRepository {
   async create(input: OrderCreateInput, idempotencyKey: string): Promise<Order> {
@@ -32,6 +32,22 @@ export class ApiOrdersRepository implements OrdersRepository {
 
   async get(orderId: string): Promise<OrderDetail> {
     return api.get<OrderDetail>(`/orders/${orderId}`);
+  }
+
+  async estimate(input: OrderEstimateInput): Promise<OrderEstimate> {
+    const qs = new URLSearchParams();
+    qs.set('merchantId', input.merchantId);
+    if (input.subtotalTZS !== undefined) qs.set('subtotalTZS', String(input.subtotalTZS));
+    if (input.deliveryAddress) {
+      const addr: any = input.deliveryAddress;
+      if (addr.id) qs.set('addressId', String(addr.id));
+      if (addr.lat != null) qs.set('lat', String(addr.lat));
+      if (addr.lon != null) qs.set('lon', String(addr.lon));
+    }
+    if (input.items && input.items.length > 0) {
+      qs.set('items', JSON.stringify(input.items.map((i) => ({ id: i.catalogueItemId, qty: i.quantity }))));
+    }
+    return api.get<OrderEstimate>(`/orders/estimate?${qs.toString()}`);
   }
 
   async cancel(orderId: string, reason: string, idempotencyKey: string): Promise<Order> {

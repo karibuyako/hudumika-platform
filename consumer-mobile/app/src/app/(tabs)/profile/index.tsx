@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Clipboard, Platform, Pressable, Share, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -362,7 +363,7 @@ export default function ProfileScreen() {
 
       <View style={{ height: Spacing.lg }} />
       <Btn label={t('profile.logout')} onPress={logout} variant="outline" />
-      <Text style={styles.version}>{t('common.version', { version: '0.1.0' })}</Text>
+      <Text style={styles.version}>{t('common.version', { version: Constants.expoConfig?.version || '0.3.0' })}</Text>
 
       <SheetModal visible={rolesSheet} onClose={() => setRolesSheet(false)} title={t('switch.title')}>
         <View style={{ gap: Spacing.xs }}>

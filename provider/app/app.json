@@ -20,7 +20,8 @@
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "CAMERA"
-      ]
+      ],
+      "package": "com.hudumika.providerapp"
     },
     "web": {
       "output": "static",
@@ -40,6 +41,14 @@
         {
           "configureAndroidBackup": true,
           "faceIDPermission": false
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#1a5c44",
+          "sounds": []
         }
       ]
     ],

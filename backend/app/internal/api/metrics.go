@@ -58,6 +58,22 @@ var (
 		Help: "Current authenticated sessions (refresh token store).",
 	})
 
+	recommendationsRequestsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "recommendations_requests_total",
+		Help: "Recommendation requests by cold/warm and outcome.",
+	}, []string{"mode", "outcome"})
+
+	recommendationsLatency = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "recommendations_latency_seconds",
+		Help:    "Recommendation latency.",
+		Buckets: prometheus.DefBuckets,
+	}, []string{"mode"})
+
+	recommendationImpressionsTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "recommendation_impressions_total",
+		Help: "Total recommendation impressions served.",
+	})
+
 	promRegistry = prometheus.NewRegistry()
 )
 
@@ -73,6 +89,9 @@ func init() {
 		otpRequestsTotal,
 		idempotencyHitsTotal,
 		activeSessions,
+		recommendationsRequestsTotal,
+		recommendationsLatency,
+		recommendationImpressionsTotal,
 	)
 	// Seed CounterVec families so /metrics exposes them even on a cold
 	// instance (no OTP/idempotency traffic yet). Prometheus client omits
@@ -80,6 +99,9 @@ func init() {
 	// base-metric gate and dashboard alerts until first traffic.
 	otpRequestsTotal.WithLabelValues("phone", "issued").Add(0)
 	idempotencyHitsTotal.WithLabelValues("payments").Add(0)
+	recommendationsRequestsTotal.WithLabelValues("cold", "success").Add(0)
+	recommendationsRequestsTotal.WithLabelValues("warm", "success").Add(0)
+	recommendationImpressionsTotal.Add(0)
 }
 
 // metrics serves the Prometheus exposition format on /metrics.
@@ -138,6 +160,14 @@ func (s *Server) RecordOtpOutcome(channel, outcome string) {
 // shippable independently.
 func (s *Server) RecordIdempotencyHit(operation string) {
 	idempotencyHitsTotal.WithLabelValues(operation).Inc()
+}
+
+func (s *Server) RecordRecommendation(mode, outcome string, latency time.Duration) {
+	recommendationsRequestsTotal.WithLabelValues(mode, outcome).Inc()
+	recommendationsLatency.WithLabelValues(mode).Observe(latency.Seconds())
+	if outcome == "success" {
+		recommendationImpressionsTotal.Inc()
+	}
 }
 
 // activeSessionsInterval is the refresh period for the active_sessions gauge.

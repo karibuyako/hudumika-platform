@@ -18,6 +18,7 @@ import type {
   RequestOtpBody,
   Session,
   SessionInfo,
+  SocialLoginBody,
   TwoFaDisableBody,
   TwoFaEnrollResult,
   TwoFaRecoveryBody,
@@ -641,6 +642,60 @@ export const revokeSession = async (token: string, options?: RequestInit): Promi
 
   const data: revokeSessionResponse['data'] = body ? JSON.parse(body) : undefined
   return { data, status: res.status, headers: res.headers } as revokeSessionResponse
+}
+
+
+export type socialLoginResponse200 = {
+  data: Session
+  status: 200
+}
+
+export type socialLoginResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type socialLoginResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type socialLoginResponseSuccess = (socialLoginResponse200) & {
+  headers: Headers;
+};
+export type socialLoginResponseError = (socialLoginResponse401 | socialLoginResponse422) & {
+  headers: Headers;
+};
+
+export type socialLoginResponse = (socialLoginResponseSuccess | socialLoginResponseError)
+
+export const getSocialLoginUrl = () => {
+
+
+
+
+  return `/auth/social`
+}
+
+/**
+ * @summary Social login via OAuth provider (google, apple)
+ */
+export const socialLogin = async (socialLoginBody: SocialLoginBody, options?: RequestInit): Promise<socialLoginResponse> => {
+
+  const res = await fetch(getSocialLoginUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(socialLoginBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: socialLoginResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as socialLoginResponse
 }
 
 

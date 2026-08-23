@@ -198,6 +198,10 @@ export default function HomeScreen() {
 
   const onAccept = async () => {
     if (!offer) return;
+    if (forcedRest) {
+      setModalError(t('home.restEnforced'));
+      return;
+    }
     setAccepting(true);
     setModalError('');
     try {
@@ -208,8 +212,9 @@ export default function HomeScreen() {
       router.push(`/orders/${order.id}`);
     } catch (e) {
       const err = e instanceof ApiError ? e : null;
-      if (err && (err.code === 'OFFER_NOT_AVAILABLE' || err.code === 'OFFER_NOT_FOUND')) {
-        expireOffer(true);
+      if (err && (err.code === 'OFFER_NOT_AVAILABLE' || err.code === 'OFFER_NOT_FOUND' || err.code === 'REST_ENFORCED')) {
+        if (err.code === 'REST_ENFORCED') setModalError(t('home.restEnforced'));
+        else expireOffer(true);
       } else {
         setModalError(err ? err.message : t('jobs.acceptFailed'));
       }
@@ -360,6 +365,35 @@ export default function HomeScreen() {
           <Spinner color={Colors.primary} />
         </View>
       )}
+
+      {/* Heatmap — Meituan-style demand zones (surge guidance) */}
+      {(() => {
+        const heatmap = useJobsStore((s) => s.heatmap);
+        if (!heatmap.length) return null;
+        const toneForLevel = (lvl: string): 'danger' | 'warning' | 'info' | 'neutral' => (lvl === 'critical' ? 'danger' : lvl === 'high' ? 'warning' : lvl === 'medium' ? 'info' : 'neutral');
+        return (
+          <Card style={{ gap: Spacing.sm }}>
+            <Row style={{ justifyContent: 'space-between' }}>
+              <Text style={styles.cardTitle}>{t('jobs.heatmap')}</Text>
+              <Icon name="flame-outline" size={16} color={Colors.warning} />
+            </Row>
+            <View style={{ gap: Spacing.sm }}>
+              {heatmap.slice(0, 5).map((z) => (
+                <Row key={z.zoneId} style={{ justifyContent: 'space-between' }}>
+                  <Text numberOfLines={1} style={{ flex: 1, fontSize: FontSize.sm, color: Colors.textSecondary }}>
+                    {z.name}
+                  </Text>
+                  <Row gap={Spacing.sm}>
+                    <Pill label={z.demandLevel.toUpperCase()} tone={toneForLevel(z.demandLevel)} />
+                    {z.surgeMultiplier && z.surgeMultiplier > 1 ? <Text style={{ fontSize: FontSize.xs, color: Colors.warning, fontWeight: '700' }}>×{z.surgeMultiplier.toFixed(1)}</Text> : null}
+                    {typeof z.activeOrders === 'number' ? <Text style={{ fontSize: FontSize.xs, color: Colors.textTertiary }}>{z.activeOrders} orders</Text> : null}
+                  </Row>
+                </Row>
+              ))}
+            </View>
+          </Card>
+        );
+      })()}
 
       {/* Active delivery */}
       {activeOrder ? (

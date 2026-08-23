@@ -106,6 +106,31 @@ export default function MembershipScreen() {
   const [confirmReward, setConfirmReward] = useState<RedemptionReward | null>(null);
   const [redeeming, setRedeeming] = useState(false);
   const [redeemError, setRedeemError] = useState('');
+  const [catalog, setCatalog] = useState<RedemptionReward[]>(REDEMPTION_CATALOG);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const repo = getMembershipsRepository() as unknown as { getRedemptionCatalog?: () => Promise<RedemptionReward[]> };
+        if (typeof repo.getRedemptionCatalog !== 'function') {
+          if (!cancelled) setCatalog(REDEMPTION_CATALOG);
+          return;
+        }
+        const fetched = await repo.getRedemptionCatalog();
+        if (!cancelled && Array.isArray(fetched) && fetched.length > 0) {
+          setCatalog(fetched);
+        } else if (!cancelled && Array.isArray(fetched) && fetched.length === 0) {
+          setCatalog(REDEMPTION_CATALOG);
+        }
+      } catch {
+        if (!cancelled) setCatalog(REDEMPTION_CATALOG);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const loadMembership = useCallback(async () => {
     setError('');
@@ -303,7 +328,7 @@ export default function MembershipScreen() {
         ) : (
           <Text style={styles.redeemWalletLine}>{t('common.loading')}</Text>
         )}
-        {REDEMPTION_CATALOG.map((reward) => {
+        {catalog.map((reward) => {
           const affordable = (membership?.points ??0) >= reward.points;
           const shortfall = reward.points - (membership?.points ??0);
           return (

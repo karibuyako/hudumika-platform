@@ -354,12 +354,16 @@ export default function SearchScreen() {
           ) : (
             <Text style={styles.savedEmpty}>{t('search.savedEmpty')}</Text>
           )}
-          <SectionTitle title={t('search.suggestions')} icon="sparkles-outline" />
-          <View style={styles.chips}>
-            {['Chicken & Chips', 'Plumber', 'Pilau', 'Smoothie'].map((s) => (
-              <Chip key={s} label={s} onPress={() => submit(s)} />
-            ))}
-          </View>
+          {process.env.EXPO_PUBLIC_ENV !== 'production' ? (
+            <>
+              <SectionTitle title={t('search.suggestions')} icon="sparkles-outline" />
+              <View style={styles.chips}>
+                {['Chicken & Chips', 'Plumber', 'Pilau', 'Smoothie'].map((s) => (
+                  <Chip key={s} label={s} onPress={() => submit(s)} />
+                ))}
+              </View>
+            </>
+          ) : null}
         </>
       )}
     </Screen>

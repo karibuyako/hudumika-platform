@@ -40,6 +40,10 @@ let entrySeq = 0;
 const entryId = (prefix: string) => `${prefix}-${Date.now()}-${entrySeq++}`;
 
 function greetingEntry(): ThreadEntry {
+  const isProd = process.env.EXPO_PUBLIC_ENV === 'production';
+  if (isProd) {
+    return { id: entryId('greet'), role: 'assistant', text: 'Hello! How can I help you today?', suggestions: ['Order food', 'Get help'] };
+  }
   return { id: entryId('greet'), role: 'assistant', text: ASSISTANT_GREETING.reply, suggestions: ASSISTANT_GREETING.suggestions };
 }
 

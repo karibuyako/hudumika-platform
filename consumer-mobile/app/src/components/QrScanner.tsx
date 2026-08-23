@@ -1,7 +1,9 @@
 /* Camera QR scanner for dine-in table codes (DINE-IN.md: payload
- * `hudumika:dinein:table:{tableId}`). Renders inside a SheetModal: camera
- * preview + static scan overlay + Cancel. The parent runs the existing
- * resolve flow once onScan fires with a valid payload.
+ * `hudumika:dinein:table:{tableId}`) and power-bank codes
+ * (`hudumika:powerbank:{id}`). Renders inside a SheetModal: camera preview +
+ * static scan overlay + Cancel. The parent runs the existing resolve flow once
+ * onScan fires with a valid payload. When no filter is supplied the scanner
+ * accepts dine-in and power-bank QRs.
  *
  * expo-camera is lazy-loaded so the esbuild node test bundle never imports
  * it; on web the module's own getUserMedia implementation powers the preview
@@ -15,11 +17,18 @@ import { Btn, Icon, SheetModal } from '@/components/ui';
 import { Colors, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
 import { t } from '@/i18n';
 import { parseTableQr } from '@/lib/dineIn';
+import { parsePowerBankQr } from '@/lib/powerBank';
 
 interface Props {
   visible: boolean;
   onScan: (payload: string) => void;
   onClose: () => void;
+  /** Optional filter for scanned payloads — when omitted dine-in and power-bank QRs are accepted. */
+  filter?: (payload: string) => boolean;
+  /** Optional title override for the sheet (defaults to dineIn.scan). */
+  title?: string;
+  /** Optional hint override (defaults to dineIn.scanHint). */
+  hint?: string;
 }
 
 /* Minimal local shapes — never a static import of expo-camera, so the node
@@ -39,7 +48,7 @@ type CameraModule = {
   useCameraPermissions: () => [{ granted: boolean; status: string; canAskAgain: boolean } | null, () => Promise<{ granted: boolean }>, () => Promise<{ granted: boolean }>];
 };
 
-export function QrScanner({ visible, onScan, onClose }: Props) {
+export function QrScanner({ visible, onScan, onClose, filter, title, hint }: Props) {
   const [mod, setMod] = useState<CameraModule | null>(null);
   const [loadError, setLoadError] = useState(false);
 
@@ -62,7 +71,7 @@ export function QrScanner({ visible, onScan, onClose }: Props) {
   }, [visible]);
 
   return (
-    <SheetModal visible={visible} onClose={onClose} title={t('dineIn.scan')}>
+    <SheetModal visible={visible} onClose={onClose} title={title ?? t('dineIn.scan')}>
       {loadError || !mod ? (
         <View style={styles.body}>
           <View style={styles.iconWrap}>
@@ -79,13 +88,13 @@ export function QrScanner({ visible, onScan, onClose }: Props) {
           <Btn label={t('common.cancel')} onPress={onClose} variant="subtle" size="lg" />
         </View>
       ) : (
-        <CameraBody mod={mod} onScan={onScan} onClose={onClose} />
+        <CameraBody mod={mod} onScan={onScan} onClose={onClose} filter={filter} hint={hint} />
       )}
     </SheetModal>
   );
 }
 
-function CameraBody({ mod, onScan, onClose }: { mod: CameraModule; onScan: (p: string) => void; onClose: () => void }) {
+function CameraBody({ mod, onScan, onClose, filter, hint }: { mod: CameraModule; onScan: (p: string) => void; onClose: () => void; filter?: (payload: string) => boolean; hint?: string }) {
   // Called unconditionally once the module exists (hooks rules).
   const [permission, requestPermission] = mod.useCameraPermissions();
   const [startFailed, setStartFailed] = useState(false);
@@ -142,8 +151,12 @@ function CameraBody({ mod, onScan, onClose }: { mod: CameraModule; onScan: (p: s
           barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
           onBarcodeScanned={(result) => {
             if (handledRef.current) return;
-            // Ignore foreign QRs — only exact table payloads resolve.
-            if (!parseTableQr(result.data)) return;
+            // Ignore foreign QRs — only exact payloads per the filter resolve.
+            // Default accepts dine-in and power-bank QRs (hudumika:powerbank:{id}).
+            const ok = filter
+              ? filter(result.data)
+              : !!parseTableQr(result.data) || !!parsePowerBankQr(result.data);
+            if (!ok) return;
             handledRef.current = true;
             setDone(true);
             onScan(result.data);
@@ -163,7 +176,7 @@ function CameraBody({ mod, onScan, onClose }: { mod: CameraModule; onScan: (p: s
           <View style={[styles.corner, styles.cornerBR]} />
         </View>
       </View>
-      <Text style={styles.hint}>{t('dineIn.scanHint')}</Text>
+      <Text style={styles.hint}>{hint ?? t('dineIn.scanHint')}</Text>
       <Btn label={t('common.cancel')} onPress={onClose} variant="subtle" size="lg" />
     </View>
   );

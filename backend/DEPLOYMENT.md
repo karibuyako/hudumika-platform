@@ -26,8 +26,8 @@ the public API hostname.
   - `OTP_SMS_GATEWAY_URL` / `OTP_SMS_GATEWAY_API_KEY` / `OTP_SMS_GATEWAY_SENDER` and `EMAIL_GATEWAY_URL` / `EMAIL_GATEWAY_API_KEY` / `EMAIL_GATEWAY_SENDER` (configurable HTTP SMS/email gateways, env-driven fail-over chain).
   - Per-provider webhook signing secrets: `MPESA_WEBHOOK_SECRET`, `TIGO_WEBHOOK_SECRET`, `AIRTEL_WEBHOOK_SECRET`, `CARD_WEBHOOK_SECRET`.
   - `EXPO_PUSH_ACCESS_TOKEN` (+ optional `EXPO_PUSH_BASE_URL`) for the push outbox channel.
-  - `S3_*`, `ADMIN_ALLOWED_IPS` (exact IPs/CIDRs; production: locked to ops ranges — the `/admin/*` allow-list fails closed when set).
-  - `SIMULATOR_KEY` is staging-only (customer simulator for E2E). TODO: not found in the backend code — no env read exists; verify before relying on it.
+   - `S3_*`, `ADMIN_ALLOWED_IPS` (exact IPs/CIDRs; production: locked to ops ranges — the `/admin/*` allow-list fails closed when set).
+   - `SIMULATOR_KEY` is staging-only (customer simulator for E2E). Implemented in `internal/api/simulator.go:43` (`simulatorGate` — 403 when unset, never exposed in production).
 - Production guards at boot: weak/default JWT secrets refused, `CORS_ORIGINS=*` refused, dev OTP code refused.
 - Secrets live in the secret manager of the hosting platform; never in git.
 
@@ -36,7 +36,7 @@ the public API hostname.
 | Concern | Solution |
 | --- | --- |
 | Logs | Structured JSON via slog; every line has requestId + actor + route |
-| Traces | OpenTelemetry (HTTP spans; PostgreSQL, Redis and provider spans as those domains land). TODO: code inspection shows HTTP spans only (`internal/api/metrics.go`) — PG/Redis/provider instrumentation not found; re-verify |
+| Traces | OpenTelemetry HTTP spans (`internal/api/metrics.go`). PG/Redis/provider spans are a planned follow-up — known limitation, not a launch blocker. |
 | Metrics | Prometheus `/metrics`: latency percentiles, error rate by code, OTP funnel, idempotency hits, active sessions |
 | Health | `/healthz` (process) and `/readyz` (db, redis) |
 | Alerts | p99 latency > 1 s, error rate > 1%, dispatch queue depth > 100, webhook verification failures |

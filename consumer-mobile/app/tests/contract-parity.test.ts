@@ -398,7 +398,16 @@ const BACKEND_CODES = new Set(scanBackendCodes());
  * ships per-order/per-review earnings — docs/CONTRACT-ADDITIONS.md #28), so
  * nothing new enters APP_PATHS. The order-detail / review-success earn pills
  * render only from the mock's recorded awards. */
-const APP_ONLY_PATHS: string[] = ['/auth/social', '/coupons/suggest', '/dine-in/orders/{param}/splits', '/disputes', '/disputes/me', '/favorites/lists', '/favorites/lists/{param}', '/favorites/lists/{param}/merchants', '/favorites/lists/{param}/merchants/{param}', '/group-orders', '/group-orders/{param}', '/group-orders/{param}/finalize', '/group-orders/{param}/items', '/lists', '/lists/{param}', '/loyalty/redemptions', '/marketing/live-deals/{param}/chat', '/orders/{param}/tracking-share', '/payments/methods/{param}', '/payments/methods/{param}/default', '/providers/{param}', '/providers/me/preferred', '/providers/{param}/preference', '/push/tokens', '/push/tokens/{param}', '/red-packets/me/received', '/red-packets/me/share', '/red-packets/{param}/claim', '/splits', '/splits/{param}', '/splits/{param}/complete', '/splits/{param}/pay', '/tracking-share/{param}', '/users/me/2fa'];
+const APP_ONLY_PATHS: string[] = [
+  '/bus/reminders',
+  '/bus/routes',
+  '/bus/routes/{param}',
+  '/bus/routes/{param}/vehicles',
+  '/bus/vehicles/{param}',
+  '/loyalty/catalog',
+  '/loyalty/rewards',
+  '/orders/estimate',
+];
 
 /* Mock-only ApiError codes (no match in backend/ERROR-CODES.md). Every entry
  * needs a reason; currently empty — including OTP_EXPIRED, which IS listed in

@@ -9,6 +9,9 @@
  * the contract is the single source of truth.
  */
 import type {
+  Consignment,
+  DeliveryException,
+  DeliveryExceptionKind,
   DispatchOffer,
   ExportRiderReport202,
   ExportRiderReportBody,
@@ -16,9 +19,11 @@ import type {
   GetRiderSecurity200,
   HeatmapZone,
   LedgerEntry,
+  LogisticsTrip,
   MaskedCallSession,
   Order,
   OrderDetail,
+  Package,
   ProofOfDelivery,
   RiderExpense,
   RiderGoals,
@@ -28,6 +33,7 @@ import type {
   RiderPrivate,
   RiderShift,
   RiderUpdate,
+  RouteSegment,
   SosAlert,
   SosAlertType,
   Ticket,
@@ -36,9 +42,10 @@ import type {
   TrainingModule,
   Trip,
   TrustedContact,
+  Vehicle,
   VehicleMaintenance,
 } from '@hudumika/contract';
-import { getAuthRepository, getRiderRepository, getJobsRepository, getDeliveryRepository, getEarningsRepository, getNotificationsRepository, getSupportRepository, getSafetyRepository, getVehicleRepository, getPaymentRepository, getTripsRepository } from './factories';
+import type { FacilityWhitelistEntry, FacilityScan } from '@/lib/logistics';
 
 /* ---------------- Auth ---------------- */
 
@@ -234,4 +241,24 @@ export interface VehicleRepository {
   completeTraining(moduleId: string): Promise<TrainingModule>;
 }
 
-export { getAuthRepository, getRiderRepository, getJobsRepository, getDeliveryRepository, getEarningsRepository, getNotificationsRepository, getSupportRepository, getSafetyRepository, getVehicleRepository, getPaymentRepository, getTripsRepository };
+/* ---------------- Logistics (facility/shipments) — gated via MOCK_LOGISTICS ---------------- */
+
+export interface LogisticsRepository {
+  getFacilityStatus(): Promise<{ entries: FacilityWhitelistEntry[]; lastScanOutcomes: FacilityScan[] }>;
+  scanAtFacility(facilityId: string): Promise<{ granted: boolean; requestId: string }>;
+  createException(input: { kind: DeliveryExceptionKind; description: string }): Promise<DeliveryException>;
+  getException(id: string): Promise<DeliveryException>;
+  listExceptions(filter?: { kind?: string; status?: string }): Promise<DeliveryException[]>;
+  updateException(id: string, patch: { status: string; outcome?: string | null }): Promise<DeliveryException>;
+  getVehicle(vehicleId: string): Promise<Vehicle>;
+  listVehicles(): Promise<Vehicle[]>;
+  getPackage(packageId: string): Promise<Package>;
+  getLogisticsTrip(tripId: string): Promise<LogisticsTrip>;
+  listLogisticsTrips(): Promise<LogisticsTrip[]>;
+  getConsignment(consignmentId: string): Promise<Consignment>;
+  listConsignments(): Promise<Consignment[]>;
+  getOrderRoute(orderId: string): Promise<RouteSegment[]>;
+  checkVehicleCapacity(vehicleId: string, packageId: string): Promise<void>;
+}
+
+export { getAuthRepository, getRiderRepository, getJobsRepository, getDeliveryRepository, getEarningsRepository, getNotificationsRepository, getSupportRepository, getSafetyRepository, getVehicleRepository, getPaymentRepository, getTripsRepository, getLogisticsRepository } from './factories';

@@ -34,6 +34,7 @@ import { MockContractsRepository } from './mock/contracts';
 import { MockPlansRepository } from './mock/plans';
 import { MockTrustRepository } from './mock/trust';
 import { MockCopilotRepository } from './mock/copilot';
+import { MockKycRepository } from './mock/kyc';
 import { ApiAuthRepository } from './api/auth';
 import { ApiProviderRepository } from './api/provider';
 import { ApiAvailabilityRepository } from './api/availability';
@@ -53,6 +54,7 @@ import { ApiContractsRepository } from './api/contracts';
 import { ApiPlansRepository } from './api/plans';
 import { ApiTrustRepository } from './api/trust';
 import { ApiCopilotRepository } from './api/copilot';
+import { ApiKycRepository } from './api/kyc';
 import type {
   AuthRepository,
   ProviderRepository,
@@ -73,9 +75,14 @@ import type {
   PlansRepository,
   TrustRepository,
   CopilotRepository,
+  KycRepository,
 } from './index';
 
-const mock = (v: string | undefined, def = true) => (v === undefined ? def : v !== 'false');
+const isProd = process.env.EXPO_PUBLIC_ENV === 'production';
+const mock = (v: string | undefined, def = true) => {
+  if (isProd) return false;
+  return v === undefined ? def : v !== 'false';
+};
 
 const MOCK_AUTH = mock(process.env.EXPO_PUBLIC_MOCK_AUTH);
 const MOCK_PROFILE = mock(process.env.EXPO_PUBLIC_MOCK_PROFILE);
@@ -101,7 +108,7 @@ export function getAvailabilityRepository(): AvailabilityRepository {
 }
 
 export function getCatalogRepository(): CatalogRepository {
-  return MOCK_SERVICES ? new MockCatalogRepository() : new ApiCatalogRepository();
+  return MOCK_CATALOG ? new MockCatalogRepository() : new ApiCatalogRepository();
 }
 
 export function getServicesRepository(): ServicesRepository {
@@ -162,4 +169,8 @@ export function getTrustRepository(): TrustRepository {
 
 export function getCopilotRepository(): CopilotRepository {
   return MOCK_CATALOG ? new MockCopilotRepository() : new ApiCopilotRepository();
+}
+
+export function getKycRepository(): KycRepository {
+  return MOCK_PROFILE ? new MockKycRepository() : new ApiKycRepository();
 }

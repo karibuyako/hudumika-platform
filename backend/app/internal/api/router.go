@@ -411,6 +411,13 @@ func (s *Server) Router() http.Handler {
 		// the consumer-scoped MthListPaymentMethods AFTER the generated tree
 		// (chi last-registration-wins) so callers get their own saved methods.
 		r.Get("/payments/methods", s.MthListPaymentMethods)
+		// Payment methods mutations: the contract requires Idempotency-Key
+		// for POST, but the real table is per-user and idempotent via UNIQUE(user_id, method).
+		// Mount real handlers AFTER the generated tree so they win and can be
+		// called without the header (task POST {type, token} has no header).
+		r.Post("/payments/methods", s.MthAddPaymentMethod)
+		r.Delete("/payments/methods/{id}", s.MthDeletePaymentMethod)
+		r.Put("/payments/methods/{id}/default", s.MthSetDefaultPaymentMethod)
 
 		// GET /providers override: chi's last registration wins, so the
 		// tolerant consumer list (MthListProvidersConsumer) is mounted AFTER

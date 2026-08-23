@@ -28,9 +28,12 @@ import type {
   Container,
   CustodyEntry,
   DamageClaim,
+  DineInSplit,
   EnterpriseOrder,
   GetOrderTimeline200,
   GetOrderWaybill200,
+  GetTrackingShare200,
+  GroupOrder,
   Handoff,
   ListOrderReceipts200Item,
   Order,
@@ -41,8 +44,10 @@ import type {
   RouteSegment,
   RushOrder,
   Shipment,
+  SplitPlan,
   TrackingEvent,
   TrackingPhase,
+  TrackingShare,
   TransferOrder202
 } from '../../model';
 
@@ -132,6 +137,32 @@ export const getAdvanceRouteLegResponseMock = (): RouteSegment[] => (Array.from(
 export const getRecordHandoffResponseMock = (overrideResponse: Partial<Extract<Handoff, object>> = {}): Handoff => ({id: faker.helpers.arrayElement([faker.string.uuid(), undefined]), fromLegId: faker.string.uuid(), toLegId: faker.string.uuid(), scanCode: faker.string.alpha({length: {min: 10, max: 20}}), sealIntact: faker.datatype.boolean(), conditionPhotoUrl: faker.helpers.arrayElement([faker.internet.url(), null]), location: faker.helpers.arrayElement([{lat: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), undefined]), lon: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), undefined])}, undefined]), from: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), to: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), at: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), ...overrideResponse})
 
 export const getFulfillFromWarehouseResponseMock = (overrideResponse: Partial<Extract<Order, object>> = {}): Order => ({id: faker.string.uuid(), no: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), status: faker.helpers.arrayElement(Object.values(OrderStatus)), merchantId: faker.string.uuid(), storeId: faker.helpers.arrayElement([faker.string.uuid(), null]), riderId: faker.helpers.arrayElement([faker.string.uuid(), null]), source: faker.helpers.arrayElement(['app','web','phone','pos'] as const), version: faker.helpers.arrayElement([faker.number.int(), undefined]), scheduledAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), rushRequestedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), rushCooldownMinutes: faker.number.int(), rushRepliedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), preOrderReminderSent: faker.datatype.boolean(), rejectReason: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), rejectReasonCode: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), tipTZS: faker.number.int(), waitSeconds: faker.number.int(), waitPayTZS: faker.number.int(), itemsChecked: faker.datatype.boolean(), priority: faker.helpers.arrayElement(['normal','express','vip'] as const), fulfillmentType: faker.helpers.arrayElement(['local','intercity','relay'] as const), dispatchStrategy: faker.helpers.arrayElement([faker.helpers.arrayElement(['nearest','zone','multi_leg','relay','warehouse'] as const), undefined]), fulfillmentSource: faker.helpers.arrayElement(['merchant','warehouse'] as const), waybillNumber: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), routeSegments: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({legId: faker.string.uuid(), sequence: faker.number.int(), type: faker.helpers.arrayElement(['first_mile','linehaul','hub_transfer','last_mile','return'] as const), mode: faker.helpers.arrayElement([faker.helpers.arrayElement(['motorcycle','car','van','linehaul_bus','linehaul_truck'] as const), undefined]), fromHubId: faker.helpers.arrayElement([faker.string.uuid(), null]), toHubId: faker.helpers.arrayElement([faker.string.uuid(), null]), handledBy: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), status: faker.helpers.arrayElement(['pending','in_progress','completed','skipped'] as const), plannedStartAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), plannedEndAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), etaAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), startedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), completedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), custody: faker.helpers.arrayElement([faker.helpers.arrayElement([{from: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), to: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), sealIntact: faker.helpers.arrayElement([faker.datatype.boolean(), undefined]), at: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined])}, null]), null])})), undefined]), promoCode: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), cancelReason: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), deadlineAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), seen: faker.datatype.boolean(), freeDelivery: faker.datatype.boolean(), deliveryEtaMin: faker.helpers.arrayElement([faker.number.int(), null]), acceptedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), readyAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), completedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), cancelledAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), settledAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), totals: {subtotalTZS: faker.number.int(), deliveryFeeTZS: faker.number.int(), platformFeeTZS: faker.number.int(), taxTZS: faker.number.int(), discountTZS: faker.number.int(), totalTZS: faker.number.int()}, createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', updatedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), ...overrideResponse})
+
+export const getCreateTrackingShareResponseMock = (overrideResponse: Partial<Extract<TrackingShare, object>> = {}): TrackingShare => ({token: faker.string.alpha({length: {min: 10, max: 20}}), expiresAt: faker.date.past().toISOString().slice(0, 19) + 'Z', orderId: faker.helpers.arrayElement([faker.string.uuid(), undefined]), ...overrideResponse})
+
+export const getGetTrackingShareResponseMock = (overrideResponse: Partial<Extract<GetTrackingShare200, object>> = {}): GetTrackingShare200 => ({orderId: faker.string.uuid(), expiresAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), ...overrideResponse})
+
+export const getCreateSplitResponseMock = (overrideResponse: Partial<Extract<SplitPlan, object>> = {}): SplitPlan => ({id: faker.string.alpha({length: {min: 10, max: 20}}), orderId: faker.string.uuid(), totalTZS: faker.number.int(), shares: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), label: faker.string.alpha({length: {min: 10, max: 20}}), amountTZS: faker.number.int(), status: faker.helpers.arrayElement(['pending','paid'] as const)})), myShareId: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement(['open','paying','paid','completed'] as const), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
+
+export const getGetSplitResponseMock = (overrideResponse: Partial<Extract<SplitPlan, object>> = {}): SplitPlan => ({id: faker.string.alpha({length: {min: 10, max: 20}}), orderId: faker.string.uuid(), totalTZS: faker.number.int(), shares: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), label: faker.string.alpha({length: {min: 10, max: 20}}), amountTZS: faker.number.int(), status: faker.helpers.arrayElement(['pending','paid'] as const)})), myShareId: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement(['open','paying','paid','completed'] as const), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
+
+export const getPaySplitShareResponseMock = (overrideResponse: Partial<Extract<SplitPlan, object>> = {}): SplitPlan => ({id: faker.string.alpha({length: {min: 10, max: 20}}), orderId: faker.string.uuid(), totalTZS: faker.number.int(), shares: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), label: faker.string.alpha({length: {min: 10, max: 20}}), amountTZS: faker.number.int(), status: faker.helpers.arrayElement(['pending','paid'] as const)})), myShareId: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement(['open','paying','paid','completed'] as const), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
+
+export const getCompleteSplitResponseMock = (overrideResponse: Partial<Extract<SplitPlan, object>> = {}): SplitPlan => ({id: faker.string.alpha({length: {min: 10, max: 20}}), orderId: faker.string.uuid(), totalTZS: faker.number.int(), shares: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), label: faker.string.alpha({length: {min: 10, max: 20}}), amountTZS: faker.number.int(), status: faker.helpers.arrayElement(['pending','paid'] as const)})), myShareId: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement(['open','paying','paid','completed'] as const), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
+
+export const getGetDineInSplitResponseMock = (overrideResponse: Partial<Extract<DineInSplit, object>> = {}): DineInSplit => ({id: faker.string.uuid(), dineOrderId: faker.helpers.arrayElement([faker.string.uuid(), null]), status: faker.helpers.arrayElement(['pending','paid','completed'] as const), participants: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({})), undefined]), createdAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), updatedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), ...overrideResponse})
+
+export const getCreateDineInSplitResponseMock = (overrideResponse: Partial<Extract<DineInSplit, object>> = {}): DineInSplit => (faker.helpers.arrayElement([{id: faker.string.uuid(), dineOrderId: faker.helpers.arrayElement([faker.string.uuid(), null]), status: faker.helpers.arrayElement(['pending','paid','completed'] as const), participants: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({})), undefined]), createdAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), updatedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), ...overrideResponse}, {id: faker.string.uuid(), dineOrderId: faker.helpers.arrayElement([faker.string.uuid(), null]), status: faker.helpers.arrayElement(['pending','paid','completed'] as const), participants: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({})), undefined]), createdAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), updatedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), ...overrideResponse}]))
+
+export const getCreateGroupOrderResponseMock = (overrideResponse: Partial<Extract<GroupOrder, object>> = {}): GroupOrder => ({id: faker.string.uuid(), merchantId: faker.string.uuid(), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement(['open','ordered','expired'] as const), members: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({name: faker.string.alpha({length: {min: 10, max: 20}}), items: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({catalogueItemId: faker.string.uuid(), quantity: faker.number.int(), unitPriceTZS: faker.number.int(), options: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), undefined])})), subtotalTZS: faker.number.int()})), totals: {subtotalTZS: faker.number.int(), deliveryFeeTZS: faker.number.int(), platformFeeTZS: faker.number.int(), taxTZS: faker.number.int(), discountTZS: faker.number.int(), totalTZS: faker.number.int()}, expiresAt: faker.date.past().toISOString().slice(0, 19) + 'Z', createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', orderId: faker.helpers.arrayElement([faker.string.uuid(), null]), ...overrideResponse})
+
+export const getGetGroupOrderResponseMock = (overrideResponse: Partial<Extract<GroupOrder, object>> = {}): GroupOrder => ({id: faker.string.uuid(), merchantId: faker.string.uuid(), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement(['open','ordered','expired'] as const), members: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({name: faker.string.alpha({length: {min: 10, max: 20}}), items: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({catalogueItemId: faker.string.uuid(), quantity: faker.number.int(), unitPriceTZS: faker.number.int(), options: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), undefined])})), subtotalTZS: faker.number.int()})), totals: {subtotalTZS: faker.number.int(), deliveryFeeTZS: faker.number.int(), platformFeeTZS: faker.number.int(), taxTZS: faker.number.int(), discountTZS: faker.number.int(), totalTZS: faker.number.int()}, expiresAt: faker.date.past().toISOString().slice(0, 19) + 'Z', createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', orderId: faker.helpers.arrayElement([faker.string.uuid(), null]), ...overrideResponse})
+
+export const getAddGroupOrderItemResponseMock = (overrideResponse: Partial<Extract<GroupOrder, object>> = {}): GroupOrder => ({id: faker.string.uuid(), merchantId: faker.string.uuid(), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement(['open','ordered','expired'] as const), members: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({name: faker.string.alpha({length: {min: 10, max: 20}}), items: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({catalogueItemId: faker.string.uuid(), quantity: faker.number.int(), unitPriceTZS: faker.number.int(), options: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), undefined])})), subtotalTZS: faker.number.int()})), totals: {subtotalTZS: faker.number.int(), deliveryFeeTZS: faker.number.int(), platformFeeTZS: faker.number.int(), taxTZS: faker.number.int(), discountTZS: faker.number.int(), totalTZS: faker.number.int()}, expiresAt: faker.date.past().toISOString().slice(0, 19) + 'Z', createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', orderId: faker.helpers.arrayElement([faker.string.uuid(), null]), ...overrideResponse})
+
+export const getRemoveGroupOrderItemResponseMock = (overrideResponse: Partial<Extract<GroupOrder, object>> = {}): GroupOrder => ({id: faker.string.uuid(), merchantId: faker.string.uuid(), title: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement(['open','ordered','expired'] as const), members: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({name: faker.string.alpha({length: {min: 10, max: 20}}), items: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({catalogueItemId: faker.string.uuid(), quantity: faker.number.int(), unitPriceTZS: faker.number.int(), options: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), undefined])})), subtotalTZS: faker.number.int()})), totals: {subtotalTZS: faker.number.int(), deliveryFeeTZS: faker.number.int(), platformFeeTZS: faker.number.int(), taxTZS: faker.number.int(), discountTZS: faker.number.int(), totalTZS: faker.number.int()}, expiresAt: faker.date.past().toISOString().slice(0, 19) + 'Z', createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', orderId: faker.helpers.arrayElement([faker.string.uuid(), null]), ...overrideResponse})
+
+export const getFinalizeGroupOrderResponseMock = (overrideResponse: Partial<Extract<Order, object>> = {}): Order => ({id: faker.string.uuid(), no: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), status: faker.helpers.arrayElement(Object.values(OrderStatus)), merchantId: faker.string.uuid(), storeId: faker.helpers.arrayElement([faker.string.uuid(), null]), riderId: faker.helpers.arrayElement([faker.string.uuid(), null]), source: faker.helpers.arrayElement(['app','web','phone','pos'] as const), version: faker.helpers.arrayElement([faker.number.int(), undefined]), scheduledAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), rushRequestedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), rushCooldownMinutes: faker.number.int(), rushRepliedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), preOrderReminderSent: faker.datatype.boolean(), rejectReason: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), rejectReasonCode: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), tipTZS: faker.number.int(), waitSeconds: faker.number.int(), waitPayTZS: faker.number.int(), itemsChecked: faker.datatype.boolean(), priority: faker.helpers.arrayElement(['normal','express','vip'] as const), fulfillmentType: faker.helpers.arrayElement(['local','intercity','relay'] as const), dispatchStrategy: faker.helpers.arrayElement([faker.helpers.arrayElement(['nearest','zone','multi_leg','relay','warehouse'] as const), undefined]), fulfillmentSource: faker.helpers.arrayElement(['merchant','warehouse'] as const), waybillNumber: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), routeSegments: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({legId: faker.string.uuid(), sequence: faker.number.int(), type: faker.helpers.arrayElement(['first_mile','linehaul','hub_transfer','last_mile','return'] as const), mode: faker.helpers.arrayElement([faker.helpers.arrayElement(['motorcycle','car','van','linehaul_bus','linehaul_truck'] as const), undefined]), fromHubId: faker.helpers.arrayElement([faker.string.uuid(), null]), toHubId: faker.helpers.arrayElement([faker.string.uuid(), null]), handledBy: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), status: faker.helpers.arrayElement(['pending','in_progress','completed','skipped'] as const), plannedStartAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), plannedEndAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), etaAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), startedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), completedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), custody: faker.helpers.arrayElement([faker.helpers.arrayElement([{from: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), to: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), sealIntact: faker.helpers.arrayElement([faker.datatype.boolean(), undefined]), at: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined])}, null]), null])})), undefined]), promoCode: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), cancelReason: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), deadlineAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), seen: faker.datatype.boolean(), freeDelivery: faker.datatype.boolean(), deliveryEtaMin: faker.helpers.arrayElement([faker.number.int(), null]), acceptedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), readyAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), completedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), cancelledAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), settledAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), totals: {subtotalTZS: faker.number.int(), deliveryFeeTZS: faker.number.int(), platformFeeTZS: faker.number.int(), taxTZS: faker.number.int(), discountTZS: faker.number.int(), totalTZS: faker.number.int()}, createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', updatedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), ...overrideResponse})
 
 
 export const getCreateOrderMockHandler = (overrideResponse?: Order | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<Order> | Order), options?: RequestHandlerOptions) => {
@@ -669,6 +700,162 @@ export const getFulfillFromWarehouseMockHandler = (overrideResponse?: Order | ((
       })
   }, options)
 }
+
+export const getCreateTrackingShareMockHandler = (overrideResponse?: TrackingShare | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<TrackingShare> | TrackingShare), options?: RequestHandlerOptions) => {
+  return http.post('*/orders/:orderId/tracking-share', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getCreateTrackingShareResponseMock(),
+      { status: 201
+      })
+  }, options)
+}
+
+export const getGetTrackingShareMockHandler = (overrideResponse?: GetTrackingShare200 | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<GetTrackingShare200> | GetTrackingShare200), options?: RequestHandlerOptions) => {
+  return http.get('*/tracking-share/:token', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetTrackingShareResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getCreateSplitMockHandler = (overrideResponse?: SplitPlan | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<SplitPlan> | SplitPlan), options?: RequestHandlerOptions) => {
+  return http.post('*/splits', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getCreateSplitResponseMock(),
+      { status: 201
+      })
+  }, options)
+}
+
+export const getGetSplitMockHandler = (overrideResponse?: SplitPlan | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<SplitPlan> | SplitPlan), options?: RequestHandlerOptions) => {
+  return http.get('*/splits/:splitId', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetSplitResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getPaySplitShareMockHandler = (overrideResponse?: SplitPlan | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<SplitPlan> | SplitPlan), options?: RequestHandlerOptions) => {
+  return http.post('*/splits/:splitId/pay', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getPaySplitShareResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getCompleteSplitMockHandler = (overrideResponse?: SplitPlan | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<SplitPlan> | SplitPlan), options?: RequestHandlerOptions) => {
+  return http.post('*/splits/:splitId/complete', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getCompleteSplitResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getGetDineInSplitMockHandler = (overrideResponse?: DineInSplit | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<DineInSplit> | DineInSplit), options?: RequestHandlerOptions) => {
+  return http.get('*/dine-in/orders/:orderId/splits', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetDineInSplitResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getCreateDineInSplitMockHandler = (overrideResponse?: DineInSplit | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<DineInSplit> | DineInSplit), options?: RequestHandlerOptions) => {
+  return http.post('*/dine-in/orders/:orderId/splits', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getCreateDineInSplitResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getCreateGroupOrderMockHandler = (overrideResponse?: GroupOrder | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<GroupOrder> | GroupOrder), options?: RequestHandlerOptions) => {
+  return http.post('*/group-orders', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getCreateGroupOrderResponseMock(),
+      { status: 201
+      })
+  }, options)
+}
+
+export const getGetGroupOrderMockHandler = (overrideResponse?: GroupOrder | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<GroupOrder> | GroupOrder), options?: RequestHandlerOptions) => {
+  return http.get('*/group-orders/:groupId', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetGroupOrderResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAddGroupOrderItemMockHandler = (overrideResponse?: GroupOrder | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<GroupOrder> | GroupOrder), options?: RequestHandlerOptions) => {
+  return http.post('*/group-orders/:groupId/items', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAddGroupOrderItemResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getRemoveGroupOrderItemMockHandler = (overrideResponse?: GroupOrder | ((info: Parameters<Parameters<typeof http.delete>[1]>[0]) => Promise<GroupOrder> | GroupOrder), options?: RequestHandlerOptions) => {
+  return http.delete('*/group-orders/:groupId/items', async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getRemoveGroupOrderItemResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getFinalizeGroupOrderMockHandler = (overrideResponse?: Order | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<Order> | Order), options?: RequestHandlerOptions) => {
+  return http.post('*/group-orders/:groupId/finalize', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getFinalizeGroupOrderResponseMock(),
+      { status: 201
+      })
+  }, options)
+}
 export const getOrdersMock = () => [
   getCreateOrderMockHandler(),
   getListMyOrdersMockHandler(),
@@ -714,5 +901,18 @@ export const getOrdersMock = () => [
   getGetOrderWaybillMockHandler(),
   getAdvanceRouteLegMockHandler(),
   getRecordHandoffMockHandler(),
-  getFulfillFromWarehouseMockHandler()
+  getFulfillFromWarehouseMockHandler(),
+  getCreateTrackingShareMockHandler(),
+  getGetTrackingShareMockHandler(),
+  getCreateSplitMockHandler(),
+  getGetSplitMockHandler(),
+  getPaySplitShareMockHandler(),
+  getCompleteSplitMockHandler(),
+  getGetDineInSplitMockHandler(),
+  getCreateDineInSplitMockHandler(),
+  getCreateGroupOrderMockHandler(),
+  getGetGroupOrderMockHandler(),
+  getAddGroupOrderItemMockHandler(),
+  getRemoveGroupOrderItemMockHandler(),
+  getFinalizeGroupOrderMockHandler()
 ]

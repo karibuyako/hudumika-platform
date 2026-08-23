@@ -4,7 +4,7 @@ import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-nativ
 
 import { ApiError } from '@/api/client';
 import { LedgerRow } from '@/components/LedgerRow';
-import { Btn, Card, Divider, Empty, ErrorCard, Field, Icon, Pill, Row, Screen, SectionTitle, SheetModal } from '@/components/ui';
+import { Btn, Card, Divider, Empty, ErrorCard, Field, Icon, Pill, Row, Screen, SectionTitle, Segmented, SheetModal } from '@/components/ui';
 import { Colors, FontSize, NumberStyle, Radius, Spacing } from '@/constants/theme';
 import { formatTZS, t } from '@/i18n';
 import type { I18nKey } from '@/i18n';
@@ -80,6 +80,7 @@ export default function EarningsScreen() {
   const [payoutsError, setPayoutsError] = useState('');
   const [from, setFrom] = useState(monthStart);
   const [to, setTo] = useState(() => ymd(new Date()));
+  const [cycle, setCycle] = useState<'T+1' | 'T+3' | 'T+7'>('T+1');
 
   const [withdrawVisible, setWithdrawVisible] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState('');
@@ -259,6 +260,11 @@ export default function EarningsScreen() {
         </View>
       ) : null}
 
+      {/* Settlement cycle (Meituan T+1 parity) */}
+      <SectionTitle title="Settlement cycle" icon="calendar-outline" />
+      <Segmented options={[{ key: 'T+1', label: 'T+1' }, { key: 'T+3', label: 'T+3' }, { key: 'T+7', label: 'T+7' }]} value={cycle} onChange={setCycle} />
+      <Text style={{ fontSize: FontSize.xs, color: Colors.textTertiary, marginTop: Spacing.xs }}>T+1: daily payout next business day (Meituan parity) • T+3/T+7 for enterprise tiers</Text>
+
       {/* Statement */}
       <SectionTitle title={t('earnings.statement')} icon="receipt-outline" />
       <Row gap={Spacing.sm} style={{ alignItems: 'flex-start' }}>
@@ -307,6 +313,15 @@ export default function EarningsScreen() {
               scrollEnabled={false}
               removeClippedSubviews
             />
+            <Divider />
+            <View style={styles.balanceRow}>
+              <Text style={styles.balanceLabel}>VAT (18%) included</Text>
+              <Text style={styles.balanceValueSm}>{formatTZS(Math.round(statement.entries.filter(e => e.type === 'booking_earning').reduce((s, e) => s + e.amountTZS, 0) * 0.18))}</Text>
+            </View>
+            <View style={styles.balanceRow}>
+              <Text style={styles.balanceLabel}>Payout cycle</Text>
+              <Text style={styles.balanceValueSm}>{cycle} • {formatTZS(statement.closingBalanceTZS ?? 0 - Math.round(statement.entries.filter(e => e.type === 'booking_earning').reduce((s, e) => s + e.amountTZS, 0) * 0.18))} net</Text>
+            </View>
             <Divider />
             <View style={styles.balanceRow}>
               <Text style={styles.balanceLabel}>{t('earnings.closingBalance')}</Text>

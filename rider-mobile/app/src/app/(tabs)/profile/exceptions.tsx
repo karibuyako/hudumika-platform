@@ -7,10 +7,10 @@ import { Colors, FontSize, Radius, Spacing } from '@/constants/theme';
 import { t } from '@/i18n';
 import { dateISO } from '@/lib/format';
 import { DELIVERY_EXCEPTION_KINDS, exceptionKindLabel, exceptionStatusTone } from '@/lib/logistics';
-import { MockLogisticsRepository } from '@/repos/mock/logistics';
+import { getLogisticsRepository } from '@/repos';
 import type { DeliveryException } from '@hudumika/contract';
 
-const logistics = new MockLogisticsRepository();
+const logistics = getLogisticsRepository();
 
 export default function ExceptionsScreen() {
   const [list, setList] = useState<DeliveryException[] | null>(null);

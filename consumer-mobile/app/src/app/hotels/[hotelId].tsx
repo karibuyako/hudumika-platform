@@ -134,6 +134,21 @@ export default function HotelDetailScreen() {
   const { hotel, description, rooms } = detail;
   const selectedRateTZS = selectedRoom ? nights * selectedRoom.pricePerNightTZS : 0;
 
+  // Homestay / apartment mock data — gate per spec: if (hotel.businessType === 'homestay' || hotel.businessName.toLowerCase().includes('apartment'))
+  const hotelAny = hotel as unknown as { businessType?: string; businessName?: string };
+  const isHomestay =
+    hotelAny.businessType === 'homestay' ||
+    hotelAny.businessType === 'apartment' ||
+    (hotelAny.businessName ?? hotel.name).toLowerCase().includes('apartment');
+
+  const homestayMock = {
+    hostName: 'John Doe',
+    houseRules: 'No smoking, Check-in after 3PM',
+    selfCheckIn: 'Self-check-in with lockbox — access code sent after booking confirmation.',
+    securityDepositTZS: 50000,
+    longStayNote: 'Stay 7+ nights save 10% · 28+ nights save 18% — weekly & monthly discounts applied at checkout.',
+  };
+
   return (
     <Screen scroll>
       <View style={{ padding: Spacing.lg }}>
@@ -153,6 +168,45 @@ export default function HotelDetailScreen() {
           <Card style={styles.card}>
             <Text style={styles.sectionLabel}>{t('hotels.title')}</Text>
             <Text style={styles.meta}>{description}</Text>
+          </Card>
+        ) : null}
+
+        {isHomestay ? (
+          <Card style={styles.card}>
+            <Text style={styles.sectionLabel}>Homestay details</Text>
+
+            <Row gap={Spacing.md} style={{ alignItems: 'center' }}>
+              <View style={styles.hostAvatar}>
+                <Icon name="person" size={20} color={Colors.white} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.value}>{homestayMock.hostName}</Text>
+                <Text style={styles.meta}>Host · Superhost</Text>
+              </View>
+              <Pill label="Host" tone="info" />
+            </Row>
+
+            <Divider style={{ marginVertical: Spacing.sm }} />
+
+            <Text style={styles.sectionLabel}>House rules</Text>
+            <Text style={styles.meta}>{homestayMock.houseRules}</Text>
+
+            <Text style={[styles.sectionLabel, { marginTop: Spacing.md }]}>Self-check-in</Text>
+            <Text style={styles.meta}>{homestayMock.selfCheckIn}</Text>
+
+            <Row style={{ justifyContent: 'space-between', alignItems: 'center', marginTop: Spacing.md }}>
+              <Text style={styles.sectionLabel}>Security deposit</Text>
+              <MoneyText amountTZS={homestayMock.securityDepositTZS} bold />
+            </Row>
+            <Text style={styles.meta}>Refundable if no damage — held at check-in</Text>
+
+            <Text style={[styles.sectionLabel, { marginTop: Spacing.md }]}>Long-stay pricing</Text>
+            <Text style={styles.meta}>{homestayMock.longStayNote}</Text>
+
+            <Row gap={Spacing.sm} style={{ marginTop: Spacing.sm, alignItems: 'center' }}>
+              <Icon name="people" size={16} color={Colors.textSecondary} />
+              <Text style={styles.meta}>Multiple guests allowed — up to room capacity</Text>
+            </Row>
           </Card>
         ) : null}
 
@@ -289,6 +343,14 @@ const styles = StyleSheet.create({
   roomName: { fontSize: FontSize.md, fontFamily: Fonts.sansSemibold, color: Colors.text },
   price: { fontSize: FontSize.md, fontFamily: Fonts.sansBold, color: Colors.text },
   value: { fontSize: FontSize.sm, color: Colors.text, fontFamily: Fonts.sansMedium },
+  hostAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.ink,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   stepBtn: {
     width: 30,
     height: 30,

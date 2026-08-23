@@ -46,7 +46,74 @@ function logFailure(context: string, e: ApiError): void {
 
 // Web: empty base → same-origin, MSW intercepts. Native/device: point at the
 // mock gateway (e.g. EXPO_PUBLIC_API_URL=http://192.168.1.20:3001) or a live backend.
-const API_BASE = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/$/, '');
+export const API_BASE = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/$/, '');
+
+export function isValidApiBase(): boolean {
+  if (!API_BASE) return false;
+  try {
+    const u = new URL(API_BASE);
+    return (u.protocol === 'https:' || u.protocol === 'http:') && !!u.hostname;
+  } catch {
+    return false;
+  }
+}
+
+export function getApiBasePath(): string {
+  if (!API_BASE) return '/api';
+  try {
+    const u = new URL(API_BASE);
+    const path = u.pathname.replace(/\/$/, '');
+    if (path === '/api/v1' || path === '/api') return path;
+    return '/api';
+  } catch {
+    return '/api';
+  }
+}
+
+export function buildApiUrl(path: string): string {
+  const basePath = getApiBasePath();
+  const cleanPath = path.startsWith('/') ? path : '/' + path;
+  if (!API_BASE) {
+    return basePath + cleanPath;
+  }
+  try {
+    const u = new URL(API_BASE);
+    const origin = u.origin;
+    const isLocalhost = u.hostname === 'localhost' || u.hostname === '127.0.0.1';
+    const hasApiV1Prefix = u.pathname === '/api/v1' || u.pathname === '/api';
+    
+    // Local development with API_BASE including /api/v1 but server not having the prefix
+    if (isLocalhost && hasApiV1Prefix) {
+      return origin + cleanPath;
+    }
+    if (hasApiV1Prefix) {
+      return origin + u.pathname + cleanPath;
+    }
+    return origin + basePath + cleanPath;
+  } catch {
+    return basePath + cleanPath;
+  }
+}
+
+// Enterprise guard: native production must have an HTTPS API base.
+// Web/MSW dev can run with empty base; non-prod native may log a warning.
+// Keep check free of react-native imports — esbuild for node tests would choke on Flow syntax.
+// NOTE: Build does NOT fail if URL is invalid/unreachable — factories fallback to mocks at runtime
+// so EAS preview/production can be built before DNS/TLS is provisioned. Set the URL later via `eas update`.
+if (!API_BASE) {
+  const env = process.env.EXPO_PUBLIC_ENV ?? 'development';
+  const isProdLike = env === 'production' || env === 'staging';
+  const isNativeLike = typeof window === 'undefined' || typeof (globalThis as unknown as { expo?: unknown }).expo !== 'undefined';
+  if (isProdLike && isNativeLike) {
+    console.warn('[api] EXPO_PUBLIC_API_URL is empty — app will run in mock/offline mode until a valid URL is configured. Set https://api.hudumika.co.tz/api/v1 via `eas update` when DNS is ready');
+  } else if (isProdLike && !isNativeLike) {
+    console.warn('[api] EXPO_PUBLIC_API_URL empty with EXPO_PUBLIC_ENV=' + env + ' (web); requests use /api same-origin');
+  }
+} else if (!isValidApiBase()) {
+  console.warn('[api] EXPO_PUBLIC_API_URL is not a valid http(s) URL — falling back to mock mode: ' + API_BASE);
+} else if (!API_BASE.startsWith('https://') && process.env.EXPO_PUBLIC_ENV === 'production' && !API_BASE.includes('localhost')) {
+  console.error('[api] EXPO_PUBLIC_API_URL must be https in production: ' + API_BASE);
+}
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -61,7 +128,8 @@ async function refreshTokenPair(): Promise<TokenPair | null> {
       const pair = await getTokenPair();
       if (!pair?.refreshToken) return null;
       try {
-        const res = await fetch(`${API_BASE}/api/auth/refresh`, {
+        const refreshUrl = buildApiUrl('/auth/refresh');
+        const res = await fetch(refreshUrl, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ refreshToken: pair.refreshToken }),
@@ -110,7 +178,8 @@ async function request<T>(method: string, path: string, opts: RequestOptions = {
       if (pair?.accessToken) headers.authorization = `Bearer ${pair.accessToken}`;
       if (idempotencyKey) headers['idempotency-key'] = idempotencyKey;
 
-      const res = await fetch(`${API_BASE}/api${path}`, {
+      const url = buildApiUrl(path);
+      const res = await fetch(url, {
         method,
         headers,
         body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,

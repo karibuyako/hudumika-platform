@@ -19,7 +19,8 @@ import {
 } from '@/components/ui';
 import { Colors, Fonts, FontSize, Spacing } from '@/constants/theme';
 import { t } from '@/i18n';
-import { getCouponsRepository, getOrdersRepository, getPaymentsRepository, getSplitPaymentsRepository, type PaymentMethodRecord } from '@/repos';
+import { trackRecommendationEvent } from '@/lib/recommendations';
+import { getCouponsRepository, getMerchantsRepository, getOrdersRepository, getPaymentsRepository, getSplitPaymentsRepository, type PaymentMethodRecord } from '@/repos';
 import { useAddressesStore } from '@/store/addresses';
 import { useCartStore } from '@/store/cart';
 import { useSessionStore } from '@/store/session';
@@ -135,6 +136,9 @@ export default function CheckoutScreen() {
   ]);
   const [splitDraft, setSplitDraft] = useState<{ label: string; amountTZS: number }[] | null>(null);
   const [splitSheetError, setSplitSheetError] = useState('');
+  // Dynamic fee preview — server estimate (GET /orders/estimate) with merchant-metadata hint and hardcoded advisory fallback.
+  // The server is the authority at order create; the preview is advisory.
+  const [feeEstimate, setFeeEstimate] = useState<{ deliveryFeeTZS: number; platformFeeTZS: number; taxTZS: number } | null>(null);
 
   const selectedAddress = addresses.find((a) => a.id === selectedAddressId) ?? addresses[0];
   // Checkout operates on exactly one merchant group (each group becomes its
@@ -180,17 +184,88 @@ export default function CheckoutScreen() {
     ? merchant.items.reduce((acc, i) => acc + (i.unitPriceTZS + (i.optionsPriceTZS ?? 0)) * i.quantity, 0)
     : 0;
 
-  // Advisory preview only — the server recomputes every row at order time.
-  // Coupon discount is only previewed behind the feature flag (the contract
-  // has no couponId on OrderCreate yet, so the server never discounts).
+  // Advisory preview only — fees are advisory until server estimate succeeds.
+  // Hardcoded fallback (deliveryFeeTZS 2500 / platformFeeTZS 800) is advisory
+  // and the server recomputes every row at order time (backend/internal/orders/orders.go
+  // DeliveryFeeTZS/PlatformFeeTZS are the canonical values). We keep the preview
+  // structure but source the fees dynamically: first GET /orders/estimate (via
+  // getOrdersRepository().estimate), then a hint from the merchant's deliveryMinutes
+  // and rating if available, otherwise the hardcoded advisory fallback.
   const preview = {
     subtotalTZS: subtotal,
-    deliveryFeeTZS: 2500,
-    platformFeeTZS: 800,
-    taxTZS: 0,
+    deliveryFeeTZS: feeEstimate?.deliveryFeeTZS ?? 2500, // fallback advisory — server recomputes
+    platformFeeTZS: feeEstimate?.platformFeeTZS ?? 800, // fallback advisory — server recomputes
+    taxTZS: feeEstimate?.taxTZS ?? 0,
     discountTZS: COUPON_CHECKOUT_ENABLED ? (appliedCoupon?.discountTZS ?? 0) : 0,
   };
   const previewTotal = Math.max(0, preview.subtotalTZS + preview.deliveryFeeTZS + preview.platformFeeTZS + preview.taxTZS - preview.discountTZS);
+
+  // Fetch fee estimate when merchant and delivery address are available.
+  // Uses getOrdersRepository().estimate (GET /orders/estimate) with merchant metadata
+  // fallback (deliveryMinutes / rating). Silent fallback keeps the hardcoded preview
+  // but the comment above makes the advisory nature explicit.
+  useEffect(() => {
+    if (!merchant || !selectedAddress) {
+      setFeeEstimate(null);
+      return;
+    }
+    let cancelled = false;
+    const currentMerchantId = merchant.merchantId;
+    const currentItems = merchant.items;
+    const subtotalSnapshot = subtotal;
+    const currentAddress = selectedAddress;
+    (async () => {
+      try {
+        const repo: any = getOrdersRepository() as any;
+        if (typeof repo.estimate === 'function') {
+          const est = await repo.estimate({
+            merchantId: currentMerchantId,
+            items: currentItems.map((i) => ({
+              catalogueItemId: i.catalogueItemId,
+              quantity: i.quantity,
+              options: [...(i.options ?? []).map((o) => o.choice).filter((c): c is string => !!c), ...(i.addons ?? [])],
+            })),
+            subtotalTZS: subtotalSnapshot,
+            deliveryAddress: currentAddress,
+          });
+          if (!cancelled && est && typeof est.deliveryFeeTZS === 'number' && typeof est.platformFeeTZS === 'number') {
+            setFeeEstimate({
+              deliveryFeeTZS: Math.round(est.deliveryFeeTZS),
+              platformFeeTZS: Math.round(est.platformFeeTZS),
+              taxTZS: Math.round(est.taxTZS ?? 0),
+            });
+            return;
+          }
+        }
+      } catch {
+        // estimate endpoint not yet shipped or network error — fall through to merchant hint
+      }
+      // Fallback: derive hint from merchant's deliveryMinutes and rating if available.
+      try {
+        const m = await getMerchantsRepository().get(currentMerchantId);
+        if (!cancelled && m && ((m as any).deliveryMinutes != null || (m as any).rating != null)) {
+          let deliveryFeeTZS = 2500; // hardcoded advisory fallback — server recomputes
+          let platformFeeTZS = 800; // hardcoded advisory fallback — server recomputes
+          const dm: any = (m as any).deliveryMinutes;
+          const rating: any = (m as any).rating;
+          if (typeof dm === 'number' && Number.isFinite(dm)) {
+            deliveryFeeTZS = Math.min(3500, Math.max(2000, Math.round(2000 + Math.max(0, dm - 15) * 20)));
+          }
+          if (typeof rating === 'number' && Number.isFinite(rating)) {
+            platformFeeTZS = Math.min(1000, Math.max(500, Math.round(1000 - Math.max(0, rating - 3.5) * 150)));
+          }
+          setFeeEstimate({ deliveryFeeTZS, platformFeeTZS, taxTZS: 0 });
+          return;
+        }
+      } catch {
+        // merchant fetch is best-effort — keep fallback
+      }
+      if (!cancelled) setFeeEstimate(null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [merchant?.merchantId, subtotal, selectedAddress?.id]);
 
   const applyCoupon = (c: Coupon) => {
     if (preview.subtotalTZS < (c.minimumSpendTZS ?? 0)) {
@@ -341,6 +416,7 @@ export default function CheckoutScreen() {
       );
       setPlacedOrder(order);
       track({ name: 'order_created', orderId: order.id, status: order.status });
+      trackRecommendationEvent('order_paid', { merchantId: order.merchantId });
       toast(scheduleOn ? t('checkout.orderScheduled') : t('checkout.orderPlaced'));
       // Split payment (mock-first, CONTRACT-ADDITIONS.md #22): the split is
       // created AFTER the order with the order id, then MY share is paid via
@@ -629,10 +705,16 @@ export default function CheckoutScreen() {
         </Card>
       ) : null}
 
-      {/* Review total — PriceBreakdown rendered before every confirm */}
+      {/* Review total — PriceBreakdown rendered before every confirm.
+          Fees are advisory until GET /orders/estimate succeeds — hardcoded
+          fallback (2500/800) and merchant-hint are preview only; the server
+          recomputes every row at order creation. */}
       <Card style={styles.section}>
         <Text style={styles.sectionLabel}>{t('checkout.reviewTotal')}</Text>
         <PriceBreakdown rows={breakdownRows} totalTZS={previewTotal} totalLabel={t('breakdown.total')} />
+        <Text style={[styles.meta, { marginTop: Spacing.sm }]}>
+          {feeEstimate ? 'Fees from server estimate — final amounts confirmed at order creation.' : 'Fees are advisory — final delivery and platform fees are recomputed by the server at order creation.'}
+        </Text>
       </Card>
 
       {error ? <ErrorState message={error} /> : null}

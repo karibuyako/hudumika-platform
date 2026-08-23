@@ -9,6 +9,7 @@ import { Btn, Card, Empty, ErrorCard, Field, Icon, Row, Screen, Segmented, Sheet
 import { Colors, FontSize, NumberStyle, Radius, Spacing } from '@/constants/theme';
 import { t } from '@/i18n';
 import type { I18nKey } from '@/i18n';
+import { STALE_OFFER_CODES } from '@/lib/booking';
 import { DECLINE_REASONS } from '@/lib/format';
 import { announce } from '@/lib/motion';
 import { getBookingsRepository, getDispatchRepository } from '@/repos';
@@ -110,7 +111,7 @@ export default function MarketplaceScreen() {
       router.replace(`/jobs/${selected.bookingId}`);
     } catch (e) {
       const err = e instanceof ApiError ? e : null;
-      if (err?.code === 'JOB_OFFER_EXPIRED' || err?.code === 'BOOKING_ALREADY_ACCEPTED') {
+      if (err && (STALE_OFFER_CODES as readonly string[]).includes(err.code)) {
         hideOffer(selected.bookingId);
         setSelected(null);
         showNotice(t('booking.offerExpired'));

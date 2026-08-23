@@ -21,6 +21,32 @@ export interface QueuedOp {
   at: number;
 }
 
+/* Sensitive actions (MASTER-BLUEPRINT §26): payment, cancellation, wallet
+ * withdrawal/payout and privacy ops always require fresh server confirmation —
+ * they are never queued offline. Failing fast keeps the user's money and
+ * account state safe; everything else queues and replays when connectivity
+ * returns. Mirrors consumer-mobile/src/api/client.ts:44 */
+const SENSITIVE_PATHS: RegExp[] = [
+  /^\/payments\/intent(?:s)?(?:\/|$)/,
+  /^\/payments\/[^/]+\/confirm/,
+  /^\/payments\/[^/]+\/reverse/,
+  /^\/payments\/qr(?:\/|$)/,
+  /^\/orders\/[^/]+\/cancel/,
+  /^\/bookings\/[^/]+\/(cancel|complete|quote)/,
+  /^\/reservations\/[^/]+\/cancel/,
+  /^\/group-buys\/[^/]+\/purchase/,
+  /^\/wallet\/me\/top-up/,
+  /^\/wallet\/withdrawals/,
+  /^\/payouts\//,
+  /^\/finance\/settlements\//,
+  /^\/privacy\/(delete|export)/,
+  /^\/auth\/change-password/,
+];
+
+export function isSensitivePath(path: string): boolean {
+  return SENSITIVE_PATHS.some((re) => re.test(path));
+}
+
 const KEY = 'mq.queue';
 const MAX_OPS = 200;
 let flushing = false;
@@ -58,6 +84,9 @@ export function queuedOps(): QueuedOp[] {
 }
 
 export function enqueue(op: Omit<QueuedOp, 'key' | 'at'>): QueuedOp {
+  if (isSensitivePath(op.path)) {
+    throw new Error(`[queue] refused sensitive path: ${op.path} — must fail fast, never queue (blueprint §26)`);
+  }
   const stored: QueuedOp = { ...op, key: `${op.method}:${op.path}:${Date.now()}:${Math.random().toString(36).slice(2, 7)}`, at: Date.now() };
   save([...load(), stored]);
   return stored;

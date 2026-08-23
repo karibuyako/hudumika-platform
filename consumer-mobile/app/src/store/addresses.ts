@@ -22,6 +22,12 @@ export interface SavedAddress extends AddressSnapshot {
   serviceArea?: string;
   /** Store-local delivery instructions (contract AddressSnapshot has no field). */
   deliveryInstructions?: string;
+  /** Meituan-style structured fields — optional for backward compatibility
+   * with addresses persisted before this seam. */
+  building?: string;
+  unit?: string;
+  floor?: string;
+  door?: string;
 }
 
 const KEY = 'consumer.addresses';
@@ -61,7 +67,14 @@ export const useAddressesStore = create<AddressesState>()((set, get) => ({
   selectedId: null,
 
   addAddress: (a) => {
-    const address: SavedAddress = { ...a, id: uid('addr') };
+    const normalized: Omit<SavedAddress, 'id'> = {
+      ...a,
+      building: a.building?.trim() || undefined,
+      unit: a.unit?.trim() || undefined,
+      floor: a.floor?.trim() || undefined,
+      door: a.door?.trim() || undefined,
+    };
+    const address: SavedAddress = { ...normalized, id: uid('addr') };
     const addresses = [...get().addresses, address];
     persist(addresses);
     set({ addresses, selectedId: address.id });
@@ -69,7 +82,12 @@ export const useAddressesStore = create<AddressesState>()((set, get) => ({
   },
 
   updateAddress: (id, patch) => {
-    const addresses = get().addresses.map((a) => (a.id === id ? { ...a, ...patch } : a));
+    const sanitized: Partial<SavedAddress> = { ...patch };
+    if ('building' in patch) sanitized.building = patch.building?.trim() || undefined;
+    if ('unit' in patch) sanitized.unit = patch.unit?.trim() || undefined;
+    if ('floor' in patch) sanitized.floor = patch.floor?.trim() || undefined;
+    if ('door' in patch) sanitized.door = patch.door?.trim() || undefined;
+    const addresses = get().addresses.map((a) => (a.id === id ? { ...a, ...sanitized } : a));
     persist(addresses);
     set({ addresses });
   },

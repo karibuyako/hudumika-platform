@@ -28,8 +28,16 @@ export interface RequestOptions {
 const DEFAULT_RETRIES = 2;
 const DEFAULT_TIMEOUT = 15000;
 
-// Base URL only — never a /api/v1 suffix in app code (docs/API-BASE-CONVENTION.md).
-const API_BASE = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/$/, '');
+// Base URL normalized — strips trailing /api or /api/v1 so `${API_BASE}/api${path}` is always correct
+// whether EXPO_PUBLIC_API_URL is bare https://host or https://host/api/v1 (EAS prod).
+function normalizeBase(raw: string): string {
+  return raw.replace(/\/$/, '').replace(/\/api(\/v1)?$/, '');
+}
+const API_BASE = normalizeBase(process.env.EXPO_PUBLIC_API_URL ?? '');
+
+export function getApiBase(): string {
+  return API_BASE;
+}
 
 export function getToken(): string | null {
   return loadStoredToken();

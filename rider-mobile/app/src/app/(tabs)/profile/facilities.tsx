@@ -6,11 +6,10 @@ import { Btn, Card, Empty, Pill, Screen, Spinner } from '@/components/ui';
 import { Colors, FontSize, Radius, Spacing } from '@/constants/theme';
 import { t } from '@/i18n';
 import { dateISO } from '@/lib/format';
-import { MockLogisticsRepository } from '@/repos/mock/logistics';
-import { MockSupportRepository } from '@/repos/mock/support';
+import { getLogisticsRepository, getSupportRepository } from '@/repos';
 
-const logistics = new MockLogisticsRepository();
-const support = new MockSupportRepository();
+const logistics = getLogisticsRepository();
+const support = getSupportRepository();
 
 export default function FacilitiesScreen() {
   const [entries, setEntries] = useState<import('@/lib/logistics').FacilityWhitelistEntry[] | null>(null);

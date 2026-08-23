@@ -292,6 +292,32 @@ export default function DashboardScreen() {
         ))}
       </View>
 
+      <SectionTitle title={t('edu.title')} icon="school" action={t('diag.viewAll')} onAction={() => router.push('/dashboard/diagnostics')} />
+      <View style={{ flexDirection: 'row', gap: Spacing.md }}>
+        <Pressable
+          onPress={() => router.push('/dashboard/education')}
+          accessibilityRole="button"
+          accessibilityLabel={t('edu.title')}
+          style={({ pressed }) => [{ flex: 1 }, pressed && { opacity: 0.8 }]}>
+          <Card style={{ gap: Spacing.sm, backgroundColor: Colors.infoSoft, borderWidth: 1, borderColor: `${Colors.info}30` }}>
+            <Icon name="school-outline" size={20} color={Colors.info} />
+            <Text style={{ fontSize: FontSize.sm, fontWeight: '800', color: Colors.text }}>{t('edu.academy')}</Text>
+            <Text style={{ fontSize: FontSize.xs, color: Colors.textSecondary }} numberOfLines={2}>{t('edu.academySub')}</Text>
+          </Card>
+        </Pressable>
+        <Pressable
+          onPress={() => router.push('/dashboard/diagnostics')}
+          accessibilityRole="button"
+          accessibilityLabel={t('diag.title')}
+          style={({ pressed }) => [{ flex: 1 }, pressed && { opacity: 0.8 }]}>
+          <Card style={{ gap: Spacing.sm, backgroundColor: Colors.warningSoft, borderWidth: 1, borderColor: `${Colors.warning}30` }}>
+            <Icon name="pulse-outline" size={20} color={Colors.warning} />
+            <Text style={{ fontSize: FontSize.sm, fontWeight: '800', color: Colors.text }}>{t('diag.title')}</Text>
+            <Text style={{ fontSize: FontSize.xs, color: Colors.textSecondary }} numberOfLines={2}>{t('diag.sub')}</Text>
+          </Card>
+        </Pressable>
+      </View>
+
       <SectionTitle title={t('dashboard.peakHours')} icon="time" action={t('dashboard.fullAnalytics')} onAction={() => router.push('/dashboard/analytics')} />
       <Card>
         <BarChart data={trend} height={110} colors={[Colors.primary]} />

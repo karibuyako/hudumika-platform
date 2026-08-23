@@ -973,19 +973,25 @@ type Key = keyof (typeof dict)['en'];
 const STORAGE_KEY = 'provider.locale';
 
 let current: Locale = 'en';
-try {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved === 'sw' || saved === 'en') current = saved;
-} catch {
-  /* storage unavailable */
+function safeGetLocale(): Locale | null {
+  try {
+    if (typeof localStorage === 'undefined') return null;
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved === 'sw' || saved === 'en') return saved;
+  } catch {
+    /* storage unavailable (native / SSR) */
+  }
+  return null;
 }
+const storedLocale = safeGetLocale();
+if (storedLocale) current = storedLocale;
 
 const listeners = new Set<() => void>();
 
 export function setLocale(locale: Locale) {
   current = locale;
   try {
-    localStorage.setItem(STORAGE_KEY, locale);
+    if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_KEY, locale);
   } catch {
     /* ignore */
   }
@@ -1021,5 +1027,11 @@ export function tzsMinor(n: number): number {
 }
 
 export function formatTZS(n: number): string {
-  return `TZS ${Math.round(n).toLocaleString('en-US')}`;
+  const rounded = Math.round(n);
+  try {
+    return `TZS ${rounded.toLocaleString('en-US')}`;
+  } catch {
+    // Hermes without Intl
+    return `TZS ${String(rounded)}`;
+  }
 }

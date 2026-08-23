@@ -8190,6 +8190,31 @@ paths:
                   properties:
                     method: { type: string, enum: [mpesa, tigo_pesa, airtel_money, ezy_pesa, halotel, card, cod, bank] }
                     available: { type: boolean }
+    post:
+      tags: [payments]
+      summary: Add a payment method
+      operationId: addPaymentMethod
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [method]
+              properties:
+                method: { type: string, enum: [mpesa, tigo_pesa, airtel_money, ezy_pesa, halotel, card, cod, bank] }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentMethod"
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
 
   /payments/history:
     get:
@@ -12760,6 +12785,930 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
 
+  /auth/social:
+    post:
+      tags: [auth]
+      summary: Social login via OAuth provider (google, apple)
+      operationId: socialLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider]
+              properties:
+                provider: { type: string, enum: [google, apple] }
+                idToken: { type: string, description: "OAuth idToken from provider" }
+                code: { type: string, description: "OAuth authorization code (alternative to idToken)" }
+                accessToken: { type: string, description: "OAuth access token (alternative)" }
+      responses:
+        "200":
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /users/me/2fa:
+    get:
+      tags: [users]
+      summary: Get two-factor authentication status
+      operationId: getMyTwoFactorStatus
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TwoFactorStatus"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [users]
+      summary: Enable two-factor authentication (OTP)
+      operationId: enableMyTwoFactor
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Enabled
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [enabled]
+                properties:
+                  enabled: { type: boolean, const: true }
+                  demoCode: { type: string, nullable: true, description: "Mock-only demo TOTP code" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [users]
+      summary: Disable two-factor authentication
+      operationId: disableMyTwoFactor
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string, description: "Current TOTP code" }
+      responses:
+        "200":
+          description: Disabled
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [enabled]
+                properties:
+                  enabled: { type: boolean, const: false }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /push/tokens:
+    post:
+      tags: [notifications]
+      summary: Register a device push token (consumer alias)
+      operationId: registerPushTokenAlias
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string, minLength: 10, maxLength: 512 }
+                platform: { type: string, enum: [expo, apns, fcm], default: expo }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PushToken"
+        "200":
+          description: OK (idempotent retry)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PushToken"
+        "422": { $ref: "#/components/responses/ValidationError" }
+    get:
+      tags: [notifications]
+      summary: List registered push tokens (consumer alias)
+      operationId: listPushTokensAlias
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PushToken" }
+
+  /push/tokens/{token}:
+    delete:
+      tags: [notifications]
+      summary: Deregister a device push token (consumer alias)
+      operationId: deletePushTokenAlias
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Removed }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /favorites/lists:
+    get:
+      tags: [users]
+      summary: List my favorite lists
+      operationId: listFavoriteLists
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/FavoriteList" }
+    post:
+      tags: [users]
+      summary: Create a favorite list
+      operationId: createFavoriteList
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FavoriteListCreate"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FavoriteList"
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /favorites/lists/{listId}:
+    get:
+      tags: [users]
+      summary: Get a favorite list
+      operationId: getFavoriteList
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: listId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FavoriteList"
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [users]
+      summary: Delete a favorite list
+      operationId: deleteFavoriteList
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: listId, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /favorites/lists/{listId}/merchants:
+    post:
+      tags: [users]
+      summary: Add a merchant to a favorite list
+      operationId: addFavoriteListMerchant
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: listId, in: path, required: true, schema: { type: string } }
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [merchantId]
+              properties:
+                merchantId: { type: string, format: uuid }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FavoriteList"
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /favorites/lists/{listId}/merchants/{merchantId}:
+    delete:
+      tags: [users]
+      summary: Remove a merchant from a favorite list
+      operationId: removeFavoriteListMerchant
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: listId, in: path, required: true, schema: { type: string } }
+        - { name: merchantId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FavoriteList"
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /lists:
+    get:
+      tags: [users]
+      summary: List curated merchant lists (必吃榜-lite)
+      operationId: listCuratedLists
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CuratedList" }
+
+  /lists/{listId}:
+    get:
+      tags: [users]
+      summary: Get a curated list
+      operationId: getCuratedList
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: listId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CuratedList"
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /orders/{orderId}/tracking-share:
+    post:
+      tags: [orders]
+      summary: Create a view-only tracking share link
+      operationId: createTrackingShare
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: orderId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrackingShare"
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /tracking-share/{token}:
+    get:
+      tags: [orders]
+      summary: Resolve a tracking share token
+      operationId: getTrackingShare
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [orderId]
+                properties:
+                  orderId: { type: string, format: uuid }
+                  expiresAt: { type: string, format: date-time }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /providers/{providerId}:
+    get:
+      tags: [providers]
+      summary: Provider public detail
+      operationId: getProvider
+      parameters:
+        - { name: providerId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProviderPublic"
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /providers/me/preferred:
+    get:
+      tags: [providers]
+      summary: List my preferred providers
+      operationId: listPreferredProviders
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ProviderPublic" }
+
+  /providers/{providerId}/preference:
+    put:
+      tags: [providers]
+      summary: Set preferred provider toggle
+      operationId: setProviderPreference
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: providerId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [preferred]
+              properties:
+                preferred: { type: boolean }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProviderPublic"
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /payments/methods/{methodId}:
+    delete:
+      tags: [payments]
+      summary: Delete a payment method
+      operationId: deletePaymentMethod
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: methodId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /payments/methods/{methodId}/default:
+    put:
+      tags: [payments]
+      summary: Set default payment method
+      operationId: setDefaultPaymentMethod
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: methodId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentMethod"
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /coupons/suggest:
+    post:
+      tags: [services]
+      summary: Suggest best applicable coupon for a cart
+      operationId: suggestCoupon
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [merchantId, subtotalTZS, couponIds]
+              properties:
+                merchantId: { type: string, format: uuid }
+                subtotalTZS: { type: integer, minimum: 0 }
+                couponIds: { type: array, items: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: OK (null when nothing applies)
+          content:
+            application/json:
+              schema:
+                type: object
+                nullable: true
+                properties:
+                  coupon: { $ref: "#/components/schemas/Coupon", nullable: true }
+                allOf:
+                  - $ref: "#/components/schemas/Coupon"
+                description: "Coupon or null"
+
+  /marketing/live-deals/{dealId}/chat:
+    get:
+      tags: [services]
+      summary: List live deal chat messages
+      operationId: getLiveDealChat
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: dealId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/LiveDealChatMessage" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [services]
+      summary: Post a live deal chat message
+      operationId: postLiveDealChat
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: dealId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message: { type: string, minLength: 1, maxLength: 2000 }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiveDealChatMessage"
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /loyalty/redemptions:
+    post:
+      tags: [users]
+      summary: Redeem loyalty points for a reward
+      operationId: createLoyaltyRedemption
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reward, points]
+              properties:
+                reward: { type: string, enum: [wallet_credit, delivery_discount, free_delivery] }
+                points: { type: integer, minimum: 1 }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerMembership"
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /splits:
+    post:
+      tags: [orders]
+      summary: Create a split payment plan
+      operationId: createSplit
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [orderId, shares]
+              properties:
+                orderId: { type: string, format: uuid }
+                shares:
+                  type: array
+                  minItems: 2
+                  items:
+                    type: object
+                    required: [label, amountTZS]
+                    properties:
+                      label: { type: string, minLength: 1 }
+                      amountTZS: { type: integer, minimum: 1 }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SplitPlan"
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /splits/{splitId}:
+    get:
+      tags: [orders]
+      summary: Get a split plan
+      operationId: getSplit
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: splitId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SplitPlan"
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /splits/{splitId}/pay:
+    post:
+      tags: [orders]
+      summary: Pay my share of a split
+      operationId: paySplitShare
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: splitId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [method]
+              properties:
+                method: { type: string, enum: [mpesa, tigo_pesa, airtel_money, ezy_pesa, halotel, card, cod, bank] }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SplitPlan"
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /splits/{splitId}/complete:
+    post:
+      tags: [orders]
+      summary: Complete a split after all shares paid
+      operationId: completeSplit
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: splitId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SplitPlan"
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /dine-in/orders/{orderId}/splits:
+    get:
+      tags: [orders]
+      summary: Get dine-in split
+      operationId: getDineInSplit
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: orderId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DineInSplit"
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [orders]
+      summary: Create or pay dine-in split
+      operationId: createDineInSplit
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: orderId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                shares:
+                  type: array
+                  items:
+                    type: object
+                    required: [label, amountTZS]
+                    properties:
+                      label: { type: string }
+                      amountTZS: { type: integer, minimum: 1 }
+                action: { type: string, enum: [pay_my_share] }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DineInSplit"
+        "200":
+          description: OK (pay replay)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DineInSplit"
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /group-orders:
+    post:
+      tags: [orders]
+      summary: Create a group order (shared cart)
+      operationId: createGroupOrder
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [merchantId]
+              properties:
+                merchantId: { type: string, format: uuid }
+                title: { type: string, maxLength: 120 }
+                expiresInMinutes: { type: integer, minimum: 1 }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupOrder"
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /group-orders/{groupId}:
+    get:
+      tags: [orders]
+      summary: Get a group order
+      operationId: getGroupOrder
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: groupId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupOrder"
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /group-orders/{groupId}/items:
+    post:
+      tags: [orders]
+      summary: Add item to group order
+      operationId: addGroupOrderItem
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: groupId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [memberName, catalogueItemId, quantity]
+              properties:
+                memberName: { type: string }
+                catalogueItemId: { type: string, format: uuid }
+                quantity: { type: integer, minimum: 1, maximum: 99 }
+                unitPriceTZS: { type: integer, minimum: 1 }
+                options: { type: array, items: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupOrder"
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    delete:
+      tags: [orders]
+      summary: Remove item from group order
+      operationId: removeGroupOrderItem
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: groupId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [memberName, catalogueItemId]
+              properties:
+                memberName: { type: string }
+                catalogueItemId: { type: string, format: uuid }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupOrder"
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /group-orders/{groupId}/finalize:
+    post:
+      tags: [orders]
+      summary: Finalize group order into a real order
+      operationId: finalizeGroupOrder
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: groupId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [paymentMethod, deliveryAddress]
+              properties:
+                paymentMethod: { type: string, enum: [mpesa, tigo_pesa, airtel_money, ezy_pesa, halotel, card, cod, bank] }
+                deliveryAddress: { $ref: "#/components/schemas/AddressSnapshot" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /red-packets/me/received:
+    get:
+      tags: [users]
+      summary: List received red packets
+      operationId: listRedPacketsReceived
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/RedPacket" }
+
+  /red-packets/me/share:
+    post:
+      tags: [users]
+      summary: Create a shareable promotional red packet
+      operationId: shareRedPacket
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amountTZS, count, expiresInHours]
+              properties:
+                amountTZS: { type: integer, minimum: 1 }
+                count: { type: integer, minimum: 1, maximum: 5 }
+                expiresInHours: { type: integer, minimum: 1, maximum: 168 }
+                title: { type: string, maxLength: 120 }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RedPacket"
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /red-packets/{packetId}/claim:
+    post:
+      tags: [users]
+      summary: Claim a red packet
+      operationId: claimRedPacket
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: packetId, in: path, required: true, schema: { type: string } }
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RedPacketClaim"
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /disputes:
+    post:
+      tags: [support]
+      summary: Create a customer dispute
+      operationId: createDispute
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason, description]
+              properties:
+                orderId: { type: string, format: uuid }
+                bookingId: { type: string, format: uuid }
+                reason: { type: string, maxLength: 120 }
+                description: { type: string, maxLength: 2000 }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DisputeRecord"
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /disputes/me:
+    get:
+      tags: [support]
+      summary: List my disputes
+      operationId: listMyDisputes
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/DisputeRecord" }
+
+  /disputes/{disputeId}:
+    get:
+      tags: [support]
+      summary: Get a dispute
+      operationId: getDispute
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: disputeId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DisputeRecord"
+        "404": { $ref: "#/components/responses/NotFound" }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -17296,3 +18245,168 @@ components:
         decision: { type: string, enum: [relocate, declare_lost] }
         status: { type: string, enum: [exception_cleared] }
         auditEntryId: { type: string, format: uuid, description: "Audit entry (consignment.* prefix) recording the resolution" }
+
+    FavoriteList:
+      type: object
+      required: [id, name, merchantIds, createdAt]
+      properties:
+        id: { type: string }
+        name: { type: string, maxLength: 40 }
+        merchantIds: { type: array, items: { type: string, format: uuid } }
+        createdAt: { type: string, format: date-time }
+
+    FavoriteListCreate:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 40 }
+        merchantIds: { type: array, items: { type: string, format: uuid } }
+
+    CuratedList:
+      type: object
+      required: [id, titleKey, taglineKey, merchantIds]
+      properties:
+        id: { type: string }
+        titleKey: { type: string }
+        taglineKey: { type: string }
+        merchantIds: { type: array, items: { type: string, format: uuid } }
+
+    TrackingShare:
+      type: object
+      required: [token, expiresAt]
+      properties:
+        token: { type: string }
+        expiresAt: { type: string, format: date-time }
+        orderId: { type: string, format: uuid }
+
+    PaymentMethod:
+      type: object
+      required: [id, method, label]
+      properties:
+        id: { type: string, format: uuid }
+        method: { type: string, enum: [mpesa, tigo_pesa, airtel_money, ezy_pesa, halotel, card, cod, bank] }
+        label: { type: string }
+        isDefault: { type: boolean }
+        available: { type: boolean }
+        createdAt: { type: string, format: date-time }
+
+    TwoFactorStatus:
+      type: object
+      required: [enabled]
+      properties:
+        enabled: { type: boolean }
+        method: { type: string, nullable: true, enum: [otp, totp] }
+
+    LiveDealChatMessage:
+      type: object
+      required: [id, authorName, body, at]
+      properties:
+        id: { type: string }
+        authorName: { type: string }
+        body: { type: string, maxLength: 2000 }
+        at: { type: string, format: date-time }
+
+    SplitPlan:
+      type: object
+      required: [id, orderId, totalTZS, shares, myShareId, status, createdAt]
+      properties:
+        id: { type: string }
+        orderId: { type: string, format: uuid }
+        totalTZS: { type: integer }
+        shares:
+          type: array
+          items:
+            type: object
+            required: [id, label, amountTZS, status]
+            properties:
+              id: { type: string }
+              label: { type: string }
+              amountTZS: { type: integer }
+              status: { type: string, enum: [pending, paid] }
+        myShareId: { type: string }
+        status: { type: string, enum: [open, paying, paid, completed] }
+        createdAt: { type: string, format: date-time }
+
+    DineInSplit:
+      type: object
+      required: [id, status]
+      properties:
+        id: { type: string, format: uuid }
+        dineOrderId: { type: string, format: uuid, nullable: true }
+        status: { type: string, enum: [pending, paid, completed] }
+        participants: { type: array, items: { type: object, additionalProperties: true } }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    GroupOrder:
+      type: object
+      required: [id, merchantId, title, status, members, totals, expiresAt, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        merchantId: { type: string, format: uuid }
+        title: { type: string }
+        status: { type: string, enum: [open, ordered, expired] }
+        members:
+          type: array
+          items:
+            type: object
+            required: [name, items, subtotalTZS]
+            properties:
+              name: { type: string }
+              items:
+                type: array
+                items:
+                  type: object
+                  required: [catalogueItemId, quantity, unitPriceTZS]
+                  properties:
+                    catalogueItemId: { type: string, format: uuid }
+                    quantity: { type: integer }
+                    unitPriceTZS: { type: integer }
+                    options: { type: array, items: { type: string } }
+              subtotalTZS: { type: integer }
+        totals: { $ref: "#/components/schemas/PriceBreakdown" }
+        expiresAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+        orderId: { type: string, format: uuid, nullable: true }
+
+    RedPacket:
+      type: object
+      required: [id, title, totalTZS, count, claimed, expiresAt]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        totalTZS: { type: integer }
+        claimedCount: { type: integer }
+        count: { type: integer }
+        claimed: { type: boolean }
+        expiresAt: { type: string, format: date-time }
+        shareCode: { type: string, nullable: true }
+
+    RedPacketClaim:
+      type: object
+      required: [id, creditedTZS]
+      properties:
+        id: { type: string }
+        creditedTZS: { type: integer }
+
+    DisputeRecord:
+      type: object
+      required: [id, referenceType, referenceId, status, reason, description, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        referenceType: { type: string, enum: [order, booking] }
+        referenceId: { type: string, format: uuid }
+        status: { type: string, enum: [open, resolving, resolved, dismissed] }
+        reason: { type: string }
+        description: { type: string }
+        evidenceUrls: { type: array, items: { type: string, format: uri } }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        resolution:
+          type: object
+          nullable: true
+          properties:
+            outcome: { type: string }
+            at: { type: string, format: date-time }
+            note: { type: string, nullable: true }
+

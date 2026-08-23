@@ -6,6 +6,7 @@ import QRCode from 'react-native-qrcode-svg';
 
 import { ApiError } from '@/api/client';
 import { Btn, Card, Icon, Pill, Row, Screen, Segmented, SheetModal, SosButton, Spinner } from '@/components/ui';
+import { SlideConfirm } from '@/components/SlideConfirm';
 import { Colors, FontSize, NumberStyle, Radius, Spacing } from '@/constants/theme';
 import { formatTZS, t } from '@/i18n';
 import { clockISO, dateISO } from '@/lib/format';
@@ -86,6 +87,13 @@ export default function OrderDetailScreen() {
   const [qrError, setQrError] = useState('');
 
   const offline = useNetworkStore((s) => !s.online);
+
+  const openNavigation = (label: string, address?: string | null) => {
+    const scheme = process.env.EXPO_PUBLIC_MAPS_SCHEME;
+    const q = encodeURIComponent(address ?? label);
+    const url = scheme === 'comgooglemaps' ? `comgooglemaps://?q=${q}` : scheme === 'geo' ? `geo:0,0?q=${q}` : `https://www.google.com/maps/search/?api=1&query=${q}`;
+    Linking.openURL(url).catch(() => {});
+  };
 
   const loading = order === null && !error;
   const reasonsLoading = failVisible && reasons.length === 0 && !reasonsError;
@@ -370,7 +378,7 @@ export default function OrderDetailScreen() {
           )}
         </Card>
 
-        {/* Route */}
+        {/* Route — Meituan-style: address + 1-tap navigation (in-app map deep-link) */}
         {offer ? (
           <Card style={{ gap: Spacing.md }}>
             <Row style={{ justifyContent: 'space-between' }}>
@@ -378,9 +386,11 @@ export default function OrderDetailScreen() {
               <Text style={styles.routeMeta}>{offer.distanceKm.toFixed(1)} km</Text>
             </Row>
             <Text style={styles.routeAddress}>{offer.pickup?.address ?? '—'}</Text>
+            <Btn label={t('orders.navigate')} icon="navigate" variant="outline" size="sm" onPress={() => openNavigation('pickup', offer.pickup?.address)} disabled={offline} />
             <View style={styles.routeLine} />
             <Text style={styles.cardTitle}>{t('orders.dropoff')}</Text>
             <Text style={styles.routeAddress}>{offer.dropoff?.address ?? '—'}</Text>
+            <Btn label={t('orders.navigate')} icon="navigate" variant="outline" size="sm" onPress={() => openNavigation('dropoff', offer.dropoff?.address)} disabled={offline} />
             {offer.itemsSummary ? <Text style={styles.routeItems}>{offer.itemsSummary}</Text> : null}
           </Card>
         ) : null}
@@ -460,7 +470,7 @@ export default function OrderDetailScreen() {
         ) : null}
       </ScrollView>
 
-      {/* Action bar */}
+      {/* Action bar — Meituan parity: slider to prevent mis-tap on status advances */}
       {!done && !failed ? (
         <View style={styles.actionBar}>
           {offline ? <Text style={styles.offlineText}>{t('orders.offlineDisabled')}</Text> : null}
@@ -468,16 +478,13 @@ export default function OrderDetailScreen() {
           <Row gap={Spacing.md}>
             <Btn label={t('orders.call')} icon="call" variant="outline" onPress={onCall} loading={callLoading} disabled={advancing || podLoading || offline} style={{ flex: 1 }} />
             {advance ? (
-              <Btn
-                label={t(advance.labelKey)}
-                icon="arrow-forward"
-                onPress={onAdvance}
-                loading={advancing}
-                disabled={callLoading || podLoading || offline}
-                style={{ flex: 2 }}
-              />
+              <View style={{ flex: 2 }}>
+                <SlideConfirm label={t(advance.labelKey)} onConfirm={onAdvance} loading={advancing} disabled={callLoading || podLoading || offline} />
+              </View>
             ) : order.status === 'rider_arrived_dropoff' ? (
-              <Btn label={t('orders.pod')} icon="checkmark-circle" onPress={() => setPodVisible(true)} disabled={offline} style={{ flex: 2 }} />
+              <View style={{ flex: 2 }}>
+                <SlideConfirm label={t('orders.pod')} onConfirm={() => setPodVisible(true)} disabled={offline} />
+              </View>
             ) : null}
           </Row>
           {showQr ? (

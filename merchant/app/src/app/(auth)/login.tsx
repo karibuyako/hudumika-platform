@@ -130,7 +130,7 @@ export default function LoginScreen() {
               <Field label={t('login.password')} value={password} onChangeText={setPassword} placeholder={t('login.passwordPh')} maxLength={20} />
             )}
 
-            {debugCode ? (
+            {process.env.EXPO_PUBLIC_ENV !== 'production' && process.env.EXPO_PUBLIC_ENVIRONMENT !== 'production' && debugCode ? (
               <View style={styles.demoBox}>
                 <Text style={styles.demoLabel}>{t('login.demoMode')}</Text>
                 <Text style={styles.demoCode}>{debugCode}</Text>
@@ -146,7 +146,9 @@ export default function LoginScreen() {
               <Text style={styles.linkDark}>{t('login.register')}</Text>
             </Pressable>
           </View>
-          <Text style={styles.tip}>{t('login.tip')}</Text>
+          {process.env.EXPO_PUBLIC_ENV !== 'production' && process.env.EXPO_PUBLIC_ENVIRONMENT !== 'production' ? (
+            <Text style={styles.tip}>{t('login.tip')}</Text>
+          ) : null}
         </View>
       </KeyboardAvoidingView>
     </Screen>

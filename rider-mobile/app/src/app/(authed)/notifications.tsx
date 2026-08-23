@@ -72,7 +72,7 @@ export default function NotificationsScreen() {
         return;
       }
     }
-    if (target) router.push(target);
+    if (target) router.push(target as never);
   };
 
   const markAllRead = async () => {

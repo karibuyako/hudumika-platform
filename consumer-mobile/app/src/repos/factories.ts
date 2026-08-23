@@ -53,6 +53,9 @@ import { MockRedPacketRepository } from './mock/redPackets';
 import { MockGroupOrdersRepository } from './mock/groupOrders';
 import { MockRewardsRepository } from './mock/rewards';
 import { MockTravelRepository } from './mock/travel';
+import { MockBusRepository } from './mock/bus';
+import { MockRideRepository } from './mock/ride';
+import { MockBikeRepository } from './mock/bike';
 
 import { ApiAuthRepository } from './api/auth';
 import { ApiAssistantRepository } from './api/assistant';
@@ -87,11 +90,16 @@ import { ApiRedPacketRepository } from './api/redPackets';
 import { ApiGroupOrdersRepository } from './api/groupOrders';
 import { ApiRewardsRepository } from './api/rewards';
 import { ApiTravelRepository } from './api/travel';
+import { ApiBusRepository } from './api/bus';
+import { ApiRideRepository } from './api/ride';
+import { ApiBikeRepository } from './api/bike';
 
 import type {
   AssistantRepository,
   AuthRepository,
+  BikeRepository,
   BookingsRepository,
+  BusRepository,
   ConversationsRepository,
   CouponsRepository,
   DineInRepository,
@@ -115,6 +123,7 @@ import type {
   ReservationsRepository,
   ReviewsRepository,
   RewardsRepository,
+  RideRepository,
   SearchRepository,
   ShipmentsRepository,
   SplitPaymentsRepository,
@@ -124,7 +133,11 @@ import type {
   WalletRepository,
 } from './index';
 
-const mock = (v: string | undefined, def = true) => (v === undefined ? def : v !== 'false');
+const isProd = process.env.EXPO_PUBLIC_ENV === 'production';
+const mock = (v: string | undefined, def = true) => {
+  if (isProd) return v === 'true'; // in production, only explicit "true" keeps mock; undefined/false → live
+  return v === undefined ? def : v !== 'false';
+};
 
 const MOCK_AUTH = mock(process.env.EXPO_PUBLIC_MOCK_AUTH);
 const MOCK_HOME = mock(process.env.EXPO_PUBLIC_MOCK_HOME);
@@ -282,4 +295,16 @@ export function getRewardsRepository(): RewardsRepository {
 
 export function getTravelRepository(): TravelRepository {
   return MOCK_ORDERS ? new MockTravelRepository() : new ApiTravelRepository();
+}
+
+export function getBusRepository(): BusRepository {
+  return MOCK_ORDERS ? new MockBusRepository() : new ApiBusRepository();
+}
+
+export function getRideRepository(): RideRepository {
+  return MOCK_ORDERS ? new MockRideRepository() : new ApiRideRepository();
+}
+
+export function getBikeRepository(): BikeRepository {
+  return MOCK_ORDERS ? new MockBikeRepository() : new ApiBikeRepository();
 }

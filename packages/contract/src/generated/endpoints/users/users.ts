@@ -11,6 +11,7 @@
 import type {
   ActivitySubmission,
   AddFavoriteBody,
+  AddFavoriteListMerchantBody,
   AnalyticsDashboard,
   ApprovalRequest,
   AttendanceRecord,
@@ -21,15 +22,22 @@ import type {
   CommissionRule,
   ConflictResponse,
   CreateLoyaltyMemberBody,
+  CreateLoyaltyRedemptionBody,
+  CuratedList,
   CustomerJourney,
   CustomerMembership,
   CustomerSegment,
   DailyCheckIn200,
   DataExportJob,
   DecideApprovalRequestBody,
+  DisableMyTwoFactor200,
+  DisableMyTwoFactorBody,
   DisconnectIntegrationBody,
+  EnableMyTwoFactor200,
   ExportAnalyticsReport200,
   ExportAnalyticsReportBody,
+  FavoriteList,
+  FavoriteListCreate,
   GetAnalyticsDiagnostics200Item,
   GetAnalyticsProductsParams,
   GetAnalyticsRevenueParams,
@@ -84,6 +92,8 @@ import type {
   ProductPerformance,
   PutCommissionRulesBody,
   PutMembershipTiersBody,
+  RedPacket,
+  RedPacketClaim,
   ReferralReward,
   ReferralSummary,
   ReportClientErrorBody,
@@ -102,6 +112,7 @@ import type {
   SearchResults,
   SearchSuggestParams,
   SetupStep,
+  ShareRedPacketBody,
   StaffPerformance,
   StaffShift,
   StoreScore,
@@ -109,6 +120,7 @@ import type {
   TestMerchantDevice200,
   TopUpLoyaltyMemberBody,
   TrafficAnalysis,
+  TwoFactorStatus,
   UnauthorizedResponse,
   UnifiedSearchParams,
   UpdateTaskStatusBody,
@@ -4849,6 +4861,753 @@ export const claimBirthdayReward = async ( options?: RequestInit): Promise<claim
 
   const data: claimBirthdayRewardResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as claimBirthdayRewardResponse
+}
+
+
+export type getMyTwoFactorStatusResponse200 = {
+  data: TwoFactorStatus
+  status: 200
+}
+
+export type getMyTwoFactorStatusResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type getMyTwoFactorStatusResponseSuccess = (getMyTwoFactorStatusResponse200) & {
+  headers: Headers;
+};
+export type getMyTwoFactorStatusResponseError = (getMyTwoFactorStatusResponse401) & {
+  headers: Headers;
+};
+
+export type getMyTwoFactorStatusResponse = (getMyTwoFactorStatusResponseSuccess | getMyTwoFactorStatusResponseError)
+
+export const getGetMyTwoFactorStatusUrl = () => {
+
+
+
+
+  return `/users/me/2fa`
+}
+
+/**
+ * @summary Get two-factor authentication status
+ */
+export const getMyTwoFactorStatus = async ( options?: RequestInit): Promise<getMyTwoFactorStatusResponse> => {
+
+  const res = await fetch(getGetMyTwoFactorStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getMyTwoFactorStatusResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getMyTwoFactorStatusResponse
+}
+
+
+export type enableMyTwoFactorResponse200 = {
+  data: EnableMyTwoFactor200
+  status: 200
+}
+
+export type enableMyTwoFactorResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type enableMyTwoFactorResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type enableMyTwoFactorResponseSuccess = (enableMyTwoFactorResponse200) & {
+  headers: Headers;
+};
+export type enableMyTwoFactorResponseError = (enableMyTwoFactorResponse401 | enableMyTwoFactorResponse422) & {
+  headers: Headers;
+};
+
+export type enableMyTwoFactorResponse = (enableMyTwoFactorResponseSuccess | enableMyTwoFactorResponseError)
+
+export const getEnableMyTwoFactorUrl = () => {
+
+
+
+
+  return `/users/me/2fa`
+}
+
+/**
+ * @summary Enable two-factor authentication (OTP)
+ */
+export const enableMyTwoFactor = async ( options?: RequestInit): Promise<enableMyTwoFactorResponse> => {
+
+  const res = await fetch(getEnableMyTwoFactorUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: enableMyTwoFactorResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as enableMyTwoFactorResponse
+}
+
+
+export type disableMyTwoFactorResponse200 = {
+  data: DisableMyTwoFactor200
+  status: 200
+}
+
+export type disableMyTwoFactorResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type disableMyTwoFactorResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type disableMyTwoFactorResponseSuccess = (disableMyTwoFactorResponse200) & {
+  headers: Headers;
+};
+export type disableMyTwoFactorResponseError = (disableMyTwoFactorResponse401 | disableMyTwoFactorResponse422) & {
+  headers: Headers;
+};
+
+export type disableMyTwoFactorResponse = (disableMyTwoFactorResponseSuccess | disableMyTwoFactorResponseError)
+
+export const getDisableMyTwoFactorUrl = () => {
+
+
+
+
+  return `/users/me/2fa`
+}
+
+/**
+ * @summary Disable two-factor authentication
+ */
+export const disableMyTwoFactor = async (disableMyTwoFactorBody: DisableMyTwoFactorBody, options?: RequestInit): Promise<disableMyTwoFactorResponse> => {
+
+  const res = await fetch(getDisableMyTwoFactorUrl(),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(disableMyTwoFactorBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: disableMyTwoFactorResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as disableMyTwoFactorResponse
+}
+
+
+export type listFavoriteListsResponse200 = {
+  data: FavoriteList[]
+  status: 200
+}
+
+export type listFavoriteListsResponseSuccess = (listFavoriteListsResponse200) & {
+  headers: Headers;
+};
+;
+
+export type listFavoriteListsResponse = (listFavoriteListsResponseSuccess)
+
+export const getListFavoriteListsUrl = () => {
+
+
+
+
+  return `/favorites/lists`
+}
+
+/**
+ * @summary List my favorite lists
+ */
+export const listFavoriteLists = async ( options?: RequestInit): Promise<listFavoriteListsResponse> => {
+
+  const res = await fetch(getListFavoriteListsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: listFavoriteListsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as listFavoriteListsResponse
+}
+
+
+export type createFavoriteListResponse201 = {
+  data: FavoriteList
+  status: 201
+}
+
+export type createFavoriteListResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type createFavoriteListResponseSuccess = (createFavoriteListResponse201) & {
+  headers: Headers;
+};
+export type createFavoriteListResponseError = (createFavoriteListResponse422) & {
+  headers: Headers;
+};
+
+export type createFavoriteListResponse = (createFavoriteListResponseSuccess | createFavoriteListResponseError)
+
+export const getCreateFavoriteListUrl = () => {
+
+
+
+
+  return `/favorites/lists`
+}
+
+/**
+ * @summary Create a favorite list
+ */
+export const createFavoriteList = async (favoriteListCreate: FavoriteListCreate, options?: RequestInit): Promise<createFavoriteListResponse> => {
+
+  const res = await fetch(getCreateFavoriteListUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(favoriteListCreate)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: createFavoriteListResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as createFavoriteListResponse
+}
+
+
+export type getFavoriteListResponse200 = {
+  data: FavoriteList
+  status: 200
+}
+
+export type getFavoriteListResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type getFavoriteListResponseSuccess = (getFavoriteListResponse200) & {
+  headers: Headers;
+};
+export type getFavoriteListResponseError = (getFavoriteListResponse404) & {
+  headers: Headers;
+};
+
+export type getFavoriteListResponse = (getFavoriteListResponseSuccess | getFavoriteListResponseError)
+
+export const getGetFavoriteListUrl = (listId: string,) => {
+
+
+
+
+  return `/favorites/lists/${listId}`
+}
+
+/**
+ * @summary Get a favorite list
+ */
+export const getFavoriteList = async (listId: string, options?: RequestInit): Promise<getFavoriteListResponse> => {
+
+  const res = await fetch(getGetFavoriteListUrl(listId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getFavoriteListResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getFavoriteListResponse
+}
+
+
+export type deleteFavoriteListResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteFavoriteListResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type deleteFavoriteListResponseSuccess = (deleteFavoriteListResponse204) & {
+  headers: Headers;
+};
+export type deleteFavoriteListResponseError = (deleteFavoriteListResponse404) & {
+  headers: Headers;
+};
+
+export type deleteFavoriteListResponse = (deleteFavoriteListResponseSuccess | deleteFavoriteListResponseError)
+
+export const getDeleteFavoriteListUrl = (listId: string,) => {
+
+
+
+
+  return `/favorites/lists/${listId}`
+}
+
+/**
+ * @summary Delete a favorite list
+ */
+export const deleteFavoriteList = async (listId: string, options?: RequestInit): Promise<deleteFavoriteListResponse> => {
+
+  const res = await fetch(getDeleteFavoriteListUrl(listId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deleteFavoriteListResponse['data'] = body ? JSON.parse(body) : undefined
+  return { data, status: res.status, headers: res.headers } as deleteFavoriteListResponse
+}
+
+
+export type addFavoriteListMerchantResponse200 = {
+  data: FavoriteList
+  status: 200
+}
+
+export type addFavoriteListMerchantResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type addFavoriteListMerchantResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type addFavoriteListMerchantResponseSuccess = (addFavoriteListMerchantResponse200) & {
+  headers: Headers;
+};
+export type addFavoriteListMerchantResponseError = (addFavoriteListMerchantResponse404 | addFavoriteListMerchantResponse422) & {
+  headers: Headers;
+};
+
+export type addFavoriteListMerchantResponse = (addFavoriteListMerchantResponseSuccess | addFavoriteListMerchantResponseError)
+
+export const getAddFavoriteListMerchantUrl = (listId: string,) => {
+
+
+
+
+  return `/favorites/lists/${listId}/merchants`
+}
+
+/**
+ * @summary Add a merchant to a favorite list
+ */
+export const addFavoriteListMerchant = async (listId: string,
+    addFavoriteListMerchantBody: AddFavoriteListMerchantBody, options?: RequestInit): Promise<addFavoriteListMerchantResponse> => {
+
+  const res = await fetch(getAddFavoriteListMerchantUrl(listId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(addFavoriteListMerchantBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: addFavoriteListMerchantResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as addFavoriteListMerchantResponse
+}
+
+
+export type removeFavoriteListMerchantResponse200 = {
+  data: FavoriteList
+  status: 200
+}
+
+export type removeFavoriteListMerchantResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type removeFavoriteListMerchantResponseSuccess = (removeFavoriteListMerchantResponse200) & {
+  headers: Headers;
+};
+export type removeFavoriteListMerchantResponseError = (removeFavoriteListMerchantResponse404) & {
+  headers: Headers;
+};
+
+export type removeFavoriteListMerchantResponse = (removeFavoriteListMerchantResponseSuccess | removeFavoriteListMerchantResponseError)
+
+export const getRemoveFavoriteListMerchantUrl = (listId: string,
+    merchantId: string,) => {
+
+
+
+
+  return `/favorites/lists/${listId}/merchants/${merchantId}`
+}
+
+/**
+ * @summary Remove a merchant from a favorite list
+ */
+export const removeFavoriteListMerchant = async (listId: string,
+    merchantId: string, options?: RequestInit): Promise<removeFavoriteListMerchantResponse> => {
+
+  const res = await fetch(getRemoveFavoriteListMerchantUrl(listId,merchantId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: removeFavoriteListMerchantResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as removeFavoriteListMerchantResponse
+}
+
+
+export type listCuratedListsResponse200 = {
+  data: CuratedList[]
+  status: 200
+}
+
+export type listCuratedListsResponseSuccess = (listCuratedListsResponse200) & {
+  headers: Headers;
+};
+;
+
+export type listCuratedListsResponse = (listCuratedListsResponseSuccess)
+
+export const getListCuratedListsUrl = () => {
+
+
+
+
+  return `/lists`
+}
+
+/**
+ * @summary List curated merchant lists (必吃榜-lite)
+ */
+export const listCuratedLists = async ( options?: RequestInit): Promise<listCuratedListsResponse> => {
+
+  const res = await fetch(getListCuratedListsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: listCuratedListsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as listCuratedListsResponse
+}
+
+
+export type getCuratedListResponse200 = {
+  data: CuratedList
+  status: 200
+}
+
+export type getCuratedListResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type getCuratedListResponseSuccess = (getCuratedListResponse200) & {
+  headers: Headers;
+};
+export type getCuratedListResponseError = (getCuratedListResponse404) & {
+  headers: Headers;
+};
+
+export type getCuratedListResponse = (getCuratedListResponseSuccess | getCuratedListResponseError)
+
+export const getGetCuratedListUrl = (listId: string,) => {
+
+
+
+
+  return `/lists/${listId}`
+}
+
+/**
+ * @summary Get a curated list
+ */
+export const getCuratedList = async (listId: string, options?: RequestInit): Promise<getCuratedListResponse> => {
+
+  const res = await fetch(getGetCuratedListUrl(listId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getCuratedListResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getCuratedListResponse
+}
+
+
+export type createLoyaltyRedemptionResponse201 = {
+  data: CustomerMembership
+  status: 201
+}
+
+export type createLoyaltyRedemptionResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type createLoyaltyRedemptionResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type createLoyaltyRedemptionResponseSuccess = (createLoyaltyRedemptionResponse201) & {
+  headers: Headers;
+};
+export type createLoyaltyRedemptionResponseError = (createLoyaltyRedemptionResponse409 | createLoyaltyRedemptionResponse422) & {
+  headers: Headers;
+};
+
+export type createLoyaltyRedemptionResponse = (createLoyaltyRedemptionResponseSuccess | createLoyaltyRedemptionResponseError)
+
+export const getCreateLoyaltyRedemptionUrl = () => {
+
+
+
+
+  return `/loyalty/redemptions`
+}
+
+/**
+ * @summary Redeem loyalty points for a reward
+ */
+export const createLoyaltyRedemption = async (createLoyaltyRedemptionBody: CreateLoyaltyRedemptionBody, options?: RequestInit): Promise<createLoyaltyRedemptionResponse> => {
+
+  const res = await fetch(getCreateLoyaltyRedemptionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createLoyaltyRedemptionBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: createLoyaltyRedemptionResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as createLoyaltyRedemptionResponse
+}
+
+
+export type listRedPacketsReceivedResponse200 = {
+  data: RedPacket[]
+  status: 200
+}
+
+export type listRedPacketsReceivedResponseSuccess = (listRedPacketsReceivedResponse200) & {
+  headers: Headers;
+};
+;
+
+export type listRedPacketsReceivedResponse = (listRedPacketsReceivedResponseSuccess)
+
+export const getListRedPacketsReceivedUrl = () => {
+
+
+
+
+  return `/red-packets/me/received`
+}
+
+/**
+ * @summary List received red packets
+ */
+export const listRedPacketsReceived = async ( options?: RequestInit): Promise<listRedPacketsReceivedResponse> => {
+
+  const res = await fetch(getListRedPacketsReceivedUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: listRedPacketsReceivedResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as listRedPacketsReceivedResponse
+}
+
+
+export type shareRedPacketResponse201 = {
+  data: RedPacket
+  status: 201
+}
+
+export type shareRedPacketResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type shareRedPacketResponseSuccess = (shareRedPacketResponse201) & {
+  headers: Headers;
+};
+export type shareRedPacketResponseError = (shareRedPacketResponse422) & {
+  headers: Headers;
+};
+
+export type shareRedPacketResponse = (shareRedPacketResponseSuccess | shareRedPacketResponseError)
+
+export const getShareRedPacketUrl = () => {
+
+
+
+
+  return `/red-packets/me/share`
+}
+
+/**
+ * @summary Create a shareable promotional red packet
+ */
+export const shareRedPacket = async (shareRedPacketBody: ShareRedPacketBody, options?: RequestInit): Promise<shareRedPacketResponse> => {
+
+  const res = await fetch(getShareRedPacketUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(shareRedPacketBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: shareRedPacketResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as shareRedPacketResponse
+}
+
+
+export type claimRedPacketResponse200 = {
+  data: RedPacketClaim
+  status: 200
+}
+
+export type claimRedPacketResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type claimRedPacketResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type claimRedPacketResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type claimRedPacketResponseSuccess = (claimRedPacketResponse200) & {
+  headers: Headers;
+};
+export type claimRedPacketResponseError = (claimRedPacketResponse404 | claimRedPacketResponse409 | claimRedPacketResponse422) & {
+  headers: Headers;
+};
+
+export type claimRedPacketResponse = (claimRedPacketResponseSuccess | claimRedPacketResponseError)
+
+export const getClaimRedPacketUrl = (packetId: string,) => {
+
+
+
+
+  return `/red-packets/${packetId}/claim`
+}
+
+/**
+ * @summary Claim a red packet
+ */
+export const claimRedPacket = async (packetId: string, options?: RequestInit): Promise<claimRedPacketResponse> => {
+
+  const res = await fetch(getClaimRedPacketUrl(packetId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: claimRedPacketResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as claimRedPacketResponse
 }
 
 

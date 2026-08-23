@@ -30,7 +30,7 @@ import { ApiError } from '@/api/client';
 import { uid } from '@/lib/format';
 import { clone, getState, nowIso } from './mockState';
 import { REDEMPTION_CATALOG } from '../index';
-import type { MembershipsRepository, RedeemPointsInput } from '../index';
+import type { MembershipsRepository, RedeemPointsInput, RedemptionReward } from '../index';
 import type { CustomerMembership, DailyCheckIn200, ListLoyaltyTransactions200Item, OrderDetail, Review } from '@hudumika/contract';
 import { ListLoyaltyTransactions200ItemType, OrderStatus } from '@hudumika/contract';
 
@@ -219,6 +219,10 @@ export class MockMembershipsRepository implements MembershipsRepository {
     const offset = params?.cursor ? Number(params.cursor) : 0;
     const limit = params?.limit ?? 50;
     return clone(ledger!.slice(offset, offset + limit));
+  }
+
+  async getRedemptionCatalog(): Promise<RedemptionReward[]> {
+    return clone(REDEMPTION_CATALOG);
   }
 
   /** Mock-only until the contract carries per-order earnings on the loyalty

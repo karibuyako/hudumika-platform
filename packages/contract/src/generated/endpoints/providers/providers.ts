@@ -22,6 +22,7 @@ import type {
   ListProviderCapabilities200,
   ListProviderJobsParams,
   ListProvidersParams,
+  NotFoundResponse,
   PortfolioItem,
   ProviderApplication,
   ProviderCopilot200,
@@ -35,6 +36,7 @@ import type {
   ProviderUpdate,
   ServiceContract,
   ServicePlan,
+  SetProviderPreferenceBody,
   Technician,
   TrustProfile,
   UpdateProviderDocumentBody,
@@ -1704,6 +1706,147 @@ export const providerCopilot = async (copilotRequest: CopilotRequest, options?: 
 
   const data: providerCopilotResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as providerCopilotResponse
+}
+
+
+export type getProviderResponse200 = {
+  data: ProviderPublic
+  status: 200
+}
+
+export type getProviderResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type getProviderResponseSuccess = (getProviderResponse200) & {
+  headers: Headers;
+};
+export type getProviderResponseError = (getProviderResponse404) & {
+  headers: Headers;
+};
+
+export type getProviderResponse = (getProviderResponseSuccess | getProviderResponseError)
+
+export const getGetProviderUrl = (providerId: string,) => {
+
+
+
+
+  return `/providers/${providerId}`
+}
+
+/**
+ * @summary Provider public detail
+ */
+export const getProvider = async (providerId: string, options?: RequestInit): Promise<getProviderResponse> => {
+
+  const res = await fetch(getGetProviderUrl(providerId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getProviderResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getProviderResponse
+}
+
+
+export type listPreferredProvidersResponse200 = {
+  data: ProviderPublic[]
+  status: 200
+}
+
+export type listPreferredProvidersResponseSuccess = (listPreferredProvidersResponse200) & {
+  headers: Headers;
+};
+;
+
+export type listPreferredProvidersResponse = (listPreferredProvidersResponseSuccess)
+
+export const getListPreferredProvidersUrl = () => {
+
+
+
+
+  return `/providers/me/preferred`
+}
+
+/**
+ * @summary List my preferred providers
+ */
+export const listPreferredProviders = async ( options?: RequestInit): Promise<listPreferredProvidersResponse> => {
+
+  const res = await fetch(getListPreferredProvidersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: listPreferredProvidersResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as listPreferredProvidersResponse
+}
+
+
+export type setProviderPreferenceResponse200 = {
+  data: ProviderPublic
+  status: 200
+}
+
+export type setProviderPreferenceResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type setProviderPreferenceResponseSuccess = (setProviderPreferenceResponse200) & {
+  headers: Headers;
+};
+export type setProviderPreferenceResponseError = (setProviderPreferenceResponse404) & {
+  headers: Headers;
+};
+
+export type setProviderPreferenceResponse = (setProviderPreferenceResponseSuccess | setProviderPreferenceResponseError)
+
+export const getSetProviderPreferenceUrl = (providerId: string,) => {
+
+
+
+
+  return `/providers/${providerId}/preference`
+}
+
+/**
+ * @summary Set preferred provider toggle
+ */
+export const setProviderPreference = async (providerId: string,
+    setProviderPreferenceBody: SetProviderPreferenceBody, options?: RequestInit): Promise<setProviderPreferenceResponse> => {
+
+  const res = await fetch(getSetProviderPreferenceUrl(providerId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(setProviderPreferenceBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: setProviderPreferenceResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as setProviderPreferenceResponse
 }
 
 

@@ -35,6 +35,7 @@ import type {
   GetCouponStats200,
   GroupBuyDeal,
   ListVoucherVerifications200Item,
+  LiveDealChatMessage,
   PlatformEvent,
   PrecisionCampaign,
   Promotion,
@@ -43,6 +44,7 @@ import type {
   Service,
   ServiceCategoryConfig,
   ServiceQuestion,
+  SuggestCoupon200,
   Voucher
 } from '../../model';
 
@@ -128,6 +130,12 @@ export const getToggleSelfServicePromotionResponseMock = (overrideResponse: Part
 export const getListServiceCategoriesResponseMock = (): ServiceCategoryConfig[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.uuid(), name: faker.string.alpha({length: {min: 10, max: 20}}), requiredSkills: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), undefined]), requiredCertifications: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), undefined]), pricingModel: faker.helpers.arrayElement(['fixed','hourly','quote','dynamic'] as const), defaultDurationMinutes: faker.helpers.arrayElement([faker.number.int(), undefined]), questionnaireTemplate: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({key: faker.string.alpha({length: {min: 10, max: 20}}), label: faker.string.alpha({length: {min: 10, max: 20}}), type: faker.helpers.arrayElement(['text','single_choice','multi_choice','number','boolean','photo','video'] as const), required: faker.datatype.boolean(), options: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), null])})), undefined]), requiredPhotos: faker.number.int(), requiredEquipment: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), undefined]), cancellationRules: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 500}}), undefined]), warrantyDays: faker.number.int(), commissionBps: faker.number.int()})))
 
 export const getGetCategoryQuestionsResponseMock = (): ServiceQuestion[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({key: faker.string.alpha({length: {min: 10, max: 20}}), label: faker.string.alpha({length: {min: 10, max: 20}}), type: faker.helpers.arrayElement(['text','single_choice','multi_choice','number','boolean','photo','video'] as const), required: faker.datatype.boolean(), options: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), null])})))
+
+export const getSuggestCouponResponseMock = (): SuggestCoupon200 => ({...{...{id: faker.string.uuid(), campaignId: faker.string.uuid(), code: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), discountTZS: faker.helpers.arrayElement([faker.number.int(), undefined]), minimumSpendTZS: faker.helpers.arrayElement([faker.number.int(), undefined]), status: faker.helpers.arrayElement(Object.values(CouponStatus)), claimedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), usedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), expiresAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined])},}, coupon: faker.helpers.arrayElement([faker.helpers.arrayElement([{id: faker.string.uuid(), campaignId: faker.string.uuid(), code: faker.string.alpha({length: {min: 10, max: 20}}), title: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), discountTZS: faker.helpers.arrayElement([faker.number.int(), undefined]), minimumSpendTZS: faker.helpers.arrayElement([faker.number.int(), undefined]), status: faker.helpers.arrayElement(Object.values(CouponStatus)), claimedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), usedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), expiresAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined])}, null]), null])})
+
+export const getGetLiveDealChatResponseMock = (): LiveDealChatMessage[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), authorName: faker.string.alpha({length: {min: 10, max: 20}}), body: faker.string.alpha({length: {min: 10, max: 2000}}), at: faker.date.past().toISOString().slice(0, 19) + 'Z'})))
+
+export const getPostLiveDealChatResponseMock = (overrideResponse: Partial<Extract<LiveDealChatMessage, object>> = {}): LiveDealChatMessage => ({id: faker.string.alpha({length: {min: 10, max: 20}}), authorName: faker.string.alpha({length: {min: 10, max: 20}}), body: faker.string.alpha({length: {min: 10, max: 2000}}), at: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
 
 
 export const getListPublicCouponCampaignsMockHandler = (overrideResponse?: CouponCampaign[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<CouponCampaign[]> | CouponCampaign[]), options?: RequestHandlerOptions) => {
@@ -621,6 +629,42 @@ export const getGetCategoryQuestionsMockHandler = (overrideResponse?: ServiceQue
       })
   }, options)
 }
+
+export const getSuggestCouponMockHandler = (overrideResponse?: SuggestCoupon200 | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<SuggestCoupon200> | SuggestCoupon200), options?: RequestHandlerOptions) => {
+  return http.post('*/coupons/suggest', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getSuggestCouponResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getGetLiveDealChatMockHandler = (overrideResponse?: LiveDealChatMessage[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<LiveDealChatMessage[]> | LiveDealChatMessage[]), options?: RequestHandlerOptions) => {
+  return http.get('*/marketing/live-deals/:dealId/chat', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetLiveDealChatResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getPostLiveDealChatMockHandler = (overrideResponse?: LiveDealChatMessage | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<LiveDealChatMessage> | LiveDealChatMessage), options?: RequestHandlerOptions) => {
+  return http.post('*/marketing/live-deals/:dealId/chat', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getPostLiveDealChatResponseMock(),
+      { status: 201
+      })
+  }, options)
+}
 export const getServicesMock = () => [
   getListPublicCouponCampaignsMockHandler(),
   getListServicesMockHandler(),
@@ -662,5 +706,8 @@ export const getServicesMock = () => [
   getGetSelfServicePromotionMockHandler(),
   getToggleSelfServicePromotionMockHandler(),
   getListServiceCategoriesMockHandler(),
-  getGetCategoryQuestionsMockHandler()
+  getGetCategoryQuestionsMockHandler(),
+  getSuggestCouponMockHandler(),
+  getGetLiveDealChatMockHandler(),
+  getPostLiveDealChatMockHandler()
 ]

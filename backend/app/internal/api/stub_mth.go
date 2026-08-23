@@ -8,13 +8,26 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hudumika/api-backend/internal/config"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/hudumika/api-backend/internal/auth"
+	"github.com/hudumika/api-backend/internal/gen"
 )
+
+// isStubAllowed returns true if the stub endpoint may serve fake data.
+// In production, stubs must never return fake success — they must 501.
+func (s *Server) isStubAllowed(w http.ResponseWriter) bool {
+	if s.cfg.Env == config.EnvProduction {
+		writeError(w, http.StatusNotImplemented, "NOT_IMPLEMENTED", "This feature is not yet available")
+		return false
+	}
+	return true
+}
 
 // mthUserID resolves the authenticated user id or writes an error and returns false.
 func (s *Server) mthUserID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
@@ -1221,223 +1234,415 @@ func (s *Server) MthGetDispute(w http.ResponseWriter, r *http.Request) {
 
 // ---------- FALLBACK STUBS (remain for non-DB groups) ----------
 
-func (s *Server) MthAddFavoriteMerchant(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
-}
-func (s *Server) MthAddPaymentMethod(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
-}
 func (s *Server) MthAnalyticsOverview(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthCompleteTask(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthConfirmReservation(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthConnectPrinter(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
-}
-func (s *Server) MthCreateFavoriteList(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthCreateLoyaltyRedemption(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthCreateOrderRefund(w http.ResponseWriter, r *http.Request, id uuid.UUID) {
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthCreatePrinter(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthCreateRedemption(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
-}
-func (s *Server) MthCreateTrackingShare(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
-}
-func (s *Server) MthDelete2FA(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
-}
-func (s *Server) MthDeleteFavoriteList(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
-}
-func (s *Server) MthDeletePaymentMethod(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthDeletePrinter(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
-}
-func (s *Server) MthDeletePushToken(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
-}
-func (s *Server) MthEnable2FA(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthExportOrders(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthExportStoreOrders(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
-}
-func (s *Server) MthGet2FA(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthGetActiveReceiptTemplate(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthGetCampaignPerformance(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthGetClosureStatus(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
-}
-func (s *Server) MthGetConsumerList(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
-}
-func (s *Server) MthGetCouponSuggest(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
-}
-func (s *Server) MthGetLiveDealChat(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthGetPrinter(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthGetProviderPublic(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthGetRevenueComposition(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthGetStoreCompliance(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthGetStoreDualScreen(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthGetStoreQrOrdering(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
-}
-func (s *Server) MthGetTrackingShare(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthHomeRecommendations(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthListChatThreads(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
-}
-func (s *Server) MthListConsumerLists(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthListCustomerMemberships(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthListDeliveryProviders(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthListDisputeHolds(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
-}
-func (s *Server) MthListFavoriteLists(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthListInvoices(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthListMarketingCoupons(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthListOrders(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthListPaymentAccounts(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
-func (s *Server) MthListPaymentMethods(w http.ResponseWriter, r *http.Request) {
-	s.ListPaymentMethods(w, r)
-}
 func (s *Server) MthListPrinters(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthListProvidersAvailable(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthListProvidersConsumer(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, []any{})
 }
-func (s *Server) MthListPushTokens(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
-}
 func (s *Server) MthListRedemptions(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthListStaff(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthPairDualScreen(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
-}
-func (s *Server) MthPostLiveDealChat(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthPreferredProviders(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
+	if s.db == nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+		return
+	}
+	userID, ok := s.mthUserID(w, r)
+	if !ok {
+		return
+	}
+	// List preferred providers: join providers with provider_preferences where is_preferred = true.
+	// Fallback to existence-based query if is_preferred column is absent (migration 00102 without boolean).
+	rows, err := s.db.Pool().Query(r.Context(),
+		`SELECT p.id, p.name, p.trade, p.avatar_url, p.base_rate_tzs, p.rating, p.review_count, p.service_areas, p.created_at
+		 FROM providers p
+		 JOIN provider_preferences pp ON pp.provider_id = p.id
+		 WHERE pp.user_id = $1 AND pp.is_preferred = true
+		 ORDER BY pp.created_at DESC, p.id DESC`, userID)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if (errors.As(err, &pgErr) && pgErr.Code == "42703") || strings.Contains(err.Error(), "is_preferred") {
+			rows, err = s.db.Pool().Query(r.Context(),
+				`SELECT p.id, p.name, p.trade, p.avatar_url, p.base_rate_tzs, p.rating, p.review_count, p.service_areas, p.created_at
+				 FROM providers p
+				 JOIN provider_preferences pp ON pp.provider_id = p.id
+				 WHERE pp.user_id = $1
+				 ORDER BY pp.created_at DESC, p.id DESC`, userID)
+		}
+		if err != nil {
+			s.logger.Error("list preferred providers failed", "error", err)
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+			return
+		}
+	}
+	defer rows.Close()
+	out := make([]gen.ProviderPublic, 0)
+	for rows.Next() {
+		p, _, scanErr := scanPublicProvider(rows)
+		if scanErr != nil {
+			s.logger.Error("scan preferred provider failed", "error", scanErr)
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+			return
+		}
+		out = append(out, p)
+	}
+	if err := rows.Err(); err != nil {
+		// Handle deferred is_preferred missing detected at iteration time (some drivers report late)
+		if strings.Contains(err.Error(), "is_preferred") {
+			// retry without filter
+			rows2, err2 := s.db.Pool().Query(r.Context(),
+				`SELECT p.id, p.name, p.trade, p.avatar_url, p.base_rate_tzs, p.rating, p.review_count, p.service_areas, p.created_at
+				 FROM providers p
+				 JOIN provider_preferences pp ON pp.provider_id = p.id
+				 WHERE pp.user_id = $1
+				 ORDER BY pp.created_at DESC, p.id DESC`, userID)
+			if err2 != nil {
+				s.logger.Error("list preferred providers retry failed", "error", err2)
+				writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+				return
+			}
+			defer rows2.Close()
+			out = make([]gen.ProviderPublic, 0)
+			for rows2.Next() {
+				p, _, scanErr := scanPublicProvider(rows2)
+				if scanErr != nil {
+					s.logger.Error("scan preferred provider retry failed", "error", scanErr)
+					writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+					return
+				}
+				out = append(out, p)
+			}
+			if err := rows2.Err(); err != nil {
+				s.logger.Error("iterate preferred providers retry failed", "error", err)
+				writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+				return
+			}
+			writeJSON(w, http.StatusOK, out)
+			return
+		}
+		s.logger.Error("iterate preferred providers failed", "error", err)
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 func (s *Server) MthPrivacyExport(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthProcessSupplierReturn(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthRedeemLoyaltyMember(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
-}
-func (s *Server) MthRegisterPushTokenConsumer(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthRejectSupplierReturn(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
-}
-func (s *Server) MthRemoveFavoriteMerchant(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
-}
-func (s *Server) MthSetDefaultPaymentMethod(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthSetProviderPreference(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
-}
-func (s *Server) MthSocialAuth(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
+	if s.db == nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+		return
+	}
+	userID, ok := s.mthUserID(w, r)
+	if !ok {
+		return
+	}
+	providerID, ok := mthParamUUID(r, "id")
+	if !ok {
+		providerID, ok = mthParamUUID(r, "providerId")
+		if !ok {
+			raw := chi.URLParam(r, "providerId")
+			if raw == "" {
+				raw = chi.URLParam(r, "provider_id")
+			}
+			if raw != "" {
+				if parsed, err := uuid.Parse(strings.TrimSpace(raw)); err == nil {
+					providerID = parsed
+					ok = true
+				}
+			}
+		}
+	}
+	if !ok {
+		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "providerId is required")
+		return
+	}
+	var body struct {
+		Preferred *bool `json:"preferred"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Invalid request body")
+		return
+	}
+	if body.Preferred == nil {
+		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "preferred is required")
+		return
+	}
+	// Verify provider exists
+	var exists bool
+	if err := s.db.Pool().QueryRow(r.Context(), `SELECT EXISTS(SELECT 1 FROM providers WHERE id=$1)`, providerID).Scan(&exists); err != nil {
+		s.logger.Error("provider existence check failed", "error", err)
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+		return
+	}
+	if !exists {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "Provider not found")
+		return
+	}
+	// Upsert preference: INSERT ON CONFLICT UPDATE is_preferred.
+	// Fallback to existence-based insert/delete if is_preferred column is absent.
+	_, err := s.db.Pool().Exec(r.Context(),
+		`INSERT INTO provider_preferences (user_id, provider_id, is_preferred) VALUES ($1,$2,$3)
+		 ON CONFLICT (user_id, provider_id) DO UPDATE SET is_preferred = EXCLUDED.is_preferred`, userID, providerID, *body.Preferred)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		isMissingCol := (errors.As(err, &pgErr) && pgErr.Code == "42703") || strings.Contains(err.Error(), "is_preferred") || strings.Contains(err.Error(), "column")
+		if isMissingCol {
+			if *body.Preferred {
+				_, err = s.db.Pool().Exec(r.Context(),
+					`INSERT INTO provider_preferences (user_id, provider_id) VALUES ($1,$2) ON CONFLICT (user_id, provider_id) DO NOTHING`, userID, providerID)
+			} else {
+				_, err = s.db.Pool().Exec(r.Context(),
+					`DELETE FROM provider_preferences WHERE user_id=$1 AND provider_id=$2`, userID, providerID)
+			}
+			if err != nil {
+				s.logger.Error("set provider preference fallback failed", "error", err)
+				writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+				return
+			}
+		} else {
+			s.logger.Error("set provider preference failed", "error", err)
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+			return
+		}
+	} else {
+		// When is_preferred column exists and preferred is false, the row was updated to false.
+		// For boolean-false semantics we keep the row (is_preferred=false) so List filters it out.
+		// No additional delete needed.
+	}
+	// Return the provider public projection
+	var (
+		pID          uuid.UUID
+		name         string
+		trade        string
+		avatarURL    *string
+		baseRate     *int64
+		rating       *float64
+		reviewCount  int
+		serviceAreas []byte
+		createdAt    time.Time
+	)
+	err = s.db.Pool().QueryRow(r.Context(),
+		`SELECT id, name, trade, avatar_url, base_rate_tzs, rating, review_count, service_areas, created_at FROM providers WHERE id=$1`, providerID).
+		Scan(&pID, &name, &trade, &avatarURL, &baseRate, &rating, &reviewCount, &serviceAreas, &createdAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			writeError(w, http.StatusNotFound, "NOT_FOUND", "Provider not found")
+			return
+		}
+		s.logger.Error("fetch provider after preference failed", "error", err)
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+		return
+	}
+	// Map to ProviderPublic using same logic as scanPublicProvider
+	row := struct {
+		ID           uuid.UUID
+		Name         string
+		Trade        string
+		AvatarURL    *string
+		BaseRateTZS  *int64
+		Rating       *float64
+		ReviewCount  int
+		ServiceAreas []byte
+		CreatedAt    time.Time
+	}{pID, name, trade, avatarURL, baseRate, rating, reviewCount, serviceAreas, createdAt}
+	// Reuse helper by constructing a fake scanner? Instead build directly.
+	public := gen.ProviderPublic{
+		Id:          newUUID(row.ID.String()),
+		Name:        row.Name,
+		Trade:       row.Trade,
+		Rating:      merchantRating(row.Rating),
+		ReviewCount: row.ReviewCount,
+		Verified:    true,
+		AvatarUrl:   row.AvatarURL,
+	}
+	if row.BaseRateTZS != nil {
+		v := int(*row.BaseRateTZS)
+		public.BaseRateTZS = &v
+	}
+	if len(row.ServiceAreas) > 0 {
+		var areas []string
+		if err := json.Unmarshal(row.ServiceAreas, &areas); err == nil {
+			public.ServiceAreas = &areas
+		}
+	}
+	writeJSON(w, http.StatusOK, public)
 }
 func (s *Server) MthStopCampaign(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
-}
-func (s *Server) MthSuggestCoupons(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthTableQr(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthTestPrinter(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthTestWebhook(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthUpdatePaymentAccount(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthUpdatePrinter(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthUpdateStoreDualScreen(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) MthUpdateStoreQrOrdering(w http.ResponseWriter, r *http.Request) {
+	if !s.isStubAllowed(w) { return }
 	writeJSON(w, http.StatusOK, map[string]any{"id": uuid.NewString(), "status": "ok"})
 }
 func (s *Server) RecordSearchHistory(w http.ResponseWriter, r *http.Request) {

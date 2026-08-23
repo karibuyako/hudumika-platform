@@ -220,6 +220,11 @@ func isPublicPath(r *http.Request) bool {
 		// authenticated.
 		rest := strings.TrimPrefix(p, "/catalogues/")
 		return rest != "" && !strings.HasPrefix(rest, "me") && !strings.Contains(rest, "/")
+	case strings.HasPrefix(p, "/tracking-share/"):
+		// View-only tracking share resolution (00101_tracking_shares.sql): the
+		// recipient resolves the token to an order id without ownership checks
+		// (contract GET /tracking-share/{token} has no bearerAuth).
+		return r.Method == http.MethodGet
 	}
 	return false
 }

@@ -45,9 +45,33 @@ const mock = (v: string | undefined, def = true) => (v === undefined ? def : v !
 
 // Release builds (EAS preview/production, web export) never load mocks.
 // typeof-guarded: node bundles (tests, mock-gateway) have no __DEV__ → dev-on.
+// Supports both EXPO_PUBLIC_ENV (consumer) and EXPO_PUBLIC_ENVIRONMENT (merchant eas.json) for production gate.
 const MOCK_PRODUCTION =
+  process.env.EXPO_PUBLIC_ENV === 'production' ||
   process.env.EXPO_PUBLIC_ENVIRONMENT === 'production' ||
   (typeof __DEV__ !== 'undefined' && !__DEV__);
+
+const ENV_FOR_MOCK = (process.env.EXPO_PUBLIC_ENV ?? process.env.EXPO_PUBLIC_ENVIRONMENT ?? 'development') as string;
+
+function isValidApiBaseForMock(): boolean {
+  const base = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/$/, '');
+  if (!base) return false;
+  try {
+    const u = new URL(base);
+    return (u.protocol === 'https:' || u.protocol === 'http:') && !!u.hostname;
+  } catch {
+    return false;
+  }
+}
+
+// If EXPO_PUBLIC_API_URL is missing/invalid and we're in staging/production (no custom domain yet),
+// force mocks at runtime so EAS preview/production can be built before DNS/TLS is ready.
+// Mirrors rider-mobile/src/repos/factories.ts:64 forceMockForMissingUrl.
+const forceMockForMissingUrl = !isValidApiBaseForMock() && (ENV_FOR_MOCK === 'staging' || ENV_FOR_MOCK === 'production');
+if (forceMockForMissingUrl) {
+  console.warn('[mock] EXPO_PUBLIC_API_URL invalid/empty in staging/production — forcing all mocks ON until a valid URL is configured. Set it via `eas update --channel preview --env EXPO_PUBLIC_API_URL=https://...`');
+}
+
 const MOCK_MASTER = mock(process.env.EXPO_PUBLIC_MOCK_ALL);
 
 const MOCK_AUTH = mock(process.env.EXPO_PUBLIC_MOCK_AUTH);
@@ -77,11 +101,12 @@ const MOCK_ANALYTICS_EXT = mock(process.env.EXPO_PUBLIC_MOCK_ANALYTICS_EXT);
 const MOCK_PRINT_JOBS = mock(process.env.EXPO_PUBLIC_MOCK_PRINT_JOBS);
 
 /** Master gate: off in production builds, off when EXPO_PUBLIC_MOCK_ALL=false,
- * off when every module switch is 'false'. */
+ * off when every module switch is 'false'. Forced ON when API base is missing in staging/production (rider pattern). */
 export const MOCK_ENABLED =
-  MOCK_MASTER &&
-  !MOCK_PRODUCTION &&
-  (MOCK_AUTH || MOCK_ORDERS || MOCK_CATALOG || MOCK_CATALOGUES || MOCK_MERCHANTS || MOCK_FINANCE || MOCK_BI || MOCK_MARKETING || MOCK_PROMOTIONS || MOCK_GROUP_BUY || MOCK_MESSAGING || MOCK_NOTIFICATIONS || MOCK_OPS || MOCK_STORE || MOCK_LOYALTY || MOCK_DEVICES || MOCK_CATALOGUE_EXT || MOCK_CHAIN || MOCK_SUPPLY_CHAIN || MOCK_WEBHOOKS || MOCK_TASKS || MOCK_STAFF_OPS || MOCK_REPORTS || MOCK_ANALYTICS_EXT || MOCK_PRINT_JOBS);
+  forceMockForMissingUrl ||
+  (MOCK_MASTER &&
+    !MOCK_PRODUCTION &&
+    (MOCK_AUTH || MOCK_ORDERS || MOCK_CATALOG || MOCK_CATALOGUES || MOCK_MERCHANTS || MOCK_FINANCE || MOCK_BI || MOCK_MARKETING || MOCK_PROMOTIONS || MOCK_GROUP_BUY || MOCK_MESSAGING || MOCK_NOTIFICATIONS || MOCK_OPS || MOCK_STORE || MOCK_LOYALTY || MOCK_DEVICES || MOCK_CATALOGUE_EXT || MOCK_CHAIN || MOCK_SUPPLY_CHAIN || MOCK_WEBHOOKS || MOCK_TASKS || MOCK_STAFF_OPS || MOCK_REPORTS || MOCK_ANALYTICS_EXT || MOCK_PRINT_JOBS));
 
 const MODULE_SWITCHES: readonly (readonly [MockModuleName, boolean])[] = [
   ['auth', MOCK_AUTH],
@@ -113,12 +138,16 @@ const MODULE_SWITCHES: readonly (readonly [MockModuleName, boolean])[] = [
 
 /** HTTP handlers of the enabled modules — all of them when every switch is on. */
 export function mockHttpHandlers(): readonly HttpHandler[] {
+  if (forceMockForMissingUrl) {
+    console.debug(MOCK_RUNTIME_MARKER);
+    return ALL_HTTP_HANDLERS;
+  }
   if (!MOCK_ENABLED) return [];
   // Inline literal comparison — consts are not folded by the minifier in
   // modules with exports (babel hoists `exports.X = …`), but literal-literal
   // comparisons always are; that dead-code removal drops the marker line
   // below from production bundles (asserted in .github/workflows/ci.yml).
-  if (process.env.EXPO_PUBLIC_ENVIRONMENT === 'production') return [];
+  if (process.env.EXPO_PUBLIC_ENV === 'production' || process.env.EXPO_PUBLIC_ENVIRONMENT === 'production') return [];
   console.debug(MOCK_RUNTIME_MARKER);
   if (MODULE_SWITCHES.every(([, on]) => on)) return ALL_HTTP_HANDLERS;
   return MODULE_SWITCHES.filter(([, on]) => on).flatMap(([name]) => HANDLERS_BY_MODULE[name]);

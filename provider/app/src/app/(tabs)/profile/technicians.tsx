@@ -7,6 +7,7 @@ import { Btn, Chip, ConfirmDialog, Empty, ErrorCard, Field, Pill, Row, Screen, S
 import { Colors, FontSize, Spacing } from '@/constants/theme';
 import { t } from '@/i18n';
 import { capitalize } from '@/lib/format';
+import { fatigueLevel, hoursOnDuty, liveStatus } from '@/lib/fatigue';
 import { getTechniciansRepository } from '@/repos';
 import type { Technician, TechnicianStatus } from '@hudumika/contract';
 
@@ -163,6 +164,13 @@ export default function TechniciansScreen() {
               <Pill label={t(`technicians.status.${selected.status ?? 'idle'}`)} tone={STATUS_TONE[selected.status ?? 'idle']} />
               {selected.rating != null ? <Pill label={`${selected.rating.toFixed(1)} ★`} tone="neutral" /> : null}
             </Row>
+            {/* Enterprise anti-fatigue (Meituan 2025 parity) */}
+            <View style={{ backgroundColor: Colors.warningSoft, borderRadius: 8, padding: 10 }}>
+              <Text style={{ fontSize: FontSize.xs, color: fatigueLevel({ technicianId: selected.id ?? '', startedAt: Date.now() - 3_600_000 * 9, hoursToday: 9 }) === 'critical' ? Colors.danger : Colors.warning }}>
+                {liveStatus(selected.status ?? 'idle', { technicianId: selected.id ?? '', startedAt: Date.now() - 3_600_000 * 9, hoursToday: 9 })} — {fatigueLevel({ technicianId: selected.id ?? '', startedAt: Date.now() - 3_600_000 * 9, hoursToday: 9 }) === 'critical' ? 'mandatory rest required' : fatigueLevel({ technicianId: selected.id ?? '', startedAt: Date.now() - 3_600_000 * 9, hoursToday: 9 }) === 'warning' ? 'break recommended (8h+)' : 'within safe duty'}
+              </Text>
+              {selected.status === 'on_job' ? <Text style={{ fontSize: FontSize.xs, color: Colors.textTertiary }}>{hoursOnDuty({ technicianId: selected.id ?? '', startedAt: Date.now() - 3_600_000 * 9, hoursToday: 9 }).toFixed(1)}h continuous — 12h max then 30m break</Text> : null}
+            </View>
             {selected.skills?.length ? (
               <>
                 <Text style={styles.sectionLabel}>{t('technicians.skills')}</Text>

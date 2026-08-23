@@ -103,8 +103,43 @@ export default function BookScreen() {
   // server URLs instead (contract: photos?: string[], @maxItems 6).
   const [photosByKey, setPhotosByKey] = useState<Record<string, string[]>>({});
   const [pickerError, setPickerError] = useState(false);
+  const [patientName, setPatientName] = useState('');
+  const [patientAge, setPatientAge] = useState('');
+  const [patientGender, setPatientGender] = useState('');
+  const [patientHistory, setPatientHistory] = useState('');
+  const [petSpecies, setPetSpecies] = useState('');
+  const [petBreed, setPetBreed] = useState('');
+  const [petAge, setPetAge] = useState('');
+  const [petWeight, setPetWeight] = useState('');
+  const [petVaccination, setPetVaccination] = useState('');
+  const [vehicleMake, setVehicleMake] = useState('');
+  const [vehicleModel, setVehicleModel] = useState('');
+  const [vehicleLicensePlate, setVehicleLicensePlate] = useState('');
+  const [vehicleVin, setVehicleVin] = useState('');
+  const [courseName, setCourseName] = useState('');
+  const [courseSchedule, setCourseSchedule] = useState('');
+  const [enrollmentType, setEnrollmentType] = useState('');
+  const [serviceCategoryName, setServiceCategoryName] = useState<string | null>(null);
 
   const address = addresses.find((a) => a.id === selectedId) ?? addresses[0];
+
+  const isPetService = (() => {
+    const sid = (serviceId ?? '').toLowerCase();
+    const cname = (serviceCategoryName ?? '').toLowerCase();
+    return sid.includes('pet') || cname.includes('pet');
+  })();
+
+  const isAutomotiveService = (() => {
+    const sid = (serviceId ?? '').toLowerCase();
+    const cname = (serviceCategoryName ?? '').toLowerCase();
+    return sid.includes('auto') || cname.includes('auto') || sid.includes('vehicle') || cname.includes('vehicle') || sid.includes('car') || cname.includes('car');
+  })();
+
+  const isEducationService = (() => {
+    const sid = (serviceId ?? '').toLowerCase();
+    const cname = (serviceCategoryName ?? '').toLowerCase();
+    return sid.includes('educat') || cname.includes('educat') || sid.includes('train') || cname.includes('train') || sid.includes('tutor') || cname.includes('tutor') || sid.includes('course') || cname.includes('course') || sid.includes('learn') || cname.includes('learn') || sid.includes('school') || cname.includes('school');
+  })();
 
   const loadQuestions = useCallback(async () => {
     setQuestionsError('');
@@ -147,6 +182,24 @@ export default function BookScreen() {
     loadEstimate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    getProvidersRepository()
+      .listServices()
+      .then((cats) => {
+        if (cancelled) return;
+        const found = cats.find((c) => c.id === serviceId);
+        if (found) setServiceCategoryName(found.name);
+        else setServiceCategoryName(null);
+      })
+      .catch(() => {
+        if (!cancelled) setServiceCategoryName(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [serviceId]);
 
   // PAYMENT_PROVIDER_ERROR retry countdown (PAYMENTS.md) — never an instant
   // hammer on the provider.
@@ -298,6 +351,12 @@ export default function BookScreen() {
         .filter(([, uris]) => uris.length > 0)
         .reduce<Record<string, string[]>>((acc, [key, uris]) => ({ ...acc, [key]: uris }), {});
       const photos = Object.values(photosByKey).flat().slice(0, BOOKING_PHOTOS_MAX);
+      const patientInfo = [patientName && `Patient: ${patientName}`, patientAge && `Age: ${patientAge}`, patientGender && `Gender: ${patientGender}`, patientHistory && `History: ${patientHistory}`].filter(Boolean).join(' | ');
+      const petInfo = [petSpecies && `Species: ${petSpecies}`, petBreed && `Breed: ${petBreed}`, petAge && `Age: ${petAge}`, petWeight && `Weight: ${petWeight}`, petVaccination && `Vaccination: ${petVaccination}`].filter(Boolean).join(' | ');
+      const vehicleInfo = [vehicleMake && `Make: ${vehicleMake}`, vehicleModel && `Model: ${vehicleModel}`, vehicleLicensePlate && `License Plate: ${vehicleLicensePlate}`, vehicleVin && `VIN: ${vehicleVin}`].filter(Boolean).join(' | ');
+      const educationInfo = [courseName && `Course: ${courseName}`, courseSchedule && `Schedule: ${courseSchedule}`, enrollmentType && `Enrollment: ${enrollmentType}`].filter(Boolean).join(' | ');
+      const infoSections = [patientInfo ? `Patient Info: ${patientInfo}` : '', petInfo ? `Pet Info: ${petInfo}` : '', vehicleInfo ? `Vehicle Info: ${vehicleInfo}` : '', educationInfo ? `Education Info: ${educationInfo}` : ''].filter(Boolean).join('\n\n');
+      const fullDescription = [description.trim(), infoSections].filter(Boolean).join('\n\n') || undefined;
       const booking = await getBookingsRepository().create(
         {
           // Category-first flow (/book?serviceId=) has no provider chosen yet —
@@ -308,7 +367,7 @@ export default function BookScreen() {
           durationMinutes: Number(duration),
           paymentMethod: method,
           address,
-          description: description.trim() || undefined,
+          description: fullDescription,
           photos: photos.length ? photos : undefined,
           answers: Object.keys(answers).length || Object.keys(photoAnswers).length ? { ...answers, ...photoAnswers } : undefined,
         },
@@ -472,6 +531,74 @@ export default function BookScreen() {
         <Text style={styles.title}>{t('booking.title')}</Text>
         <View style={{ width: 40 }} />
       </Row>
+
+      <Card style={{ gap: Spacing.md }}>
+        <Text style={styles.section}>Patient Information</Text>
+        <Field label="Patient Name" value={patientName} onChangeText={setPatientName} hint="Full name of patient" />
+        <Row gap={Spacing.md}>
+          <View style={{ flex: 1 }}>
+            <Field label="Age" value={patientAge} onChangeText={(v) => setPatientAge(v.replace(/[^0-9]/g, ''))} keyboardType="number-pad" hint="Age" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Field label="Gender" value={patientGender} onChangeText={setPatientGender} hint="M/F/Other" />
+          </View>
+        </Row>
+        <Field label="Medical History" value={patientHistory} onChangeText={setPatientHistory} multiline maxLength={500} hint="Allergies, conditions, medications" />
+      </Card>
+
+      {isPetService ? (
+        <Card style={{ gap: Spacing.md }}>
+          <Text style={styles.section}>Pet Information</Text>
+          <Row gap={Spacing.md}>
+            <View style={{ flex: 1 }}>
+              <Field label="Species" value={petSpecies} onChangeText={setPetSpecies} hint="Dog, Cat, etc." />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Field label="Breed" value={petBreed} onChangeText={setPetBreed} hint="Breed" />
+            </View>
+          </Row>
+          <Row gap={Spacing.md}>
+            <View style={{ flex: 1 }}>
+              <Field label="Age" value={petAge} onChangeText={(v) => setPetAge(v.replace(/[^0-9]/g, ''))} keyboardType="number-pad" hint="Age (years)" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Field label="Weight" value={petWeight} onChangeText={(v) => setPetWeight(v.replace(/[^0-9.]/g, ''))} keyboardType="number-pad" hint="Weight (kg)" />
+            </View>
+          </Row>
+          <Field label="Vaccination" value={petVaccination} onChangeText={setPetVaccination} hint="Vaccinated, dates, etc." />
+        </Card>
+      ) : null}
+
+      {isAutomotiveService ? (
+        <Card style={{ gap: Spacing.md }}>
+          <Text style={styles.section}>Vehicle Information</Text>
+          <Row gap={Spacing.md}>
+            <View style={{ flex: 1 }}>
+              <Field label="Vehicle Make" value={vehicleMake} onChangeText={setVehicleMake} hint="Toyota, Honda, etc." />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Field label="Vehicle Model" value={vehicleModel} onChangeText={setVehicleModel} hint="Corolla, Civic, etc." />
+            </View>
+          </Row>
+          <Row gap={Spacing.md}>
+            <View style={{ flex: 1 }}>
+              <Field label="License Plate" value={vehicleLicensePlate} onChangeText={setVehicleLicensePlate} hint="License plate number" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Field label="VIN" value={vehicleVin} onChangeText={setVehicleVin} hint="Vehicle Identification Number" />
+            </View>
+          </Row>
+        </Card>
+      ) : null}
+
+      {isEducationService ? (
+        <Card style={{ gap: Spacing.md }}>
+          <Text style={styles.section}>Education Information</Text>
+          <Field label="Course Name" value={courseName} onChangeText={setCourseName} hint="e.g. Mathematics, English, Science" />
+          <Field label="Schedule" value={courseSchedule} onChangeText={setCourseSchedule} hint="e.g. Mon/Wed 4pm-6pm, Weekends" />
+          <Field label="Enrollment Type" value={enrollmentType} onChangeText={setEnrollmentType} hint="e.g. Individual, Group, Online" />
+        </Card>
+      ) : null}
 
       <Card style={{ gap: Spacing.md }}>
         <Text style={styles.section}>{t('booking.when')}</Text>

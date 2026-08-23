@@ -118,6 +118,12 @@ export const getGetProviderTrustResponseMock = (overrideResponse: Partial<Extrac
 
 export const getProviderCopilotResponseMock = (overrideResponse: Partial<Extract<ProviderCopilot200, object>> = {}): ProviderCopilot200 => ({action: faker.helpers.arrayElement(['explain_job','diagnose_photos','suggest_quote','recommend_materials','generate_message','summarize_history','schedule_optimization','predict_travel_time','detect_suspicious_completion'] as const), result: faker.string.alpha({length: {min: 10, max: 4000}}), suggestions: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), null]), ...overrideResponse})
 
+export const getGetProviderResponseMock = (overrideResponse: Partial<Extract<ProviderPublic, object>> = {}): ProviderPublic => ({id: faker.string.uuid(), name: faker.string.alpha({length: {min: 10, max: 20}}), trade: faker.string.alpha({length: {min: 10, max: 20}}), avatarUrl: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), rating: faker.number.float({fractionDigits: 2}), reviewCount: faker.number.int(), verified: faker.datatype.boolean(), serviceAreas: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), undefined]), baseRateTZS: faker.helpers.arrayElement([faker.number.int(), undefined]), ...overrideResponse})
+
+export const getListPreferredProvidersResponseMock = (): ProviderPublic[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.uuid(), name: faker.string.alpha({length: {min: 10, max: 20}}), trade: faker.string.alpha({length: {min: 10, max: 20}}), avatarUrl: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), rating: faker.number.float({fractionDigits: 2}), reviewCount: faker.number.int(), verified: faker.datatype.boolean(), serviceAreas: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), undefined]), baseRateTZS: faker.helpers.arrayElement([faker.number.int(), undefined])})))
+
+export const getSetProviderPreferenceResponseMock = (overrideResponse: Partial<Extract<ProviderPublic, object>> = {}): ProviderPublic => ({id: faker.string.uuid(), name: faker.string.alpha({length: {min: 10, max: 20}}), trade: faker.string.alpha({length: {min: 10, max: 20}}), avatarUrl: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), rating: faker.number.float({fractionDigits: 2}), reviewCount: faker.number.int(), verified: faker.datatype.boolean(), serviceAreas: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), undefined]), baseRateTZS: faker.helpers.arrayElement([faker.number.int(), undefined]), ...overrideResponse})
+
 
 export const getListProvidersMockHandler = (overrideResponse?: ProviderPublic[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<ProviderPublic[]> | ProviderPublic[]), options?: RequestHandlerOptions) => {
   return http.get('*/providers', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
@@ -578,6 +584,42 @@ export const getProviderCopilotMockHandler = (overrideResponse?: ProviderCopilot
       })
   }, options)
 }
+
+export const getGetProviderMockHandler = (overrideResponse?: ProviderPublic | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<ProviderPublic> | ProviderPublic), options?: RequestHandlerOptions) => {
+  return http.get('*/providers/:providerId', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetProviderResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getListPreferredProvidersMockHandler = (overrideResponse?: ProviderPublic[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<ProviderPublic[]> | ProviderPublic[]), options?: RequestHandlerOptions) => {
+  return http.get('*/providers/me/preferred', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getListPreferredProvidersResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getSetProviderPreferenceMockHandler = (overrideResponse?: ProviderPublic | ((info: Parameters<Parameters<typeof http.put>[1]>[0]) => Promise<ProviderPublic> | ProviderPublic), options?: RequestHandlerOptions) => {
+  return http.put('*/providers/:providerId/preference', async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getSetProviderPreferenceResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
 export const getProvidersMock = () => [
   getListProvidersMockHandler(),
   getApplyProviderMockHandler(),
@@ -617,5 +659,8 @@ export const getProvidersMock = () => [
   getUpdateProviderDocumentMockHandler(),
   getGetProviderDispatchConsoleMockHandler(),
   getGetProviderTrustMockHandler(),
-  getProviderCopilotMockHandler()
+  getProviderCopilotMockHandler(),
+  getGetProviderMockHandler(),
+  getListPreferredProvidersMockHandler(),
+  getSetProviderPreferenceMockHandler()
 ]

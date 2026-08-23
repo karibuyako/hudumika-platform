@@ -64,6 +64,10 @@ export const getListAnnouncementsResponseMock = (): ListAnnouncements200Item[] =
 
 export const getGetServerEventsResponseMock = (overrideResponse: Partial<Extract<GetServerEvents200, object>> = {}): GetServerEvents200 => ({events: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.number.int(), type: faker.helpers.arrayElement(['order.updated','order.created','payment.captured','notification.created','chat.message','campaign.updated','ledger.updated','settlement.created','merchant.updated','task.updated'] as const), payload: faker.helpers.arrayElement([{}, undefined]), at: faker.date.past().toISOString().slice(0, 19) + 'Z'})), latestSeq: faker.number.int(), ...overrideResponse})
 
+export const getRegisterPushTokenAliasResponseMock = (overrideResponse: Partial<Extract<PushToken, object>> = {}): PushToken => (faker.helpers.arrayElement([{token: faker.string.alpha({length: {min: 10, max: 20}}), platform: faker.helpers.arrayElement(['expo','apns','fcm'] as const), deviceName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse}, {token: faker.string.alpha({length: {min: 10, max: 20}}), platform: faker.helpers.arrayElement(['expo','apns','fcm'] as const), deviceName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse}]))
+
+export const getListPushTokensAliasResponseMock = (): PushToken[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({token: faker.string.alpha({length: {min: 10, max: 20}}), platform: faker.helpers.arrayElement(['expo','apns','fcm'] as const), deviceName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z'})))
+
 
 export const getListMyNotificationsMockHandler = (overrideResponse?: Notification[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<Notification[]> | Notification[]), options?: RequestHandlerOptions) => {
   return http.get('*/notifications/me', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
@@ -202,6 +206,40 @@ export const getMarkAllNotificationsReadMockHandler = (overrideResponse?: void |
       })
   }, options)
 }
+
+export const getRegisterPushTokenAliasMockHandler = (overrideResponse?: PushToken | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<PushToken> | PushToken), options?: RequestHandlerOptions) => {
+  return http.post('*/push/tokens', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getRegisterPushTokenAliasResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getListPushTokensAliasMockHandler = (overrideResponse?: PushToken[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<PushToken[]> | PushToken[]), options?: RequestHandlerOptions) => {
+  return http.get('*/push/tokens', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getListPushTokensAliasResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getDeletePushTokenAliasMockHandler = (overrideResponse?: void | ((info: Parameters<Parameters<typeof http.delete>[1]>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
+  return http.delete('*/push/tokens/:token', async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
+  if (typeof overrideResponse === 'function') {await overrideResponse(info); }
+
+    return new HttpResponse(null,
+      { status: 204
+      })
+  }, options)
+}
 export const getNotificationsMock = () => [
   getListMyNotificationsMockHandler(),
   getGetNotificationPreferencesMockHandler(),
@@ -214,5 +252,8 @@ export const getNotificationsMock = () => [
   getUpdateOrderAlertSettingsMockHandler(),
   getListAnnouncementsMockHandler(),
   getGetServerEventsMockHandler(),
-  getMarkAllNotificationsReadMockHandler()
+  getMarkAllNotificationsReadMockHandler(),
+  getRegisterPushTokenAliasMockHandler(),
+  getListPushTokensAliasMockHandler(),
+  getDeletePushTokenAliasMockHandler()
 ]

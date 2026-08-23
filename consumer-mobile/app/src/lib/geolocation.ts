@@ -71,11 +71,14 @@ export interface CityGeoRef {
   serviceAreas: { id: string; name: string; lat: number; lon: number }[];
 }
 
-/** Seed coordinate anchors for the fixture cities (see header comment). */
+/** Seed coordinate anchors for the fixture cities (see header comment).
+ * In production, the city IDs are real UUIDs from GET /cities (e.g., 6fe36672-... for Dar).
+ * The mock ids city_dar etc. are kept for dev with mockState. */
 export function knownCityCoords(): CityGeoRef[] {
+  const isProd = process.env.EXPO_PUBLIC_ENV === 'production';
   return [
     {
-      id: 'city_dar',
+      id: isProd ? '6fe36672-54ff-4968-ac5e-b5e85b2a4838' : 'city_dar',
       name: 'Dar es Salaam',
       // Anchored to the seeded mockState.customerLocation.
       lat: -6.7924,

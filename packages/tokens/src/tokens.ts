@@ -57,6 +57,7 @@ export const color = {
     Events: '#FDF2F8',
     Retail: '#F0FDF4',
     Travel: '#EFF6FF',
+    Bike: '#E0F2FE',
   } as const,
 } as const;
 

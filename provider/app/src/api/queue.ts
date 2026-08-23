@@ -1,4 +1,5 @@
 import { useNetworkStore } from '@/store/network';
+import { getApiBase } from '@/api/client';
 import { loadStoredToken } from '@/lib/tokenStore';
 
 /**
@@ -6,6 +7,9 @@ import { loadStoredToken } from '@/lib/tokenStore';
  * Mutations made while offline are persisted and replayed in order when
  * connectivity returns. Each op carries its idempotency key so the server
  * dedupes against anything that already landed.
+ *
+ * Platform-safe: localStorage is web-only; native and tests use an in-memory
+ * fallback so imports never crash on React Native / Node.
  */
 
 export interface QueuedOp {
@@ -18,23 +22,42 @@ export interface QueuedOp {
 
 const KEY = 'provider.queue';
 let flushing = false;
+let memoryFallback: QueuedOp[] = [];
+
+function hasLocalStorage(): boolean {
+  try {
+    return typeof localStorage !== 'undefined' && typeof localStorage.getItem === 'function';
+  } catch {
+    return false;
+  }
+}
 
 function load(): QueuedOp[] {
+  if (!hasLocalStorage()) return [...memoryFallback];
   try {
     const raw = localStorage.getItem(KEY);
     return raw ? (JSON.parse(raw) as QueuedOp[]) : [];
   } catch {
-    return [];
+    return [...memoryFallback];
   }
 }
 
 function save(ops: QueuedOp[]) {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(ops.slice(0, 200)));
-  } catch {
-    /* storage unavailable — best effort */
+  const sliced = ops.slice(0, 200);
+  if (hasLocalStorage()) {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(sliced));
+    } catch {
+      /* storage unavailable — best effort */
+    }
+  } else {
+    memoryFallback = sliced;
   }
-  useNetworkStore.getState().setQueuedCount(ops.length);
+  try {
+    useNetworkStore.getState().setQueuedCount(sliced.length);
+  } catch {
+    /* store not ready (tests/boot) */
+  }
 }
 
 export function queuedOps(): QueuedOp[] {
@@ -53,6 +76,7 @@ export function dequeue(key: string) {
 
 export function clearQueue() {
   save([]);
+  memoryFallback = [];
 }
 
 /** Replay queued mutations in order. Returns false if connectivity dropped mid-flush. */
@@ -71,7 +95,7 @@ export async function flushQueue(): Promise<boolean> {
       const headers: Record<string, string> = { 'content-type': 'application/json', 'idempotency-key': op.key };
       const token = loadStoredToken();
       if (token) headers.authorization = `Bearer ${token}`;
-      const base = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/$/, '');
+      const base = getApiBase();
       const res = await fetch(`${base}/api${op.path}`, {
         method: op.method,
         headers,
@@ -89,6 +113,10 @@ export async function flushQueue(): Promise<boolean> {
     return true;
   } finally {
     flushing = false;
-    useNetworkStore.getState().setSyncing(load().length > 0);
+    try {
+      useNetworkStore.getState().setSyncing(load().length > 0);
+    } catch {
+      /* store not ready */
+    }
   }
 }

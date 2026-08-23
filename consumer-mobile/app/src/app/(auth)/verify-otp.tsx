@@ -105,7 +105,7 @@ export default function VerifyOtpScreen() {
           <Text style={styles.backText}>{t('common.back')}</Text>
         </Pressable>
         <Text style={styles.title}>{t('login.code')}</Text>
-        <Text style={styles.sub}>{t('login.tip')}</Text>
+        {process.env.EXPO_PUBLIC_ENV !== 'production' ? <Text style={styles.sub}>{t('login.tip')}</Text> : null}
 
         <View style={styles.codeRow}>
           <TextInput

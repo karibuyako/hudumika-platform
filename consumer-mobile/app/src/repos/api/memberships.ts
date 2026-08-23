@@ -1,8 +1,9 @@
 /* Live API memberships repository — GET /memberships/me, POST /check-in,
  * GET /loyalty-transactions, POST /loyalty/redemptions (mock-only-until-
- * adopted). */
+ * adopted), GET /loyalty/rewards | /loyalty/catalog (server-driven catalog). */
 import { api } from '@/api/client';
-import type { MembershipsRepository, RedeemPointsInput } from '../index';
+import { REDEMPTION_CATALOG } from '../index';
+import type { MembershipsRepository, RedeemPointsInput, RedemptionReward } from '../index';
 import type { CustomerMembership, DailyCheckIn200, ListLoyaltyTransactions200Item } from '@hudumika/contract';
 
 export class ApiMembershipsRepository implements MembershipsRepository {
@@ -21,6 +22,42 @@ export class ApiMembershipsRepository implements MembershipsRepository {
       Object.entries(params ?? {}).filter(([, v]) => v !== undefined) as [string, string][],
     ).toString();
     return api.get<ListLoyaltyTransactions200Item[]>(`/loyalty-transactions${qs ? `?${qs}` : ''}`);
+  }
+
+  async getRedemptionCatalog(): Promise<RedemptionReward[]> {
+    const extract = (data: unknown): RedemptionReward[] | null => {
+      if (Array.isArray(data)) return data as RedemptionReward[];
+      if (data && typeof data === 'object') {
+        const obj = data as Record<string, unknown>;
+        for (const key of ['rewards', 'catalog', 'data', 'items', 'results']) {
+          const v = obj[key];
+          if (Array.isArray(v)) return v as RedemptionReward[];
+        }
+      }
+      return null;
+    };
+    const tryPath = async (path: string): Promise<RedemptionReward[] | null> => {
+      try {
+        const res = await api.get<unknown>(path);
+        const catalog = extract(res);
+        if (catalog !== null) {
+          // Basic shape guard — accept only arrays of {reward, points}
+          const valid = catalog.every(
+            (r) => typeof (r as unknown as Record<string, unknown>).reward === 'string' && typeof (r as unknown as Record<string, unknown>).points === 'number',
+          );
+          if (catalog.length === 0 || valid) return catalog;
+          // Fall through to null if shape is unexpected — fallback to static
+        }
+        return null;
+      } catch {
+        return null;
+      }
+    };
+    const fromRewards = await tryPath('/loyalty/rewards');
+    if (fromRewards !== null) return fromRewards.length ? fromRewards : REDEMPTION_CATALOG;
+    const fromCatalog = await tryPath('/loyalty/catalog');
+    if (fromCatalog !== null) return fromCatalog.length ? fromCatalog : REDEMPTION_CATALOG;
+    return REDEMPTION_CATALOG;
   }
 
   /** POST /loyalty/redemptions — body {points, reward}, idempotency key in

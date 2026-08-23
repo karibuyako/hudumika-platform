@@ -12,7 +12,7 @@ const eas = JSON.parse(readFileSync(path.join(root, 'eas.json'), 'utf8')) as {
   build?: Record<string, { env?: Record<string, string | undefined> }>;
 };
 
-const MOCK_SWITCHES = ['EXPO_PUBLIC_MOCK_AUTH', 'EXPO_PUBLIC_MOCK_JOBS', 'EXPO_PUBLIC_MOCK_EARNINGS', 'EXPO_PUBLIC_MOCK_SUPPORT', 'EXPO_PUBLIC_MOCK_SAFETY', 'EXPO_PUBLIC_MOCK_VEHICLE', 'EXPO_PUBLIC_MOCK_TRIPS'];
+const MOCK_SWITCHES = ['EXPO_PUBLIC_MOCK_AUTH', 'EXPO_PUBLIC_MOCK_JOBS', 'EXPO_PUBLIC_MOCK_EARNINGS', 'EXPO_PUBLIC_MOCK_SUPPORT', 'EXPO_PUBLIC_MOCK_SAFETY', 'EXPO_PUBLIC_MOCK_VEHICLE', 'EXPO_PUBLIC_MOCK_TRIPS', 'EXPO_PUBLIC_MOCK_LOGISTICS'];
 
 test('preview and production EAS profiles explicitly disable every mock switch', () => {
   const profiles = eas.build ?? {};

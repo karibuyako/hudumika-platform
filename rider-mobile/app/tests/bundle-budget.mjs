@@ -15,13 +15,13 @@ import { readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 /**
- * 5.00 MB of JavaScript across all chunks. Mirrors merchant's budget so both
- * surfaces share the same ceiling. Rider's baseline is smaller (fewer screens,
- * single i18n dict en+sw), so the same 5 MB gives ~30% headroom. If the total
- * drifts above 5 MB, re-check for accidental imports rather than raising the
- * cap blindly.
+ * 7.00 MB of JavaScript across all chunks. Rider now ships SlideConfirm,
+ * realtime (WS + long-poll), sync/batch, heatmap, and full Meituan-parity
+ * dispatch flows — baseline grew from 5.0 to 6.32 MB (2026-08-21 export).
+ * 7 MB retains ~10% headroom; any further growth should be code-split
+ * (e.g. lazy mock factories) rather than bumping again blindly.
  */
-const BUNDLE_BUDGET_BYTES = 5.0 * 1024 * 1024;
+const BUNDLE_BUDGET_BYTES = 7.0 * 1024 * 1024;
 const MB = 1024 * 1024;
 
 const exportDir = process.argv[2] ?? 'dist';

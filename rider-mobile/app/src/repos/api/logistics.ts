@@ -29,11 +29,11 @@ export class ApiLogisticsRepository {
   }
 
   async getVehicle(vehicleId: string): Promise<Vehicle> {
-    return api.get(`/rider-vehicles/${vehicleId}`);
+    return api.get(`/vehicles/${vehicleId}`);
   }
 
   async listVehicles(): Promise<Vehicle[]> {
-    return api.get('/rider-vehicles');
+    return api.get('/vehicles');
   }
 
   async getPackage(packageId: string): Promise<Package> {
@@ -41,19 +41,19 @@ export class ApiLogisticsRepository {
   }
 
   async getLogisticsTrip(tripId: string): Promise<LogisticsTrip> {
-    return api.get(`/logistics-trips/${tripId}`);
+    return api.get(`/trips/${tripId}`);
   }
 
   async listLogisticsTrips(): Promise<LogisticsTrip[]> {
-    return api.get('/logistics-trips');
+    return api.get('/trips');
   }
 
   async getConsignment(consignmentId: string): Promise<Consignment> {
-    return api.get(`/logistics-consignments/${consignmentId}`);
+    return api.get(`/linehaul/consignments/${consignmentId}`);
   }
 
   async listConsignments(): Promise<Consignment[]> {
-    return api.get('/logistics-consignments');
+    return api.get('/linehaul/consignments');
   }
 
   async getOrderRoute(orderId: string): Promise<RouteSegment[]> {

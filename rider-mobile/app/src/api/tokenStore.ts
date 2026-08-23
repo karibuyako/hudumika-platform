@@ -54,18 +54,27 @@ export function getCachedTokenPair(): TokenPair | null {
 
 export async function getTokenPair(): Promise<TokenPair | null> {
   if (cache) return cache;
-  const store = await getNativeStore();
-  if (store) {
-    const [accessToken, refreshToken] = await Promise.all([store.getItemAsync(ACCESS_KEY), store.getItemAsync(REFRESH_KEY)]);
-    if (accessToken && refreshToken) cache = { accessToken, refreshToken };
-    return cache;
-  }
+  // Web: prefer sessionStorage — SecureStore web impl is not available in Expo web dev (throws getValueWithKeyAsync).
   const ws = webStore();
   if (ws) {
     const accessToken = ws.getItem(ACCESS_KEY);
     const refreshToken = ws.getItem(REFRESH_KEY);
-    if (accessToken && refreshToken) cache = { accessToken, refreshToken };
-    return cache;
+    if (accessToken && refreshToken) {
+      cache = { accessToken, refreshToken };
+      return cache;
+    }
+    // No tokens in web storage — skip native attempt on web (would throw).
+    if (typeof window !== 'undefined') return null;
+  }
+  const store = await getNativeStore();
+  if (store) {
+    try {
+      const [accessToken, refreshToken] = await Promise.all([store.getItemAsync(ACCESS_KEY), store.getItemAsync(REFRESH_KEY)]);
+      if (accessToken && refreshToken) cache = { accessToken, refreshToken };
+      return cache;
+    } catch {
+      return cache;
+    }
   }
   return null;
 }
@@ -73,15 +82,6 @@ export async function getTokenPair(): Promise<TokenPair | null> {
 /** Persist a rotated token pair atomically. `null` wipes every store. */
 export async function setTokenPair(pair: TokenPair | null): Promise<void> {
   cache = pair;
-  const store = await getNativeStore();
-  if (store) {
-    if (pair) {
-      await Promise.all([store.setItemAsync(ACCESS_KEY, pair.accessToken), store.setItemAsync(REFRESH_KEY, pair.refreshToken)]);
-    } else {
-      await Promise.all([store.deleteItemAsync(ACCESS_KEY), store.deleteItemAsync(REFRESH_KEY)]);
-    }
-    return;
-  }
   const ws = webStore();
   if (ws) {
     if (pair) {
@@ -90,6 +90,19 @@ export async function setTokenPair(pair: TokenPair | null): Promise<void> {
     } else {
       ws.removeItem(ACCESS_KEY);
       ws.removeItem(REFRESH_KEY);
+    }
+    if (typeof window !== 'undefined') return;
+  }
+  const store = await getNativeStore();
+  if (store) {
+    try {
+      if (pair) {
+        await Promise.all([store.setItemAsync(ACCESS_KEY, pair.accessToken), store.setItemAsync(REFRESH_KEY, pair.refreshToken)]);
+      } else {
+        await Promise.all([store.deleteItemAsync(ACCESS_KEY), store.deleteItemAsync(REFRESH_KEY)]);
+      }
+    } catch {
+      /* web fallback already handled */
     }
   }
 }

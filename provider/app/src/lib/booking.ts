@@ -106,6 +106,28 @@ export const WORK_STATUSES: BookingStatus[] = [
   'awaiting_customer_confirmation',
 ];
 
+export const TERMINAL_DONE_STATUSES: BookingStatus[] = ['completed', 'settled', 'warranty'];
+export const TERMINAL_DEAD_STATUSES: BookingStatus[] = [
+  'declined',
+  'cancelled',
+  'customer_cancelled',
+  'provider_cancelled',
+  'refunded',
+  'disputed',
+  'escalated',
+  'reassignment',
+  'no_show',
+  'provider_late',
+];
+
+/** Stale offer error codes — the offer is no longer actionable and the list should refresh. */
+export const STALE_OFFER_CODES = ['BOOKING_ALREADY_ACCEPTED', 'JOB_OFFER_EXPIRED', 'DISPATCH_ACCEPTANCE_TIMEOUT'] as const;
+
+/** Status sets for tab bucketing — single source of truth for store/jobs. */
+export const ACTIVE_STATUSES_SET = new Set<BookingStatus>(ACTIVE_STATUSES);
+export const TERMINAL_DONE_SET = new Set<BookingStatus>(TERMINAL_DONE_STATUSES);
+export const TERMINAL_DEAD_SET = new Set<BookingStatus>(TERMINAL_DEAD_STATUSES);
+
 /** The statuses the provider advances through while working a job. */
 export const PROVIDER_ADVANCE_SEQUENCE: { from: BookingStatus; to: BookingStatus; labelKey: string }[] = [
   { from: 'scheduled', to: 'en_route', labelKey: 'booking.action.enRoute' },

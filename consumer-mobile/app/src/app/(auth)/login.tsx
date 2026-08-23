@@ -152,7 +152,7 @@ export default function LoginScreen() {
               <Text style={styles.forgot}>{t('login.forgot')}</Text>
             </Pressable>
           ) : null}
-          <Text style={styles.tip}>{t('login.tip')}</Text>
+          {process.env.EXPO_PUBLIC_ENV !== 'production' ? <Text style={styles.tip}>{t('login.tip')}</Text> : null}
           <View style={styles.orDivider}>
             <View style={styles.orLine} />
             <Text style={styles.orLabel}>{t('auth.orContinue')}</Text>
@@ -182,9 +182,11 @@ export default function LoginScreen() {
         visible={socialProvider !== null}
         onClose={closeSocial}
         title={socialProvider ? t(socialProvider === 'google' ? 'auth.socialGoogle' : 'auth.socialApple') : undefined}>
-        <Text style={styles.socialExplain}>
-          {t('auth.socialExplain', { provider: socialProvider === 'google' ? 'Google' : 'Apple' })}
-        </Text>
+        {process.env.EXPO_PUBLIC_ENV !== 'production' ? (
+          <Text style={styles.socialExplain}>
+            {t('auth.socialExplain', { provider: socialProvider === 'google' ? 'Google' : 'Apple' })}
+          </Text>
+        ) : null}
         {socialError ? <Text style={styles.socialErrorText}>{socialError}</Text> : null}
         <Btn
           label={t('common.continue')}

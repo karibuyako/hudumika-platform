@@ -330,6 +330,10 @@ export default function WalletScreen() {
               </Row>
             </Card>
 
+            <View style={{ marginTop: Spacing.md }}>
+              <Btn label={t('wallet.payCode')} onPress={() => (router.push as any)('/wallet/pay-code')} icon="qr-code-outline" variant="outline" />
+            </View>
+
             <Text style={styles.section}>{t('wallet.transactions')}</Text>
           </View>
         }

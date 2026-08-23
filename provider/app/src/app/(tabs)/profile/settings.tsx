@@ -219,7 +219,7 @@ export default function SettingsScreen() {
         <Text style={styles.sub}>{t('settings.switchRoleSub')}</Text>
         <Field label={t('login.phone')} value={phone} onChangeText={setPhone} placeholder="+255700000000" keyboardType="phone-pad" maxLength={13} />
         <Btn label={resendIn > 0 ? mmss(resendIn) : sending ? t('misc.loading') : t('login.sendCode')} variant="ghost" size="sm" disabled={sending || resendIn > 0} onPress={sendCode} />
-        {debugCode ? (
+        {debugCode && process.env.EXPO_PUBLIC_ENV !== 'production' ? (
           <View style={styles.demoBox}>
             <Text style={styles.demoLabel}>DEMO MODE — your verification code is</Text>
             <Text style={styles.demoCode}>{debugCode}</Text>

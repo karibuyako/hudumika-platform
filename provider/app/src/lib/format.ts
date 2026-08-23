@@ -1,7 +1,12 @@
 export function tzs(n: number): string {
   const sign = n < 0 ? '-' : '';
   const abs = Math.round(Math.abs(n));
-  return `${sign}TZS ${abs.toLocaleString('en-US')}`;
+  try {
+    return `${sign}TZS ${abs.toLocaleString('en-US')}`;
+  } catch {
+    // Hermes without Intl — fallback plain integer
+    return `${sign}TZS ${String(abs)}`;
+  }
 }
 
 export function timeAgo(ts: number): string {
@@ -88,5 +93,7 @@ export const DECLINE_REASONS = [
   'Too far from my service area',
   'Missing parts or equipment',
   'Outside my trade',
+  'Pricing disagreement',
+  'Customer unresponsive',
   'Other',
 ];

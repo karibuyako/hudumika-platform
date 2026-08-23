@@ -14,11 +14,13 @@ import type {
   GetServerEventsParams,
   ListAnnouncements200Item,
   ListMyNotificationsParams,
+  NotFoundResponse,
   Notification,
   NotificationPreferences,
   OrderAlertSettings,
   PushToken,
   PushTokenRegister,
+  RegisterPushTokenAliasBody,
   ValidationErrorResponse
 } from '../../model';
 
@@ -552,6 +554,151 @@ export const markAllNotificationsRead = async ( options?: RequestInit): Promise<
 
   const data: markAllNotificationsReadResponse['data'] = body ? JSON.parse(body) : undefined
   return { data, status: res.status, headers: res.headers } as markAllNotificationsReadResponse
+}
+
+
+export type registerPushTokenAliasResponse200 = {
+  data: PushToken
+  status: 200
+}
+
+export type registerPushTokenAliasResponse201 = {
+  data: PushToken
+  status: 201
+}
+
+export type registerPushTokenAliasResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type registerPushTokenAliasResponseSuccess = (registerPushTokenAliasResponse200 | registerPushTokenAliasResponse201) & {
+  headers: Headers;
+};
+export type registerPushTokenAliasResponseError = (registerPushTokenAliasResponse422) & {
+  headers: Headers;
+};
+
+export type registerPushTokenAliasResponse = (registerPushTokenAliasResponseSuccess | registerPushTokenAliasResponseError)
+
+export const getRegisterPushTokenAliasUrl = () => {
+
+
+
+
+  return `/push/tokens`
+}
+
+/**
+ * @summary Register a device push token (consumer alias)
+ */
+export const registerPushTokenAlias = async (registerPushTokenAliasBody: RegisterPushTokenAliasBody, options?: RequestInit): Promise<registerPushTokenAliasResponse> => {
+
+  const res = await fetch(getRegisterPushTokenAliasUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(registerPushTokenAliasBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: registerPushTokenAliasResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as registerPushTokenAliasResponse
+}
+
+
+export type listPushTokensAliasResponse200 = {
+  data: PushToken[]
+  status: 200
+}
+
+export type listPushTokensAliasResponseSuccess = (listPushTokensAliasResponse200) & {
+  headers: Headers;
+};
+;
+
+export type listPushTokensAliasResponse = (listPushTokensAliasResponseSuccess)
+
+export const getListPushTokensAliasUrl = () => {
+
+
+
+
+  return `/push/tokens`
+}
+
+/**
+ * @summary List registered push tokens (consumer alias)
+ */
+export const listPushTokensAlias = async ( options?: RequestInit): Promise<listPushTokensAliasResponse> => {
+
+  const res = await fetch(getListPushTokensAliasUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: listPushTokensAliasResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as listPushTokensAliasResponse
+}
+
+
+export type deletePushTokenAliasResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deletePushTokenAliasResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type deletePushTokenAliasResponseSuccess = (deletePushTokenAliasResponse204) & {
+  headers: Headers;
+};
+export type deletePushTokenAliasResponseError = (deletePushTokenAliasResponse404) & {
+  headers: Headers;
+};
+
+export type deletePushTokenAliasResponse = (deletePushTokenAliasResponseSuccess | deletePushTokenAliasResponseError)
+
+export const getDeletePushTokenAliasUrl = (token: string,) => {
+
+
+
+
+  return `/push/tokens/${token}`
+}
+
+/**
+ * @summary Deregister a device push token (consumer alias)
+ */
+export const deletePushTokenAlias = async (token: string, options?: RequestInit): Promise<deletePushTokenAliasResponse> => {
+
+  const res = await fetch(getDeletePushTokenAliasUrl(token),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deletePushTokenAliasResponse['data'] = body ? JSON.parse(body) : undefined
+  return { data, status: res.status, headers: res.headers } as deletePushTokenAliasResponse
 }
 
 

@@ -27,6 +27,7 @@ import type {
   ChatMessage,
   Conversation,
   ConversationDetail,
+  DisputeRecord,
   GetUnreadConversationCount200,
   ListHelpArticles200Item,
   Ticket,
@@ -57,6 +58,12 @@ export const getBlockConversationResponseMock = (overrideResponse: Partial<Extra
 export const getGetUnreadConversationCountResponseMock = (overrideResponse: Partial<Extract<GetUnreadConversationCount200, object>> = {}): GetUnreadConversationCount200 => ({count: faker.number.int(), ...overrideResponse})
 
 export const getListHelpArticlesResponseMock = (): ListHelpArticles200Item[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.uuid(), title: faker.string.alpha({length: {min: 10, max: 20}}), category: faker.string.alpha({length: {min: 10, max: 20}}), body: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})))
+
+export const getCreateDisputeResponseMock = (overrideResponse: Partial<Extract<DisputeRecord, object>> = {}): DisputeRecord => ({id: faker.string.uuid(), referenceType: faker.helpers.arrayElement(['order','booking'] as const), referenceId: faker.string.uuid(), status: faker.helpers.arrayElement(['open','resolving','resolved','dismissed'] as const), reason: faker.string.alpha({length: {min: 10, max: 20}}), description: faker.string.alpha({length: {min: 10, max: 20}}), evidenceUrls: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.internet.url())), undefined]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', updatedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', resolution: faker.helpers.arrayElement([faker.helpers.arrayElement([{outcome: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), at: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), note: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null])}, null]), null]), ...overrideResponse})
+
+export const getListMyDisputesResponseMock = (): DisputeRecord[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.uuid(), referenceType: faker.helpers.arrayElement(['order','booking'] as const), referenceId: faker.string.uuid(), status: faker.helpers.arrayElement(['open','resolving','resolved','dismissed'] as const), reason: faker.string.alpha({length: {min: 10, max: 20}}), description: faker.string.alpha({length: {min: 10, max: 20}}), evidenceUrls: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.internet.url())), undefined]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', updatedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', resolution: faker.helpers.arrayElement([faker.helpers.arrayElement([{outcome: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), at: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), note: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null])}, null]), null])})))
+
+export const getGetDisputeResponseMock = (overrideResponse: Partial<Extract<DisputeRecord, object>> = {}): DisputeRecord => ({id: faker.string.uuid(), referenceType: faker.helpers.arrayElement(['order','booking'] as const), referenceId: faker.string.uuid(), status: faker.helpers.arrayElement(['open','resolving','resolved','dismissed'] as const), reason: faker.string.alpha({length: {min: 10, max: 20}}), description: faker.string.alpha({length: {min: 10, max: 20}}), evidenceUrls: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.internet.url())), undefined]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', updatedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', resolution: faker.helpers.arrayElement([faker.helpers.arrayElement([{outcome: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), at: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), note: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null])}, null]), null]), ...overrideResponse})
 
 
 export const getCreateTicketMockHandler = (overrideResponse?: Ticket | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<Ticket> | Ticket), options?: RequestHandlerOptions) => {
@@ -222,6 +229,42 @@ export const getListHelpArticlesMockHandler = (overrideResponse?: ListHelpArticl
       })
   }, options)
 }
+
+export const getCreateDisputeMockHandler = (overrideResponse?: DisputeRecord | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<DisputeRecord> | DisputeRecord), options?: RequestHandlerOptions) => {
+  return http.post('*/disputes', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getCreateDisputeResponseMock(),
+      { status: 201
+      })
+  }, options)
+}
+
+export const getListMyDisputesMockHandler = (overrideResponse?: DisputeRecord[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<DisputeRecord[]> | DisputeRecord[]), options?: RequestHandlerOptions) => {
+  return http.get('*/disputes/me', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getListMyDisputesResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getGetDisputeMockHandler = (overrideResponse?: DisputeRecord | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<DisputeRecord> | DisputeRecord), options?: RequestHandlerOptions) => {
+  return http.get('*/disputes/:disputeId', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetDisputeResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
 export const getSupportMock = () => [
   getCreateTicketMockHandler(),
   getListMyTicketsMockHandler(),
@@ -236,5 +279,8 @@ export const getSupportMock = () => [
   getArchiveConversationMockHandler(),
   getBlockConversationMockHandler(),
   getGetUnreadConversationCountMockHandler(),
-  getListHelpArticlesMockHandler()
+  getListHelpArticlesMockHandler(),
+  getCreateDisputeMockHandler(),
+  getListMyDisputesMockHandler(),
+  getGetDisputeMockHandler()
 ]

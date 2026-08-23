@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 
@@ -71,7 +71,7 @@ export default function LoginScreen() {
       await verifyOtp(requestId, code);
       hapticSuccess();
       const target = useSessionStore.getState().status === 'authed' ? '/home' : '/onboarding';
-      router.replace(target);
+      router.replace(target as Href);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Sign in failed — try again');
     } finally {
@@ -116,7 +116,7 @@ export default function LoginScreen() {
               </View>
             </View>
 
-            {debugCode ? (
+            {debugCode && process.env.EXPO_PUBLIC_ENV !== 'production' ? (
               <View style={styles.demoBox}>
                 <Text style={styles.demoLabel}>DEMO MODE — your verification code is</Text>
                 <Text style={styles.demoCode}>{debugCode}</Text>
@@ -131,7 +131,7 @@ export default function LoginScreen() {
             <Text style={styles.roleLabel}>{t('login.roleNotice')}</Text>
             <Text style={styles.roleSub}>{t('login.roleSub')}</Text>
           </View>
-          <Text style={styles.tip}>{t('login.tip')}</Text>
+          {process.env.EXPO_PUBLIC_ENV !== 'production' ? <Text style={styles.tip}>{t('login.tip')}</Text> : null}
         </View>
       </KeyboardAvoidingView>
     </Screen>

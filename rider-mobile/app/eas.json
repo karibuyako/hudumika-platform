@@ -16,11 +16,15 @@
       },
       "env": {
         "EXPO_PUBLIC_ENV": "development",
-        "EXPO_PUBLIC_API_URL": "https://staging-api.hudumika.co.tz/api/v1",
+        "EXPO_PUBLIC_API_URL": "",
         "EXPO_PUBLIC_MOCK_AUTH": "true",
         "EXPO_PUBLIC_MOCK_JOBS": "true",
         "EXPO_PUBLIC_MOCK_EARNINGS": "true",
-        "EXPO_PUBLIC_MOCK_TRIPS": "true"
+        "EXPO_PUBLIC_MOCK_SUPPORT": "true",
+        "EXPO_PUBLIC_MOCK_SAFETY": "true",
+        "EXPO_PUBLIC_MOCK_VEHICLE": "true",
+        "EXPO_PUBLIC_MOCK_TRIPS": "true",
+        "EXPO_PUBLIC_MOCK_LOGISTICS": "true"
       }
     },
     "preview": {
@@ -38,7 +42,25 @@
         "EXPO_PUBLIC_MOCK_SUPPORT": "false",
         "EXPO_PUBLIC_MOCK_SAFETY": "false",
         "EXPO_PUBLIC_MOCK_VEHICLE": "false",
-        "EXPO_PUBLIC_MOCK_TRIPS": "false"
+        "EXPO_PUBLIC_MOCK_TRIPS": "false",
+        "EXPO_PUBLIC_MOCK_LOGISTICS": "false"
+      }
+    },
+    "preview-mock": {
+      "extends": "preview",
+      "distribution": "internal",
+      "channel": "preview",
+      "env": {
+        "EXPO_PUBLIC_ENV": "staging",
+        "EXPO_PUBLIC_API_URL": "",
+        "EXPO_PUBLIC_MOCK_AUTH": "true",
+        "EXPO_PUBLIC_MOCK_JOBS": "true",
+        "EXPO_PUBLIC_MOCK_EARNINGS": "true",
+        "EXPO_PUBLIC_MOCK_SUPPORT": "true",
+        "EXPO_PUBLIC_MOCK_SAFETY": "true",
+        "EXPO_PUBLIC_MOCK_VEHICLE": "true",
+        "EXPO_PUBLIC_MOCK_TRIPS": "true",
+        "EXPO_PUBLIC_MOCK_LOGISTICS": "true"
       }
     },
     "production": {
@@ -55,7 +77,8 @@
         "EXPO_PUBLIC_MOCK_SUPPORT": "false",
         "EXPO_PUBLIC_MOCK_SAFETY": "false",
         "EXPO_PUBLIC_MOCK_VEHICLE": "false",
-        "EXPO_PUBLIC_MOCK_TRIPS": "false"
+        "EXPO_PUBLIC_MOCK_TRIPS": "false",
+        "EXPO_PUBLIC_MOCK_LOGISTICS": "false"
       }
     }
   }

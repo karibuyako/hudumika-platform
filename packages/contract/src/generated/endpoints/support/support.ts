@@ -16,6 +16,8 @@ import type {
   Conversation,
   ConversationCreate,
   ConversationDetail,
+  CreateDisputeBody,
+  DisputeRecord,
   ForbiddenResponse,
   GetUnreadConversationCount200,
   ListConversationMessagesParams,
@@ -675,6 +677,151 @@ export const listHelpArticles = async (params?: ListHelpArticlesParams, options?
 
   const data: listHelpArticlesResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as listHelpArticlesResponse
+}
+
+
+export type createDisputeResponse201 = {
+  data: DisputeRecord
+  status: 201
+}
+
+export type createDisputeResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type createDisputeResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type createDisputeResponseSuccess = (createDisputeResponse201) & {
+  headers: Headers;
+};
+export type createDisputeResponseError = (createDisputeResponse404 | createDisputeResponse422) & {
+  headers: Headers;
+};
+
+export type createDisputeResponse = (createDisputeResponseSuccess | createDisputeResponseError)
+
+export const getCreateDisputeUrl = () => {
+
+
+
+
+  return `/disputes`
+}
+
+/**
+ * @summary Create a customer dispute
+ */
+export const createDispute = async (createDisputeBody: CreateDisputeBody, options?: RequestInit): Promise<createDisputeResponse> => {
+
+  const res = await fetch(getCreateDisputeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createDisputeBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: createDisputeResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as createDisputeResponse
+}
+
+
+export type listMyDisputesResponse200 = {
+  data: DisputeRecord[]
+  status: 200
+}
+
+export type listMyDisputesResponseSuccess = (listMyDisputesResponse200) & {
+  headers: Headers;
+};
+;
+
+export type listMyDisputesResponse = (listMyDisputesResponseSuccess)
+
+export const getListMyDisputesUrl = () => {
+
+
+
+
+  return `/disputes/me`
+}
+
+/**
+ * @summary List my disputes
+ */
+export const listMyDisputes = async ( options?: RequestInit): Promise<listMyDisputesResponse> => {
+
+  const res = await fetch(getListMyDisputesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: listMyDisputesResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as listMyDisputesResponse
+}
+
+
+export type getDisputeResponse200 = {
+  data: DisputeRecord
+  status: 200
+}
+
+export type getDisputeResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type getDisputeResponseSuccess = (getDisputeResponse200) & {
+  headers: Headers;
+};
+export type getDisputeResponseError = (getDisputeResponse404) & {
+  headers: Headers;
+};
+
+export type getDisputeResponse = (getDisputeResponseSuccess | getDisputeResponseError)
+
+export const getGetDisputeUrl = (disputeId: string,) => {
+
+
+
+
+  return `/disputes/${disputeId}`
+}
+
+/**
+ * @summary Get a dispute
+ */
+export const getDispute = async (disputeId: string, options?: RequestInit): Promise<getDisputeResponse> => {
+
+  const res = await fetch(getGetDisputeUrl(disputeId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getDisputeResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getDisputeResponse
 }
 
 

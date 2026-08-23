@@ -24,6 +24,7 @@ import type {
   ListPaymentHistory200Item,
   ListPaymentMethods200Item,
   PaymentIntent,
+  PaymentMethod,
   PaymentQr,
   RequestCustomerPayment201
 } from '../../model';
@@ -39,6 +40,8 @@ export const getCreatePaymentQrResponseMock = (overrideResponse: Partial<Extract
 
 export const getListPaymentMethodsResponseMock = (): ListPaymentMethods200Item[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({method: faker.helpers.arrayElement(['mpesa','tigo_pesa','airtel_money','ezy_pesa','halotel','card','cod','bank'] as const), available: faker.datatype.boolean()})))
 
+export const getAddPaymentMethodResponseMock = (overrideResponse: Partial<Extract<PaymentMethod, object>> = {}): PaymentMethod => ({id: faker.string.uuid(), method: faker.helpers.arrayElement(['mpesa','tigo_pesa','airtel_money','ezy_pesa','halotel','card','cod','bank'] as const), label: faker.string.alpha({length: {min: 10, max: 20}}), isDefault: faker.helpers.arrayElement([faker.datatype.boolean(), undefined]), available: faker.helpers.arrayElement([faker.datatype.boolean(), undefined]), createdAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), ...overrideResponse})
+
 export const getListPaymentHistoryResponseMock = (): ListPaymentHistory200Item[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.uuid(), method: faker.string.alpha({length: {min: 10, max: 20}}), amountTZS: faker.number.int(), status: faker.helpers.arrayElement(['created','pending','paid','failed','refunded','reversed'] as const), reference: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z'})))
 
 export const getReversePaymentResponseMock = (overrideResponse: Partial<Extract<PaymentIntent, object>> = {}): PaymentIntent => ({id: faker.string.uuid(), status: faker.helpers.arrayElement(['created','pending','paid','failed','refunded','partially_refunded'] as const), amountTZS: faker.number.int(), method: faker.string.alpha({length: {min: 10, max: 20}}), providerReference: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), paidAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), ...overrideResponse})
@@ -46,6 +49,8 @@ export const getReversePaymentResponseMock = (overrideResponse: Partial<Extract<
 export const getGetPaymentIntentStatusResponseMock = (overrideResponse: Partial<Extract<PaymentIntent, object>> = {}): PaymentIntent => ({id: faker.string.uuid(), status: faker.helpers.arrayElement(['created','pending','paid','failed','refunded','partially_refunded'] as const), amountTZS: faker.number.int(), method: faker.string.alpha({length: {min: 10, max: 20}}), providerReference: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), paidAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), ...overrideResponse})
 
 export const getRequestCustomerPaymentResponseMock = (overrideResponse: Partial<Extract<RequestCustomerPayment201, object>> = {}): RequestCustomerPayment201 => ({requestId: faker.string.uuid(), status: faker.helpers.arrayElement(['sent','pending_confirmation'] as const), ...overrideResponse})
+
+export const getSetDefaultPaymentMethodResponseMock = (overrideResponse: Partial<Extract<PaymentMethod, object>> = {}): PaymentMethod => ({id: faker.string.uuid(), method: faker.helpers.arrayElement(['mpesa','tigo_pesa','airtel_money','ezy_pesa','halotel','card','cod','bank'] as const), label: faker.string.alpha({length: {min: 10, max: 20}}), isDefault: faker.helpers.arrayElement([faker.datatype.boolean(), undefined]), available: faker.helpers.arrayElement([faker.datatype.boolean(), undefined]), createdAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), ...overrideResponse})
 
 
 export const getCreatePaymentIntentMockHandler = (overrideResponse?: PaymentIntent | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<PaymentIntent> | PaymentIntent), options?: RequestHandlerOptions) => {
@@ -118,6 +123,18 @@ export const getListPaymentMethodsMockHandler = (overrideResponse?: ListPaymentM
   }, options)
 }
 
+export const getAddPaymentMethodMockHandler = (overrideResponse?: PaymentMethod | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<PaymentMethod> | PaymentMethod), options?: RequestHandlerOptions) => {
+  return http.post('*/payments/methods', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAddPaymentMethodResponseMock(),
+      { status: 201
+      })
+  }, options)
+}
+
 export const getListPaymentHistoryMockHandler = (overrideResponse?: ListPaymentHistory200Item[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<ListPaymentHistory200Item[]> | ListPaymentHistory200Item[]), options?: RequestHandlerOptions) => {
   return http.get('*/payments/history', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
 
@@ -165,6 +182,28 @@ export const getRequestCustomerPaymentMockHandler = (overrideResponse?: RequestC
       })
   }, options)
 }
+
+export const getDeletePaymentMethodMockHandler = (overrideResponse?: void | ((info: Parameters<Parameters<typeof http.delete>[1]>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
+  return http.delete('*/payments/methods/:methodId', async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
+  if (typeof overrideResponse === 'function') {await overrideResponse(info); }
+
+    return new HttpResponse(null,
+      { status: 204
+      })
+  }, options)
+}
+
+export const getSetDefaultPaymentMethodMockHandler = (overrideResponse?: PaymentMethod | ((info: Parameters<Parameters<typeof http.put>[1]>[0]) => Promise<PaymentMethod> | PaymentMethod), options?: RequestHandlerOptions) => {
+  return http.put('*/payments/methods/:methodId/default', async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getSetDefaultPaymentMethodResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
 export const getPaymentsMock = () => [
   getCreatePaymentIntentMockHandler(),
   getConfirmPaymentMockHandler(),
@@ -172,8 +211,11 @@ export const getPaymentsMock = () => [
   getRefundPaymentMockHandler(),
   getCreatePaymentQrMockHandler(),
   getListPaymentMethodsMockHandler(),
+  getAddPaymentMethodMockHandler(),
   getListPaymentHistoryMockHandler(),
   getReversePaymentMockHandler(),
   getGetPaymentIntentStatusMockHandler(),
-  getRequestCustomerPaymentMockHandler()
+  getRequestCustomerPaymentMockHandler(),
+  getDeletePaymentMethodMockHandler(),
+  getSetDefaultPaymentMethodMockHandler()
 ]

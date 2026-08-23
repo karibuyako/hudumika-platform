@@ -1248,6 +1248,10 @@ func (s *Server) SubmitOnboarding(w http.ResponseWriter, r *http.Request) {
 
 // DemoApproveOnboarding simulates staff approval (staging/demo only).
 func (s *Server) DemoApproveOnboarding(w http.ResponseWriter, r *http.Request) {
+	if s.cfg.IsProd() {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "Not found")
+		return
+	}
 	claims, ok := ClaimsFromContext(r.Context())
 	if !ok || !isStaffRole(claims.Role) {
 		writeError(w, http.StatusForbidden, "FORBIDDEN", "Only staff may approve onboarding")

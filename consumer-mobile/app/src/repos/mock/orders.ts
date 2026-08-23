@@ -23,7 +23,7 @@ import {
   validateOrderInput,
   buildOrderFrom,
 } from './mockState';
-import type { OrderModificationInput, OrderPaymentIntent, OrderCreateInput, OrderTipInput, OrdersRepository, DeliveryWindow, RouteCities, TrackingShare } from '../index';
+import type { OrderEstimate, OrderEstimateInput, OrderModificationInput, OrderPaymentIntent, OrderCreateInput, OrderTipInput, OrdersRepository, DeliveryWindow, RouteCities, TrackingShare } from '../index';
 import { earnOrderPoints } from './memberships';
 
 const ACTIVE: OrderStatus[] = ['pending_payment', 'paid', 'merchant_accepted', 'preparing', 'rider_assigned', 'picked_up', 'delivering'];
@@ -105,6 +105,42 @@ export function resetMockOrdersState(): void {
 }
 
 export class MockOrdersRepository implements OrdersRepository {
+  async estimate(input: OrderEstimateInput): Promise<OrderEstimate> {
+    // Advisory fee preview — server recomputes authoritatively at order create.
+    // Hardcoded fallback is the safe default (buildOrderFrom uses 2500/800);
+    // when merchant metadata is available we derive a small dynamic hint:
+    // deliveryFee from deliveryMinutes, platformFee from rating — still advisory.
+    const fallback: OrderEstimate = { deliveryFeeTZS: 2500, platformFeeTZS: 800, taxTZS: 0 };
+    try {
+      const merchant = findMerchant(input.merchantId);
+      // Dynamic hint from merchant metadata (deliveryMinutes + rating) when available.
+      // Delivery fee: 2000 base + 20 TZS per minute beyond 15, capped 2000–3500.
+      // Platform fee: 1000 base minus rating bonus (top-rated cheaper), clamped 500–1000.
+      const deliveryMinutes: number | null | undefined = (merchant as any).deliveryMinutes;
+      const rating: number | null | undefined = (merchant as any).rating;
+      let deliveryFeeTZS = fallback.deliveryFeeTZS;
+      let platformFeeTZS = fallback.platformFeeTZS;
+      if (typeof deliveryMinutes === 'number' && Number.isFinite(deliveryMinutes)) {
+        deliveryFeeTZS = Math.min(3500, Math.max(2000, Math.round(2000 + Math.max(0, deliveryMinutes - 15) * 20)));
+      }
+      if (typeof rating === 'number' && Number.isFinite(rating)) {
+        platformFeeTZS = Math.min(1000, Math.max(500, Math.round(1000 - Math.max(0, rating - 3.5) * 150)));
+      }
+      // Backend canonical fees are DeliveryFeeTZS 2000 / PlatformFeeTZS 1000 (backend/internal/orders/orders.go)
+      // — when no merchant hint is available we keep the consumer preview fallback (2500/800) so the
+      // UI does not under-promise before the server recompute.
+      // If both hints are present we blend toward the backend canonical to preview server truth.
+      const hasHint = typeof deliveryMinutes === 'number' || typeof rating === 'number';
+      return {
+        deliveryFeeTZS: hasHint ? deliveryFeeTZS : fallback.deliveryFeeTZS,
+        platformFeeTZS: hasHint ? platformFeeTZS : fallback.platformFeeTZS,
+        taxTZS: 0,
+      };
+    } catch {
+      return fallback;
+    }
+  }
+
   async create(input: OrderCreateInput, idempotencyKey: string): Promise<Order> {
     const state = getState();
     const replay = state.orderReplays.get(idempotencyKey);

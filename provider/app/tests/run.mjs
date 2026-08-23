@@ -9,7 +9,7 @@ const outDir = path.join(root, 'tests', '.build');
 mkdirSync(outDir, { recursive: true });
 
 const alias = path.join(root, 'src');
-const tests = process.argv.slice(2).length ? process.argv.slice(2) : ['provider-contract.test.ts', 'queue.test.ts'];
+const tests = process.argv.slice(2).length ? process.argv.slice(2) : ['provider-contract.test.ts', 'queue.test.ts', 'api-base.test.ts'];
 
 for (const t of tests) {
   const src = path.join(root, 'tests', t);

@@ -1,9 +1,16 @@
 import { getLocale } from '@/i18n';
 
+/* Money is integer minor units of TZS (1 TZS = 1 unit). Never floats. */
+const TZS_FORMAT = new Intl.NumberFormat('en-TZ');
+
 export function tzs(n: number): string {
   const sign = n < 0 ? '-' : '';
   const abs = Math.round(Math.abs(n));
-  return `${sign}TZS ${abs.toLocaleString('en-US')}`;
+  return `${sign}TZS ${TZS_FORMAT.format(abs)}`;
+}
+
+export function formatTZS(n: number): string {
+  return tzs(n);
 }
 
 export function timeAgo(ts: number): string {

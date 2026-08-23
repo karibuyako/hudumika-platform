@@ -22,6 +22,8 @@ import { Spinner } from '@/components/ui';
 import { Colors, Fonts, FontSize } from '@/constants/theme';
 import { t } from '@/i18n';
 import { useSessionStore } from '@/store/session';
+import { eventBus } from '@/store/events';
+import { isValidApiBase } from '@/api/client';
 
 // Registers the background location task at app launch (module-scope defineTask).
 import '@/lib/locationTask';
@@ -51,9 +53,52 @@ export default function RootLayout() {
     return () => clearTimeout(timer);
   }, [status]);
 
+  // Realtime: WS preferred, long-poll fallback. Starts when authed, stops otherwise.
+  useEffect(() => {
+    if (status !== 'authed') {
+      import('@/api/websocket').then(({ stopRiderRealtime }) => stopRiderRealtime()).catch(() => {});
+      return;
+    }
+    let unsub: (() => void) | null = null;
+    import('@/api/websocket')
+      .then(({ startRiderRealtime }) => startRiderRealtime())
+      .catch(() => import('@/api/events').then(({ startEventStream }) => startEventStream()));
+    // Invalidate jobs/notifications on live events (single subscriber, no per-screen cost).
+    unsub = eventBus.subscribe((type) => {
+      if (type.startsWith('order.') || type.startsWith('surge.') || type.startsWith('forecast.')) {
+        import('@/store/jobs').then(({ useJobsStore }) => void useJobsStore.getState().refresh());
+      }
+    });
+    // Connectivity → flush offline queue (native + web). Also listen for online event on web.
+    const flush = () => import('@/api/queue').then(({ flushQueue }) => void flushQueue());
+    const onOnline = () => void flush();
+    if (typeof window !== 'undefined') window.addEventListener('online', onOnline);
+    // App foreground re-sync (visibility change)
+    const onVisible = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') void flush();
+    };
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      if (unsub) unsub();
+      if (typeof window !== 'undefined') window.removeEventListener('online', onOnline);
+      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVisible);
+      import('@/api/websocket').then(({ stopRiderRealtime }) => stopRiderRealtime()).catch(() => {});
+    };
+  }, [status]);
+
+  const showMockBanner =
+    !isValidApiBase() &&
+    (process.env.EXPO_PUBLIC_ENV === 'staging' || process.env.EXPO_PUBLIC_ENV === 'production') &&
+    status !== 'boot';
+
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />
+      {showMockBanner ? (
+        <View style={styles.mockBanner}>
+          <Text style={styles.mockBannerText}>Demo mode — mock data (API URL not configured). Builds work without custom domain; run `eas update` when DNS is ready.</Text>
+        </View>
+      ) : null}
       {!fontsLoaded || status === 'boot' ? (
         <View style={styles.splash}>
           <Spinner size="large" color={Colors.primary} />
@@ -80,6 +125,14 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
+  mockBanner: {
+    backgroundColor: Colors.warningSoft,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.warning,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  mockBannerText: { color: Colors.warning, fontSize: 11, fontFamily: Fonts.sansBold, textAlign: 'center' },
   splash: {
     flex: 1,
     backgroundColor: Colors.bg,

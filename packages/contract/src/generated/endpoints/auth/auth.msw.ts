@@ -46,6 +46,8 @@ export const getTwoFaRecoveryResponseMock = (overrideResponse: Partial<Extract<T
 
 export const getListMySessionsResponseMock = (): SessionInfo[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.uuid(), deviceInfo: faker.string.alpha({length: {min: 10, max: 20}}), lastActiveAt: faker.date.past().toISOString().slice(0, 19) + 'Z', current: faker.datatype.boolean()})))
 
+export const getSocialLoginResponseMock = (overrideResponse: Partial<Extract<Session, object>> = {}): Session => ({accessToken: faker.string.alpha({length: {min: 10, max: 20}}), refreshToken: faker.string.alpha({length: {min: 10, max: 20}}), user: {id: faker.string.uuid(), phone: faker.string.alpha({length: {min: 10, max: 20}}), email: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), fullName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), avatarUrl: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), activeRole: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), roles: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({role: faker.helpers.arrayElement(['customer','merchant','provider','rider'] as const), merchantId: faker.helpers.arrayElement([faker.string.uuid(), null]), providerId: faker.helpers.arrayElement([faker.string.uuid(), null]), riderId: faker.helpers.arrayElement([faker.string.uuid(), null])})), locale: faker.string.alpha({length: {min: 10, max: 20}}), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z'}, ...overrideResponse})
+
 
 export const getRequestOtpMockHandler = (overrideResponse?: OtpDelivery | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<OtpDelivery> | OtpDelivery), options?: RequestHandlerOptions) => {
   return http.post('*/auth/request-otp', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
@@ -182,6 +184,18 @@ export const getRevokeSessionMockHandler = (overrideResponse?: void | ((info: Pa
       })
   }, options)
 }
+
+export const getSocialLoginMockHandler = (overrideResponse?: Session | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<Session> | Session), options?: RequestHandlerOptions) => {
+  return http.post('*/auth/social', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getSocialLoginResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
 export const getAuthMock = () => [
   getRequestOtpMockHandler(),
   getVerifyOtpMockHandler(),
@@ -194,5 +208,6 @@ export const getAuthMock = () => [
   getTwoFaRecoveryMockHandler(),
   getChangePasswordMockHandler(),
   getListMySessionsMockHandler(),
-  getRevokeSessionMockHandler()
+  getRevokeSessionMockHandler(),
+  getSocialLoginMockHandler()
 ]

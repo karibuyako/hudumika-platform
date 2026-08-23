@@ -41,6 +41,7 @@ import { CURATED_LISTS, resolveList } from '@/lib/lists';
 import { GeoError, reverseGeocode, type GeoPosition } from '@/lib/geolocation';
 import { getHomeRepository, getFavoritesRepository, getMerchantsRepository, getGroupBuyRepository, getMarketingRepository, canShowRecommendations, type RecommendedMerchant } from '@/repos';
 import { track } from '@/lib/analytics';
+import { invalidateQuery, queryKeys } from '@/hooks/query';
 import { useLocationStore } from '@/store/location';
 import { useSessionStore } from '@/store/session';
 import { useCartStore } from '@/store/cart';
@@ -62,6 +63,7 @@ const CATEGORY_ICONS: Record<string, IconName> = {
   Events: 'ticket',
   Retail: 'bag-handle',
   Travel: 'airplane',
+  Bike: 'bicycle',
 };
 
 const CATEGORY_PASTEL: Record<string, string> = Colors.categoryPastel as unknown as Record<string, string>;
@@ -76,8 +78,10 @@ const FALLBACK_CATEGORIES: Array<{ id: string; name: string }> = [
   { id: '7', name: 'Repairs' },
   { id: '8', name: 'Logistics' },
   { id: '9', name: 'Rides' },
-  { id: '10', name: 'Events' },
+  { id: '10', name: 'Bike' },
 ];
+// In production, never fallback to demo categories — show empty state if feed is empty.
+const isProdHome = process.env.EXPO_PUBLIC_ENV === 'production';
 
 /* Campaign pill is fetched per merchant (the feed carries platform promotions
  * only — no per-merchant campaigns); cap the fetch to the first visible cards
@@ -230,6 +234,7 @@ export default function HomeScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
+    invalidateQuery(queryKeys.home.recommendations(city?.id));
     await load(true);
     void loadRecommendations();
     setRefreshing(false);
@@ -267,7 +272,7 @@ export default function HomeScreen() {
 
   const renderMerchant = ({ item }: { item: MerchantPublic }) => {
     const isFav = favoriteIds.has(item.id);
-    const priceTZS = 6000 + ((parseInt(item.id.slice(-2), 16) || item.businessName.length * 137) % 14) * 1000;
+    const priceTZS = isProdHome ? null : 6000 + ((parseInt(item.id.slice(-2), 16) || item.businessName.length * 137) % 14) * 1000;
     return (
       <View style={[styles.merchantCard, { position: 'relative' }]}>
         <Card onPress={() => router.push(`/merchant/${item.id}`)} accessibilityLabel={t('home.merchantLabel', { name: item.businessName })}>
@@ -293,7 +298,7 @@ export default function HomeScreen() {
                   <Text style={styles.merchantMeta}>{t('order.estimated', { m: item.deliveryMinutes })}</Text>
                 ) : null}
               </Row>
-              <Text style={styles.nearbyPrice}>{formatTZS(priceTZS)}</Text>
+              {priceTZS !== null ? <Text style={styles.nearbyPrice}>{formatTZS(priceTZS)}</Text> : null}
             </View>
           </Row>
         </Card>
@@ -359,10 +364,11 @@ export default function HomeScreen() {
 
   const quickActions: { key: string; label: string; icon: IconName; onPress?: () => void; disabled?: boolean }[] = [
     { key: 'reorder', label: t('home.quick.reorder'), icon: 'repeat', onPress: reorderMostRecent, disabled: !canReorder },
-    { key: 'track', label: t('home.quick.track'), icon: 'navigate', onPress: activeOrder ? () => router.push(`/order/${activeOrder.id}/tracking`) : undefined, disabled: !activeOrder },
-    { key: 'scan', label: t('home.quick.scan'), icon: 'qr-code-outline', onPress: () => router.push('/dine-in') },
-    { key: 'coupons', label: t('home.quick.coupons'), icon: 'pricetags', onPress: () => router.push('/coupons') },
-    { key: 'assistant', label: t('home.quick.assistant'), icon: 'chatbubble-ellipses', onPress: () => router.push('/assistant') },
+    { key: 'track', label: t('home.quick.track'), icon: 'navigate', onPress: activeOrder ? () => router.push(`/order/${activeOrder.id}/tracking` as any) : undefined, disabled: !activeOrder },
+    { key: 'ride', label: 'Ride', icon: 'car', onPress: () => router.push('/ride' as any) },
+    { key: 'scan', label: t('home.quick.scan'), icon: 'qr-code-outline', onPress: () => router.push('/dine-in' as any) },
+    { key: 'coupons', label: t('home.quick.coupons'), icon: 'pricetags', onPress: () => router.push('/coupons' as any) },
+    { key: 'assistant', label: t('home.quick.assistant'), icon: 'chatbubble-ellipses', onPress: () => router.push('/assistant' as any) },
   ];
 
   return (
@@ -469,26 +475,39 @@ export default function HomeScreen() {
 
             <SectionTitle title={t('home.categories')} icon="grid" />
             <View style={styles.categoryGrid}>
-              {((feed.categories && feed.categories.length > 0 ? feed.categories : FALLBACK_CATEGORIES) as Array<{ id: string; name: string }>).slice(0, 10).map((cat) => {
-                const icon = CATEGORY_ICONS[cat.name] ?? 'grid-outline';
-                return (
-                  <Pressable
-                    key={cat.id}
-                    onPress={() => router.push({ pathname: '/category/[id]', params: { id: cat.name } })}
-                    accessibilityRole="button"
-                    accessibilityLabel={cat.name}
-                    style={styles.categoryItem}>
-                    <View style={[styles.categoryIcon, { backgroundColor: CATEGORY_PASTEL[cat.name] ?? Colors.surface }]}>
-                      <Icon name={icon} size={20} color={Colors.primaryDeep} />
-                    </View>
-                    <Text style={styles.categoryName} numberOfLines={2}>{cat.name}</Text>
-                  </Pressable>
-                );
-              })}
+              {(() => {
+                const base = (isProdHome ? (feed.categories ?? []) : (feed.categories && feed.categories.length > 0 ? feed.categories : FALLBACK_CATEGORIES)) as Array<{ id: string; name: string }>;
+                const hasBike = base.some((c) => c.name === 'Bike');
+                const withBike = hasBike ? base : [...base.slice(0, 9), { id: 'bike', name: 'Bike' }];
+                return withBike.slice(0, 10).map((cat) => {
+                  const icon = CATEGORY_ICONS[cat.name] ?? 'grid-outline';
+                  const isRide = cat.name === 'Rides';
+                  const isBike = cat.name === 'Bike';
+                  return (
+                    <Pressable
+                      key={cat.id}
+                      onPress={() => {
+                        if (isRide) router.push('/ride' as any);
+                        else if (isBike) router.push('/bike' as any);
+                        else router.push({ pathname: '/category/[id]', params: { id: cat.name } } as any);
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel={cat.name}
+                      style={styles.categoryItem}>
+                      <View style={[styles.categoryIcon, { backgroundColor: CATEGORY_PASTEL[cat.name] ?? Colors.surface }]}>
+                        <Icon name={isBike ? 'bicycle' : isRide ? 'car' : icon} size={20} color={Colors.primaryDeep} />
+                      </View>
+                      <Text style={styles.categoryName} numberOfLines={2}>{cat.name}</Text>
+                    </Pressable>
+                  );
+                });
+              })()}
             </View>
 
             {(() => {
-              const _cats = (feed.categories && feed.categories.length > 0 ? feed.categories : FALLBACK_CATEGORIES).slice(0, 10);
+              const _base = (isProdHome ? (feed.categories ?? []) : (feed.categories && feed.categories.length > 0 ? feed.categories : FALLBACK_CATEGORIES)) as Array<{ id: string; name: string }>;
+              const _hasBike = _base.some((c) => c.name === 'Bike');
+              const _cats = (_hasBike ? _base : [..._base.slice(0, 9), { id: 'bike', name: 'Bike' }]).slice(0, 10);
               const _pages = Math.max(1, Math.ceil(_cats.length / 10));
               return (
                 <Row style={styles.pageDots}>
@@ -500,7 +519,7 @@ export default function HomeScreen() {
             })()}
 
             <View style={styles.quickActions}>
-              {quickActions.filter((qa) => ['scan', 'coupons', 'assistant'].includes(qa.key)).map((qa) => (
+              {quickActions.filter((qa) => ['ride', 'scan', 'coupons', 'assistant'].includes(qa.key)).map((qa) => (
                 <Pressable
                   key={qa.key}
                   onPress={qa.onPress}
@@ -625,31 +644,35 @@ export default function HomeScreen() {
             ) : null}
 
             {/* Curated lists (必吃榜-lite) — demo seed in src/lib/lists.ts;
-                production feeds this rail from a Lists API. */}
-            <SectionTitle title={t('lists.title')} icon="trophy" />
-            <FlatList
-              horizontal
-              data={CURATED_LISTS}
-              keyExtractor={(l) => l.id}
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: Spacing.md }}
-              renderItem={({ item }) => {
-                const resolved = resolveList(item.id, feed.merchants ?? []);
-                return (
-                  <Card
-                    style={styles.listCard}
-                    onPress={() => router.push(`/list/${item.id}`)}
-                    accessibilityLabel={t(item.titleKey)}>
-                    <Text style={styles.listCardTitle} numberOfLines={2}>{t(item.titleKey)}</Text>
-                    <Text style={styles.listCardTagline} numberOfLines={2}>{t(item.taglineKey)}</Text>
-                    <Row style={{ justifyContent: 'space-between', marginTop: 'auto' }}>
-                      <Text style={styles.listCardMeta}>{t('lists.merchants', { n: resolved?.merchants.length ?? 0 })}</Text>
-                      <Text style={styles.listCardView}>{t('lists.viewAll')} ›</Text>
-                    </Row>
-                  </Card>
-                );
-              }}
-            />
+                production feeds this rail from a Lists API. Hidden in prod until /lists ships. */}
+            {!isProdHome ? (
+              <>
+                <SectionTitle title={t('lists.title')} icon="trophy" />
+                <FlatList
+                  horizontal
+                  data={CURATED_LISTS}
+                  keyExtractor={(l) => l.id}
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ gap: Spacing.md }}
+                  renderItem={({ item }) => {
+                    const resolved = resolveList(item.id, feed.merchants ?? []);
+                    return (
+                      <Card
+                        style={styles.listCard}
+                        onPress={() => router.push(`/list/${item.id}`)}
+                        accessibilityLabel={t(item.titleKey)}>
+                        <Text style={styles.listCardTitle} numberOfLines={2}>{t(item.titleKey)}</Text>
+                        <Text style={styles.listCardTagline} numberOfLines={2}>{t(item.taglineKey)}</Text>
+                        <Row style={{ justifyContent: 'space-between', marginTop: 'auto' }}>
+                          <Text style={styles.listCardMeta}>{t('lists.merchants', { n: resolved?.merchants.length ?? 0 })}</Text>
+                          <Text style={styles.listCardView}>{t('lists.viewAll')} ›</Text>
+                        </Row>
+                      </Card>
+                    );
+                  }}
+                />
+              </>
+            ) : null}
 
             {/* Recommended for you (MASTER-BLUEPRINT §5 personalization,
                 docs/CONTRACT-ADDITIONS.md #25, mock-only-until-adopted).

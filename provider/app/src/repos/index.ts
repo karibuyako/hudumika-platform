@@ -237,6 +237,10 @@ export interface CopilotRepository {
   ask(action: string, input: { bookingId?: string; jobSummary?: string; historyMonths?: number }): Promise<ProviderCopilot200>;
 }
 
+export interface KycRepository {
+  verify(input: { nidaNumber: string; selfieCaptured: boolean }): Promise<import('@/lib/kyc').KycVerification>;
+}
+
 /* ---------------- Factories ---------------- */
 
 export {
@@ -259,4 +263,5 @@ export {
   getPlansRepository,
   getTrustRepository,
   getCopilotRepository,
+  getKycRepository,
 } from './factories';

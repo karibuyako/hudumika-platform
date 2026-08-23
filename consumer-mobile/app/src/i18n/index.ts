@@ -45,7 +45,9 @@ export function onLocaleChange(fn: () => void): () => void {
 }
 
 export function t(key: Key, params?: Record<string, string | number>): string {
-  let s: string = dict[current][key] ?? dict.en[key] ?? key;
+  const cur = dict[current] as unknown as Record<string, string>;
+  const enDict = dict.en as unknown as Record<string, string>;
+  let s: string = cur[key] ?? enDict[key] ?? key;
   if (params) {
     for (const [k, v] of Object.entries(params)) {
       s = s.replace(`{${k}}`, String(v));

@@ -39,13 +39,32 @@ func (s *Server) GetHomeRecommendations(w http.ResponseWriter, r *http.Request, 
 		v := float64(*params.Lon)
 		lon64 = &v
 	}
+	start := time.Now()
 	svc := recommendations.NewService(s.db.Pool())
 	items, err := svc.GetRecommendations(r.Context(), user.ID, cityID, lat64, lon64, limit, "")
+	latency := time.Since(start)
 	if err != nil {
+		s.RecordRecommendation("unknown", "error", latency)
 		s.logger.Error("recommendations failed", "user", user.ID, "error", err)
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
+	mode := "warm"
+	if len(items) > 0 && items[0].Reason == "Top rated in your city" {
+		// Cold-start heuristic: first item is top-rated and no personalized reason.
+		// The service's isCold is more accurate, but this is a close proxy without changing the return signature.
+		mode = "cold"
+		// If any item has personalized reason, it's warm even if first is top-rated due to padding.
+		for _, it := range items {
+			if it.Reason != "Top rated in your city" {
+				mode = "warm"
+				break
+			}
+		}
+	} else if len(items) == 0 {
+		mode = "cold"
+	}
+	s.RecordRecommendation(mode, "success", latency)
 
 	// Ensure items is never null for contract honesty.
 	if items == nil {

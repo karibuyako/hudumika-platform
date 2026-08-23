@@ -20,6 +20,8 @@ export default function DashboardLayout() {
       <Stack.Screen name="journeys" options={{ title: t('jrn.layoutTitle') }} />
       <Stack.Screen name="exports" options={{ title: t('dex.layoutTitle') }} />
       <Stack.Screen name="analytics-ext" options={{ title: t('axe.layoutTitle') }} />
+      <Stack.Screen name="education" options={{ title: t('edu.title') }} />
+      <Stack.Screen name="diagnostics" options={{ title: t('diag.title') }} />
     </Stack>
   );
 }

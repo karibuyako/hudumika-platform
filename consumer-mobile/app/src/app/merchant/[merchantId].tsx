@@ -226,6 +226,11 @@ export default function MerchantScreen() {
               </Row>
             </Card>
 
+            <Row gap={Spacing.sm} style={{ marginTop: Spacing.md }}>
+              <Btn label={t('merchant.reserveTable')} onPress={() => router.push(`/reservations?merchantId=${merchant.id}`)} variant="outline" size="sm" icon="calendar-outline" style={{ flex: 1 }} />
+              <Btn label="Join Queue" onPress={() => (router as unknown as { push: (p: string) => void }).push('/queue/queue_demo_001')} variant="outline" size="sm" icon="people-outline" style={{ flex: 1 }} />
+            </Row>
+
             {promotions.length > 0 ? (
               <View style={{ marginTop: Spacing.lg }}>
                 <Text style={styles.section}>{t('merchant.promotions')}</Text>
@@ -265,6 +270,7 @@ export default function MerchantScreen() {
                 <Row gap={Spacing.sm} style={{ marginTop: Spacing.md }}>
                   <Btn label={t('merchant.chat')} onPress={openChat} variant="outline" size="sm" icon="chatbubble-outline" style={{ flex: 1 }} />
                   <Btn label={t('merchant.reserveTable')} onPress={() => router.push(`/reservations?merchantId=${merchant.id}`)} variant="outline" size="sm" icon="calendar-outline" style={{ flex: 1 }} />
+                  <Btn label="Join Queue" onPress={() => (router as unknown as { push: (p: string) => void }).push('/queue/queue_demo_001')} variant="outline" size="sm" icon="people-outline" style={{ flex: 1 }} />
                 </Row>
               </Card>
             ) : null}

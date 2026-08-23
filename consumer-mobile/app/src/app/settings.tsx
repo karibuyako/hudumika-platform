@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Linking, Platform, StyleSheet, Text, View } from 'react-native';
@@ -177,7 +178,7 @@ export default function SettingsScreen() {
       <View style={{ height: Spacing.lg }} />
       {deleteError ? <Text style={styles.deleteError}>{deleteError}</Text> : null}
       <Btn label={t('profile.delete')} onPress={deleteAccount} variant="danger" loading={deleting} />
-      <Text style={styles.note}>{t('common.version', { version: '0.1.0' })}</Text>
+      <Text style={styles.note}>{t('common.version', { version: Constants.expoConfig?.version || '0.3.0' })}</Text>
 
       <NotificationPermissionSheet visible={pushSheetVisible} onClose={() => setPushSheetVisible(false)} />
     </Screen>

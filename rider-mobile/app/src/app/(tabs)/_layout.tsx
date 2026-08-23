@@ -13,7 +13,7 @@ export default function TabsLayout() {
   const inOrderDetail = pathname.startsWith('/orders/');
 
   if (status !== 'authed') {
-    return <Redirect href={status === 'onboarding' ? '/onboarding' : '/login'} />;
+    return <Redirect href={(status === 'onboarding' ? '/onboarding' : '/login') as never} />;
   }
 
   return (

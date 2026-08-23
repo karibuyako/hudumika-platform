@@ -9,18 +9,22 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
+  AddPaymentMethodBody,
+  ConflictResponse,
   ListPaymentHistory200Item,
   ListPaymentHistoryParams,
   ListPaymentMethods200Item,
   NotFoundResponse,
   PaymentIntent,
   PaymentIntentCreate,
+  PaymentMethod,
   PaymentQr,
   PaymentQrCreate,
   RefundPaymentBody,
   RequestCustomerPayment201,
   RequestCustomerPaymentBody,
-  ReversePaymentBody
+  ReversePaymentBody,
+  ValidationErrorResponse
 } from '../../model';
 
 
@@ -277,6 +281,60 @@ export const listPaymentMethods = async ( options?: RequestInit): Promise<listPa
 }
 
 
+export type addPaymentMethodResponse201 = {
+  data: PaymentMethod
+  status: 201
+}
+
+export type addPaymentMethodResponse409 = {
+  data: ConflictResponse
+  status: 409
+}
+
+export type addPaymentMethodResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type addPaymentMethodResponseSuccess = (addPaymentMethodResponse201) & {
+  headers: Headers;
+};
+export type addPaymentMethodResponseError = (addPaymentMethodResponse409 | addPaymentMethodResponse422) & {
+  headers: Headers;
+};
+
+export type addPaymentMethodResponse = (addPaymentMethodResponseSuccess | addPaymentMethodResponseError)
+
+export const getAddPaymentMethodUrl = () => {
+
+
+
+
+  return `/payments/methods`
+}
+
+/**
+ * @summary Add a payment method
+ */
+export const addPaymentMethod = async (addPaymentMethodBody: AddPaymentMethodBody, options?: RequestInit): Promise<addPaymentMethodResponse> => {
+
+  const res = await fetch(getAddPaymentMethodUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(addPaymentMethodBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: addPaymentMethodResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as addPaymentMethodResponse
+}
+
+
 export type listPaymentHistoryResponse200 = {
   data: ListPaymentHistory200Item[]
   status: 200
@@ -457,6 +515,104 @@ export const requestCustomerPayment = async (requestCustomerPaymentBody: Request
 
   const data: requestCustomerPaymentResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as requestCustomerPaymentResponse
+}
+
+
+export type deletePaymentMethodResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deletePaymentMethodResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type deletePaymentMethodResponseSuccess = (deletePaymentMethodResponse204) & {
+  headers: Headers;
+};
+export type deletePaymentMethodResponseError = (deletePaymentMethodResponse404) & {
+  headers: Headers;
+};
+
+export type deletePaymentMethodResponse = (deletePaymentMethodResponseSuccess | deletePaymentMethodResponseError)
+
+export const getDeletePaymentMethodUrl = (methodId: string,) => {
+
+
+
+
+  return `/payments/methods/${methodId}`
+}
+
+/**
+ * @summary Delete a payment method
+ */
+export const deletePaymentMethod = async (methodId: string, options?: RequestInit): Promise<deletePaymentMethodResponse> => {
+
+  const res = await fetch(getDeletePaymentMethodUrl(methodId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deletePaymentMethodResponse['data'] = body ? JSON.parse(body) : undefined
+  return { data, status: res.status, headers: res.headers } as deletePaymentMethodResponse
+}
+
+
+export type setDefaultPaymentMethodResponse200 = {
+  data: PaymentMethod
+  status: 200
+}
+
+export type setDefaultPaymentMethodResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type setDefaultPaymentMethodResponseSuccess = (setDefaultPaymentMethodResponse200) & {
+  headers: Headers;
+};
+export type setDefaultPaymentMethodResponseError = (setDefaultPaymentMethodResponse404) & {
+  headers: Headers;
+};
+
+export type setDefaultPaymentMethodResponse = (setDefaultPaymentMethodResponseSuccess | setDefaultPaymentMethodResponseError)
+
+export const getSetDefaultPaymentMethodUrl = (methodId: string,) => {
+
+
+
+
+  return `/payments/methods/${methodId}/default`
+}
+
+/**
+ * @summary Set default payment method
+ */
+export const setDefaultPaymentMethod = async (methodId: string, options?: RequestInit): Promise<setDefaultPaymentMethodResponse> => {
+
+  const res = await fetch(getSetDefaultPaymentMethodUrl(methodId),
+  {
+    ...options,
+    method: 'PUT'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: setDefaultPaymentMethodResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as setDefaultPaymentMethodResponse
 }
 
 

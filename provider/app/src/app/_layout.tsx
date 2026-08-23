@@ -67,6 +67,35 @@ export default function RootLayout() {
     return () => clearTimeout(timer);
   }, [status]);
 
+  // Enterprise P6: push notification deepLink handler (expo-notifications)
+  useEffect(() => {
+    let sub: { remove: () => void } | null = null;
+    (async () => {
+      try {
+        const Notifications = await new Function('id', 'return import(id)')('expo-notifications') as {
+          addNotificationResponseReceivedListener: (cb: (r: { notification: { request: { content: { data?: { deepLink?: string } } } } }) => void) => { remove: () => void };
+        };
+        sub = Notifications.addNotificationResponseReceivedListener((response) => {
+          const link = response.notification.request.content.data?.deepLink;
+          if (link) {
+            // Defer until router is ready
+            setTimeout(() => {
+              try {
+                const { router } = require('expo-router');
+                router.push(link as never);
+              } catch {
+                /* router not ready */
+              }
+            }, 300);
+          }
+        });
+      } catch {
+        /* expo-notifications not available (web) */
+      }
+    })();
+    return () => sub?.remove();
+  }, []);
+
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />
