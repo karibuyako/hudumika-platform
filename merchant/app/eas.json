@@ -27,7 +27,7 @@
       "env": {
         "EXPO_PUBLIC_ENVIRONMENT": "staging",
         "EXPO_PUBLIC_MOCK_ALL": "false",
-        "EXPO_PUBLIC_API_URL": "https://staging-api.hudumika.co.tz/api/v1"
+        "EXPO_PUBLIC_API_URL": "https://hudumika-api-production.up.railway.app"
       }
     },
     "production": {
@@ -38,7 +38,7 @@
       "env": {
         "EXPO_PUBLIC_ENVIRONMENT": "production",
         "EXPO_PUBLIC_MOCK_ALL": "false",
-        "EXPO_PUBLIC_API_URL": "https://api.hudumika.co.tz/api/v1"
+        "EXPO_PUBLIC_API_URL": "https://hudumika-api-production.up.railway.app"
       }
     }
   }

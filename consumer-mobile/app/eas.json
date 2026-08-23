@@ -31,7 +31,7 @@
       },
       "env": {
         "EXPO_PUBLIC_ENV": "staging",
-        "EXPO_PUBLIC_API_URL": "https://staging-api.hudumika.co.tz/api/v1",
+        "EXPO_PUBLIC_API_URL": "https://hudumika-api-production.up.railway.app/api/v1",
         "EXPO_PUBLIC_MOCK_AUTH": "false",
         "EXPO_PUBLIC_MOCK_HOME": "false",
         "EXPO_PUBLIC_MOCK_ORDERS": "false",
@@ -50,7 +50,7 @@
       },
       "env": {
         "EXPO_PUBLIC_ENV": "staging",
-        "EXPO_PUBLIC_API_URL": "https://staging-api.hudumika.co.tz/api/v1",
+        "EXPO_PUBLIC_API_URL": "https://hudumika-api-production.up.railway.app/api/v1",
         "EXPO_PUBLIC_MOCK_AUTH": "false",
         "EXPO_PUBLIC_MOCK_HOME": "false",
         "EXPO_PUBLIC_MOCK_ORDERS": "false",
@@ -67,7 +67,7 @@
       },
       "env": {
         "EXPO_PUBLIC_ENV": "production",
-        "EXPO_PUBLIC_API_URL": "https://api.hudumika.co.tz/api/v1",
+        "EXPO_PUBLIC_API_URL": "https://hudumika-api-production.up.railway.app/api/v1",
         "EXPO_PUBLIC_MOCK_AUTH": "false",
         "EXPO_PUBLIC_MOCK_HOME": "false",
         "EXPO_PUBLIC_MOCK_ORDERS": "false",
