@@ -151,7 +151,7 @@ func (s *Server) GetConsignment(w http.ResponseWriter, r *http.Request, consignm
 		return
 	}
 	row, err := logistics.NewExtraStore(s.db.Pool()).GetConsignment(r.Context(), uuid.UUID(consignmentId))
-	if errors.Is(err, logistics.ErrWarehouseNotFound) {
+	if errors.Is(err, logistics.ErrConsignmentNotFound) {
 		writeError(w, http.StatusNotFound, "CONSIGNMENT_NOT_FOUND", "Consignment not found")
 		return
 	}
@@ -172,7 +172,7 @@ func (s *Server) GetDeliveryException(w http.ResponseWriter, r *http.Request, ex
 		return
 	}
 	row, err := logistics.NewExtraStore(s.db.Pool()).GetException(r.Context(), uuid.UUID(exceptionId))
-	if errors.Is(err, logistics.ErrWarehouseNotFound) {
+	if errors.Is(err, logistics.ErrExceptionNotFound) {
 		writeError(w, http.StatusNotFound, "EXCEPTION_NOT_FOUND", "Delivery exception not found")
 		return
 	}
