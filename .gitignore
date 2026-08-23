@@ -19,7 +19,8 @@ tools/
 
 # go build artifacts (none in-tree, safety)
 backend/app/bin/
-backend/app/backups/selfcheck-report-2026-08-20.txt
+backend/app/backups/selfcheck-report-*.txt
+backend/app/backups/staging-bootstrap-*.log
 
 # e2e / build artifacts (generated, do not commit)
 consumer-mobile/app/dist_test/
