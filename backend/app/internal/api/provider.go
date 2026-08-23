@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/hudumika/api-backend/internal/gen"
 	"github.com/hudumika/api-backend/internal/provider"
@@ -875,6 +876,11 @@ func (s *Server) CreateProviderInventoryItem(w http.ResponseWriter, r *http.Requ
 	it, err := s.providerStore().CreateInventoryItem(r.Context(), providerID,
 		strings.TrimSpace(body.Name), category, body.StockOnHand, threshold, unitCost, body.AssignedTechnicianId)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+			writeError(w, http.StatusUnprocessableEntity, "INVENTORY_TECHNICIAN_INVALID", "assignedTechnicianId does not reference a valid technician")
+			return
+		}
 		s.logger.Error("create provider inventory item failed", "provider", providerID, "error", err)
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return

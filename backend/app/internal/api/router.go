@@ -218,9 +218,11 @@ func (s *Server) Router() http.Handler {
 			r.Put("/settings", s.UpdateMyStoreSettings)
 			r.Get("/violations", s.ListStoreViolations)
 			r.Get("/dual-screen", s.MthGetStoreDualScreen)
-			r.Patch("/dual-screen", s.MthUpdateStoreDualScreen)
+			r.Patch("/dual-screen", s.MthUpdateStoreDualScreenReal)
 			r.Get("/qr-ordering", s.MthGetStoreQrOrdering)
-			r.Patch("/qr-ordering", s.MthUpdateStoreQrOrdering)
+			r.Patch("/qr-ordering", s.MthUpdateStoreQrOrderingReal)
+			r.Get("/", s.MthGetStoreReal)
+
 			r.Get("/compliance", s.MthGetStoreCompliance)
 			// Store-scoped order export (ext_export.go): the {storeId}
 			// segment is accepted but ignored like the rest of this alias
@@ -232,9 +234,9 @@ func (s *Server) Router() http.Handler {
 		// ext_*.go). All of these were live-verified 404 before mounting.
 		r.Get("/analytics/overview", s.MthAnalyticsOverview)
 		r.Get("/campaigns/{id}/performance", s.MthGetCampaignPerformance)
-		r.Post("/campaigns/{id}/stop", s.MthStopCampaign)
+		r.Post("/campaigns/{id}/stop", s.MthStopCampaignReal)
 		r.Get("/chat/threads", s.MthListChatThreads)
-		r.Get("/closure/status", s.MthGetClosureStatus)
+		r.Get("/closure/status", s.MthGetClosureStatusReal)
 		r.Post("/coupons/suggest", s.MthSuggestCoupons)
 		// GET /coupon-suggest (ext_marketing.go): body-less twin of POST
 		// /coupons/suggest for the merchant marketing suite's probe path.
@@ -246,32 +248,40 @@ func (s *Server) Router() http.Handler {
 		r.Get("/export/orders", s.MthExportOrders)
 		r.Post("/export/orders", s.MthExportOrders)
 		r.Get("/customer-memberships/me", s.MthListCustomerMemberships)
-		r.Post("/dual-screen/pair", s.MthPairDualScreen)
-		r.Get("/finance/dispute-holds", s.MthListDisputeHolds)
+		r.Post("/dual-screen/pair", s.MthPairDualScreenReal)
+		r.Get("/finance/dispute-holds", s.MthListDisputeHoldsReal)
 		r.Get("/finance/revenue-composition", s.MthGetRevenueComposition)
-		r.Get("/invoices", s.MthListInvoices)
-		r.Post("/members/{id}/redeem", s.MthRedeemLoyaltyMember)
-		r.Get("/marketing/coupons", s.MthListMarketingCoupons)
-		r.Post("/loyalty/redemptions", s.MthCreateLoyaltyRedemption)
+		r.Get("/invoices", s.MthListInvoicesReal)
+		r.Post("/members/{id}/redeem", s.MthRedeemLoyaltyMemberReal)
+		r.Get("/marketing/coupons", s.MthListMarketingCouponsReal)
+		r.Post("/loyalty/redemptions", s.MthCreateLoyaltyRedemptionReal)
 		r.Get("/payment-accounts", s.MthListPaymentAccounts)
-		r.Patch("/payment-accounts/{id}", s.MthUpdatePaymentAccount)
+		r.Patch("/payment-accounts/{id}", s.MthUpdatePaymentAccountReal)
 		r.Get("/receipt-templates/active", s.MthGetActiveReceiptTemplate)
-		r.Get("/redemptions", s.MthListRedemptions)
-		r.Post("/redemptions", s.MthCreateRedemption)
-		r.Post("/supplier-returns/{id}/process", s.MthProcessSupplierReturn)
-		r.Post("/supplier-returns/{id}/reject", s.MthRejectSupplierReturn)
-		r.Post("/tables/{id}/qr", s.MthTableQr)
-		r.Post("/tasks/{id}/complete", s.MthCompleteTask)
+		r.Get("/redemptions", s.MthListRedemptionsReal)
+		r.Post("/redemptions", s.MthCreateRedemptionReal)
+		r.Post("/supplier-returns/{id}/process", s.MthProcessSupplierReturnReal)
+		r.Post("/supplier-returns/{id}/reject", s.MthRejectSupplierReturnReal)
+		r.Post("/tables/{id}/qr", s.MthTableQrReal)
+		r.Post("/tasks/{id}/complete", s.MthCompleteTaskReal)
 		r.Get("/webhooks/{id}/test", s.MthTestWebhook)
-		r.Post("/dine-in/reservations/{id}/confirm", s.MthConfirmReservation)
-		r.Get("/privacy/export/{id}", s.MthPrivacyExport)
-		r.Get("/printers", s.MthListPrinters)
-		r.Post("/printers", s.MthCreatePrinter)
-		r.Get("/printers/{id}", s.MthGetPrinter)
-		r.Patch("/printers/{id}", s.MthUpdatePrinter)
-		r.Delete("/printers/{id}", s.MthDeletePrinter)
-		r.Post("/printers/{id}/connect", s.MthConnectPrinter)
-		r.Post("/printers/{id}/test", s.MthTestPrinter)
+		r.Post("/dine-in/reservations/{id}/confirm", s.MthConfirmReservationReal)
+		r.Get("/privacy/export/{id}", s.MthPrivacyExportReal)
+		r.Get("/printers", s.MthListPrintersReal)
+		r.Post("/printers", s.MthCreatePrinterReal)
+		r.Get("/printers/{id}", s.MthGetPrinterReal)
+		r.Patch("/printers/{id}", s.MthUpdatePrinterReal)
+		r.Delete("/printers/{id}", s.MthDeletePrinterReal)
+		r.Post("/printers/{id}/connect", s.MthConnectPrinterReal)
+		r.Post("/printers/{id}/test", s.MthTestPrinterReal)
+		// Newly-implemented merchant endpoints (formerly 404 / missing routes)
+		r.Get("/products", s.MthListProductsReal)
+		r.Post("/products", s.MthCreateProductReal)
+		r.Get("/stores", s.MthListStoresReal)
+		r.Patch("/journeys/{id}", s.MthUpdateJourneyReal)
+		r.Post("/dine-in/orders/{id}/request-bill", s.MthRequestBillReal)
+		r.Post("/refunds/{refundId}/decide", s.MthDecideRefundReal)
+
 		r.Get("/staff", s.MthListStaff)
 
 		r.Get("/users/me/2fa", s.MthGet2FA)
@@ -475,6 +485,21 @@ func (s *Server) Router() http.Handler {
 		// providers.ts list) which the generated ListProviders UUID param
 		// rejects with a 400 before its handler runs.
 		r.Get("/providers", s.MthListProvidersConsumer)
+
+		// Analytics/chain report-export overrides: the generated tree mounts
+		// POST /analytics/reports/export and POST /chain/reports to static 501
+		// stubs. Mount the real handlers AFTER the generated tree (chi
+		// last-registration-wins) so they take effect.
+		r.Post("/analytics/reports/export", s.MthExportAnalyticsReportReal)
+		r.Post("/chain/reports", s.MthExportChainReportReal)
+
+		// Provider app-only routes absent from the OpenAPI contract (the
+		// generated tree never registers them). Mounted AFTER the generated
+		// tree; there is no conflict since the contract omits them.
+		r.Post("/bookings/{id}/resume", func(w http.ResponseWriter, rq *http.Request) {
+			s.ResumeBooking(w, rq, uuidParam(rq, "id"))
+		})
+		r.Post("/providers/me/kyc/verify", s.VerifyProviderKyc)
 	})
 
 	return r

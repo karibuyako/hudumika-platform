@@ -805,6 +805,7 @@ func (s *Server) AdminListGroupBuys(w http.ResponseWriter, r *http.Request, para
 			quantity_total, quantity_sold, start_at, end_at, status, created_at, updated_at
 		FROM group_buy_deals`
 	args := []any{adminExtraMaxListLimit}
+	limitParam := "$1"
 	if params.State != nil && *params.State != "" {
 		dbStatus, ok := adminGroupBuyDBStatus[*params.State]
 		if !ok {
@@ -813,8 +814,9 @@ func (s *Server) AdminListGroupBuys(w http.ResponseWriter, r *http.Request, para
 		}
 		args = []any{dbStatus, adminExtraMaxListLimit}
 		query += ` WHERE status = $1`
+		limitParam = "$2"
 	}
-	query += ` ORDER BY created_at DESC, id DESC LIMIT $2`
+	query += ` ORDER BY created_at DESC, id DESC LIMIT ` + limitParam + `::int`
 
 	rows, err := s.db.Pool().Query(r.Context(), query, args...)
 	if err != nil {
