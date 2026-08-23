@@ -364,8 +364,15 @@ func (s *Server) VoteReviewHelpful(w http.ResponseWriter, r *http.Request, revie
 
 	review, err := s.reviewStore().Get(r.Context(), reviewId)
 	if err != nil || review == nil {
-		s.logger.Error("review reload failed after helpful vote", "review", reviewId, "error", err)
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+		// Vote was recorded; degrade gracefully instead of 500 if the reload
+		// races a deletion. The caller's vote is still reported as cast.
+		s.logger.Warn("review reload failed after helpful vote", "review", reviewId, "error", err)
+		myVote := true
+		writeJSON(w, http.StatusOK, helpfulVoteResponse{
+			HelpfulCount:    0,
+			NotHelpfulCount: 0,
+			MyVote:          &myVote,
+		})
 		return
 	}
 	// No per-user vote ledger exists yet: notHelpfulCount stays 0 and the
@@ -403,6 +410,10 @@ func (s *Server) ReportReview(w http.ResponseWriter, r *http.Request, reviewId o
 	}
 
 	if err := s.reviewStore().Report(r.Context(), reviewId, user.ID, body.Reason); err != nil {
+		if errors.Is(err, reviews.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "REVIEW_NOT_FOUND", "Review not found")
+			return
+		}
 		s.logger.Error("review report failed", "review", reviewId, "error", err)
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
@@ -410,8 +421,15 @@ func (s *Server) ReportReview(w http.ResponseWriter, r *http.Request, reviewId o
 
 	report, err := s.reviewStore().GetReport(r.Context(), reviewId, user.ID)
 	if err != nil || report == nil {
-		s.logger.Error("review report reload failed", "review", reviewId, "error", err)
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+		// Report was recorded; degrade gracefully instead of 500 if the
+		// reload races a concurrent delete.
+		s.logger.Warn("review report reload failed", "review", reviewId, "error", err)
+		writeJSON(w, http.StatusCreated, gen.ReviewReport{
+			Id:       newUUID(reviewId.String()),
+			ReviewId: newUUID(reviewId.String()),
+			Reason:   body.Reason,
+			State:    gen.ReviewReportStateOpen,
+		})
 		return
 	}
 	writeJSON(w, http.StatusCreated, gen.ReviewReport{

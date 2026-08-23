@@ -225,6 +225,19 @@ func (s *Store) BumpHelpful(ctx context.Context, reviewID uuid.UUID) error {
 // yields ErrAlreadyVoted without incrementing, and a non-published or missing
 // review yields ErrNotEligible.
 func (s *Store) VoteHelpful(ctx context.Context, reviewID, userID uuid.UUID) error {
+	// Pre-validate the review exists and is published so we return a clean
+	// ErrNotEligible instead of a foreign-key violation on the vote insert
+	// when the review is missing or unpublished.
+	var exists bool
+	if err := s.pool.QueryRow(ctx,
+		`SELECT true FROM reviews WHERE id = $1 AND state = 'published'`, reviewID,
+	).Scan(&exists); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("reviews: vote helpful on %s: %w", reviewID, ErrNotEligible)
+		}
+		return fmt.Errorf("reviews: vote helpful lookup %s: %w", reviewID, err)
+	}
+
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("reviews: begin vote helpful tx: %w", err)
@@ -310,6 +323,18 @@ func (s *Store) SetState(ctx context.Context, reviewID uuid.UUID, state string) 
 // Report inserts a moderation report for the review. Duplicate reports by the
 // same reporter are ignored (ON CONFLICT DO NOTHING).
 func (s *Store) Report(ctx context.Context, reviewID, reporterID uuid.UUID, reason string) error {
+	// Pre-validate the review exists so we return a clean ErrNotFound instead
+	// of a foreign-key violation on the report insert for a missing review.
+	var exists bool
+	if err := s.pool.QueryRow(ctx,
+		`SELECT true FROM reviews WHERE id = $1`, reviewID,
+	).Scan(&exists); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("reviews: report %s: %w", reviewID, ErrNotFound)
+		}
+		return fmt.Errorf("reviews: report lookup %s: %w", reviewID, err)
+	}
+
 	if _, err := s.pool.Exec(ctx,
 		`INSERT INTO review_reports (review_id, reporter_user_id, reason)
 		 VALUES ($1, $2, $3)
