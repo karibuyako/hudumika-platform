@@ -24,7 +24,7 @@ func (s *Server) MthSocialAuth(w http.ResponseWriter, r *http.Request) {
 		AccessToken string `json:"accessToken"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_ERROR", "Invalid request body")
+		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Invalid request body")
 		return
 	}
 
@@ -32,7 +32,7 @@ func (s *Server) MthSocialAuth(w http.ResponseWriter, r *http.Request) {
 	case "google", "apple":
 		// known providers
 	default:
-		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_ERROR", "provider must be one of google, apple")
+		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "provider must be one of google, apple")
 		return
 	}
 
@@ -45,7 +45,7 @@ func (s *Server) MthSocialAuth(w http.ResponseWriter, r *http.Request) {
 		raw = strings.TrimSpace(body.AccessToken)
 	}
 	if raw == "" {
-		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_ERROR", "one of idToken, code, or accessToken is required")
+		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "one of idToken, code, or accessToken is required")
 		return
 	}
 

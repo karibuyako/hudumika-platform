@@ -41,13 +41,13 @@ func (s *Server) MthRegisterPushTokenConsumer(w http.ResponseWriter, r *http.Req
 
 	var body pushTokenRegisterInput
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_ERROR", "Invalid request body")
+		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Invalid request body")
 		return
 	}
 
 	token := strings.TrimSpace(body.Token)
 	if len(token) < 10 || len(token) > 512 {
-		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_ERROR", "token must be between 10 and 512 characters")
+		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "token must be between 10 and 512 characters")
 		return
 	}
 	platform := strings.TrimSpace(body.Platform)
@@ -55,7 +55,7 @@ func (s *Server) MthRegisterPushTokenConsumer(w http.ResponseWriter, r *http.Req
 		platform = "expo"
 	}
 	if !pushTokenPlatforms[platform] {
-		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_ERROR", "platform must be one of expo, apns, fcm")
+		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "platform must be one of expo, apns, fcm")
 		return
 	}
 
@@ -172,7 +172,7 @@ func (s *Server) MthDeletePushToken(w http.ResponseWriter, r *http.Request) {
 
 	token := strings.TrimSpace(chi.URLParam(r, "id"))
 	if token == "" {
-		writeError(w, http.StatusBadRequest, "VALIDATION_ERROR", "token id is required")
+		writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "token id is required")
 		return
 	}
 
