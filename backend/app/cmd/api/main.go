@@ -12,6 +12,10 @@ import (
 	"syscall"
 	"time"
 
+	// Embed the IANA timezone database so zone lookups (e.g.
+	// Africa/Dar_es_Salaam) resolve in slim containers without system tzdata.
+	_ "time/tzdata"
+
 	"github.com/hudumika/api-backend/internal/api"
 	"github.com/hudumika/api-backend/internal/config"
 	"github.com/hudumika/api-backend/internal/db"

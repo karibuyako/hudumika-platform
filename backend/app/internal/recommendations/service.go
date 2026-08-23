@@ -31,7 +31,7 @@ func DaypartFor(t time.Time) string {
 	return daypartFor(t)
 }
 func daypartFor(t time.Time) string {
-	loc, _ := time.LoadLocation("Africa/Dar_es_Salaam")
+	loc := mustLoadTz()
 	h := t.In(loc).Hour()
 	switch {
 	case h >= 6 && h <= 10:
