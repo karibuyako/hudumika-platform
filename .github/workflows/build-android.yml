@@ -1,0 +1,113 @@
+name: Build Android APKs (free CI)
+
+# Builds installable Android APKs for all four HUDumika apps using GitHub's
+# free Linux runners (this uses CI compute, NOT EAS build quota) and publishes
+# them to a GitHub Release. The public site (public-frontend /download) then
+# links to:
+#   https://github.com/karibuyako/hudumika-platform/releases/latest/download/hudumika-<app>.apk
+#
+# PREREQUISITES (repo Settings -> Secrets and variables -> Actions):
+#   EXPO_TOKEN  – an Expo access token for the account that owns the EAS
+#                 project(s): https://expo.dev/accounts/[you]/settings/access-tokens
+#
+# HOW TO PUBLISH A NEW SET OF APKs:
+#   git tag v1.0.0 && git push origin v1.0.0
+# workflow_dispatch also builds the APKs as downloadable artifacts for testing.
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-android-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }} APK
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: consumer
+            app: consumer-mobile/app
+            workspace: false
+          - name: merchant
+            app: merchant/app
+            workspace: false
+          - name: provider
+            app: provider/app
+            workspace: false
+          - name: rider
+            app: rider-mobile/app
+            workspace: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # 1) Install the monorepo workspace. This creates root node_modules and
+      #    the @hudumika/* symlinks that every app depends on.
+      - name: Install workspace dependencies
+        run: npm ci
+
+      # 2) Apps that are NOT root workspace members need their own install so
+      #    their deps (and the @hudumika/* workspace packages via the root
+      #    node_modules symlink) resolve correctly.
+      - name: Install app dependencies
+        if: ${{ matrix.workspace == false }}
+        working-directory: ${{ matrix.app }}
+        run: npm install
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      # Register the EAS project (writes expo.projectId into app.json) so the
+      # build does not prompt. Uses the EXPO_TOKEN account. If a project with
+      # the same slug already exists you can run `eas init` locally once and
+      # commit app.json instead.
+      - name: Ensure EAS project
+        working-directory: ${{ matrix.app }}
+        run: eas init --non-interactive
+
+      # 3) Local build uses GitHub's CPU, not EAS quota. The "preview" profile
+      #    is configured with android.buildType "apk".
+      - name: Build Android APK locally
+        working-directory: ${{ matrix.app }}
+        run: eas build --local --platform android --profile preview --non-interactive
+
+      - name: Collect APK
+        id: apk
+        run: |
+          APK=$(find "${{ matrix.app }}" -name "*.apk" -maxdepth 3 | head -n1)
+          if [ -z "$APK" ]; then echo "::error::APK not produced"; exit 1; fi
+          echo "path=$APK" >> "$GITHUB_OUTPUT"
+          cp "$APK" "${{ github.workspace }}/hudumika-${{ matrix.name }}.apk"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hudumika-${{ matrix.name }}-apk
+          path: ${{ github.workspace }}/hudumika-${{ matrix.name }}.apk
+          if-no-files-found: warn
+
+      - name: Publish to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ github.workspace }}/hudumika-${{ matrix.name }}.apk
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

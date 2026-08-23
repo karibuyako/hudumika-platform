@@ -20,6 +20,7 @@ const CsrPage = lazy(() => import('@/pages/CsrPage'))
 const AboutPage = lazy(() => import('@/pages/AboutPage'))
 const LoginPage = lazy(() => import('@/pages/LoginPage'))
 const LegalPages = lazy(() => import('@/pages/LegalPages'))
+const DownloadPage = lazy(() => import('@/pages/DownloadPage'))
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -63,6 +64,7 @@ export default function App() {
                 <Route path="/csr" element={<CsrPage />} />
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/download" element={<DownloadPage />} />
                 <Route path="/privacy" element={<LegalPages />} />
                 <Route path="/terms" element={<LegalPages />} />
                 <Route path="/cookies" element={<LegalPages />} />

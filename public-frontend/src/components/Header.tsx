@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { MapPin, ChevronDown, LogIn, Store, Wrench, Truck, HelpCircle, Menu, X, Languages } from 'lucide-react'
+import { MapPin, ChevronDown, LogIn, Store, Wrench, Truck, HelpCircle, Menu, X, Languages, Download } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { useCity } from '@/context/city'
 import { useI18n } from '@/i18n'
@@ -243,6 +243,18 @@ export function Header() {
                 <HelpCircle className="h-4 w-4" aria-hidden />
                 {t('header.help')}
               </NavLink>
+              <NavLink
+                to="/download"
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-1 rounded-full px-3.5 py-2 text-sm font-medium transition-colors',
+                    isActive ? 'bg-brand-50 text-ink-900' : 'text-ink-700 hover:bg-brand-50 hover:text-ink-900',
+                  )
+                }
+              >
+                <Download className="h-4 w-4" aria-hidden />
+                Download
+              </NavLink>
             </nav>
 
             <div className="flex items-center gap-2">
@@ -282,7 +294,7 @@ export function Header() {
               </Link>
 
               <Link
-                to="/services"
+                to="/download"
                 className="hidden rounded-full bg-ink-900 px-5 py-2.5 text-sm font-semibold text-surface transition-all hover:bg-brand-600 sm:inline-block"
               >
                 {t('header.getApp')}
@@ -329,6 +341,7 @@ export function Header() {
                     { label: t('header.offerServices'), to: '/provider', Icon: Wrench },
                     { label: t('header.mobile.deliver'), to: '/rider', Icon: Truck },
                     { label: t('header.mobile.help'), to: '/faq', Icon: HelpCircle },
+                    { label: 'Download apps', to: '/download', Icon: Download },
                   ].map((l) => (
                     <Link
                       key={l.to}

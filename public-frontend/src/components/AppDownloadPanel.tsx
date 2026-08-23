@@ -1,4 +1,4 @@
-import { Smartphone, Store } from 'lucide-react'
+import { Smartphone, Store, Download } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { APP_LINKS, type AppLinks } from '@/config/appLinks'
 import { AppBadge } from './AppBadge'
@@ -56,8 +56,21 @@ export function AppDownloadPanel({
               </div>
               <p className="mt-3 text-xs leading-relaxed text-white/60">{app.description}</p>
               <div className="mt-4 flex flex-wrap gap-2">
+                {APP_LINKS[app.id].apk && (
+                  <a
+                    href={APP_LINKS[app.id].apk}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-brand-500 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-brand-600"
+                  >
+                    <Download className="h-3.5 w-3.5" aria-hidden />
+                    Download APK
+                  </a>
+                )}
                 <AppBadge store="ios" href={APP_LINKS[app.id].ios} dark className="px-3 py-1.5 text-[11px]" />
-                <AppBadge store="android" href={APP_LINKS[app.id].android} dark className="px-3 py-1.5 text-[11px]" />
+                {!APP_LINKS[app.id].apk && (
+                  <AppBadge store="android" href={APP_LINKS[app.id].android} dark className="px-3 py-1.5 text-[11px]" />
+                )}
               </div>
             </div>
           ))}
