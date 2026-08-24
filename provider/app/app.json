@@ -56,6 +56,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "106b0574-4682-4d19-b990-7390fa19a087"
+      }
+    },
+    "owner": "hudumika"
   }
 }
