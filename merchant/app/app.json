@@ -36,6 +36,12 @@
           "imageWidth": 90
         }
       ],
+      [
+        "expo-notifications",
+        {
+          "color": "#1a5c44"
+        }
+      ],
       "expo-image",
       [
         "expo-camera",
