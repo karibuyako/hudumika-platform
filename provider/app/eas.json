@@ -46,9 +46,11 @@
         "EXPO_PUBLIC_MOCK_EARNINGS": "false",
         "EXPO_PUBLIC_MOCK_NOTIFICATIONS": "false",
         "EXPO_PUBLIC_MOCK_SUPPORT": "false",
-        "EXPO_PUBLIC_MOCK_CATALOG": "false"
-      }
-    },
+            "EXPO_PUBLIC_MOCK_CATALOG": "false",
+            "GRADLE_OPTS": "-Xmx4g -XX:MaxMetaspaceSize=1024m -Dorg.gradle.daemon=false",
+            "NODE_OPTIONS": "--max-old-space-size=4096"
+          }
+        },
     "production": {
       "channel": "production",
       "android": {

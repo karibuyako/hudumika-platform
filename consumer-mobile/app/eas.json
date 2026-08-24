@@ -57,9 +57,11 @@
         "EXPO_PUBLIC_MOCK_WALLET": "false",
         "EXPO_PUBLIC_MOCK_ASSISTANT": "false",
         "EXPO_PUBLIC_SENTRY_DSN": "https://34d28d5d0cb04fada6b3ddab4185c088@o4500000000000000.ingest.sentry.io/4500000000000001",
-        "EXPO_PUBLIC_EAS_PROJECT_ID": "34d28d5d-0cb0-4fad-a6b3-ddab4185c088"
-      }
-    },
+            "EXPO_PUBLIC_EAS_PROJECT_ID": "34d28d5d-0cb0-4fad-a6b3-ddab4185c088",
+            "GRADLE_OPTS": "-Xmx4g -XX:MaxMetaspaceSize=1024m -Dorg.gradle.daemon=false",
+            "NODE_OPTIONS": "--max-old-space-size=4096"
+          }
+        },
     "production": {
       "channel": "production",
       "android": {

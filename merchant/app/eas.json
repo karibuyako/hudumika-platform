@@ -27,9 +27,11 @@
       "env": {
         "EXPO_PUBLIC_ENVIRONMENT": "staging",
         "EXPO_PUBLIC_MOCK_ALL": "false",
-        "EXPO_PUBLIC_API_URL": "https://hudumika-api-production.up.railway.app"
-      }
-    },
+            "EXPO_PUBLIC_API_URL": "https://hudumika-api-production.up.railway.app",
+            "GRADLE_OPTS": "-Xmx4g -XX:MaxMetaspaceSize=1024m -Dorg.gradle.daemon=false",
+            "NODE_OPTIONS": "--max-old-space-size=4096"
+          }
+        },
     "production": {
       "channel": "production",
       "android": {

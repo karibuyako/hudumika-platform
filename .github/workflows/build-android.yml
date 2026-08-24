@@ -77,20 +77,37 @@ jobs:
         working-directory: ${{ matrix.app }}
         run: eas init --non-interactive --force
 
-      - name: Build Android APK (EAS cloud)
-        id: build
-        working-directory: ${{ matrix.app }}
-        run: eas build --platform android --profile preview --non-interactive --json > build.json
-
-      - name: Download APK
+      # EAS cloud builds intermittently crash the Gradle daemon ("unknown gradle
+      # error" with a binary dump). We disable the daemon and cap its heap via
+      # GRADLE_OPTS in the preview profile, and retry the build a couple of times
+      # to ride out transient EAS worker crashes.
+      - name: Build and download APK (with retry)
         working-directory: ${{ matrix.app }}
         run: |
-          BUILD_ID=$(python3 -c "import json,sys; d=json.load(sys.stdin); b=d[0] if isinstance(d,list) else d; print(b.get('id') or (b.get('builds') or [{}])[0].get('id'))" < build.json)
-          echo "Downloading build $BUILD_ID"
-          eas build:download "$BUILD_ID"
-          APK=$(find . -name '*.apk' -maxdepth 2 | head -n1)
-          if [ -z "$APK" ]; then echo "::error::APK not downloaded"; exit 1; fi
-          cp "$APK" "${{ github.workspace }}/hudumika-${{ matrix.name }}.apk"
+          ATTEMPT=0
+          MAX=2
+          while [ $ATTEMPT -lt $MAX ]; do
+            ATTEMPT=$((ATTEMPT+1))
+            echo "=== Build attempt $ATTEMPT/$MAX ==="
+            if eas build --platform android --profile preview --non-interactive --json > build.json; then
+              BUILD_ID=$(python3 -c "import json,sys; d=json.load(sys.stdin); b=d[0] if isinstance(d,list) else d; print(b.get('id') or (b.get('builds') or [{}])[0].get('id'))" < build.json)
+              echo "Build succeeded (id $BUILD_ID); downloading..."
+              if eas build:download "$BUILD_ID"; then
+                APK=$(find . -name '*.apk' -maxdepth 2 | head -n1)
+                if [ -n "$APK" ]; then
+                  cp "$APK" "${{ github.workspace }}/hudumika-${{ matrix.name }}.apk"
+                  echo "APK ready: $APK"
+                  break
+                fi
+              fi
+            fi
+            echo "Attempt $ATTEMPT failed; retrying in 20s..."
+            sleep 20
+          done
+          if [ ! -f "${{ github.workspace }}/hudumika-${{ matrix.name }}.apk" ]; then
+            echo "::error::APK not produced after $MAX attempts"
+            exit 1
+          fi
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
