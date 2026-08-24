@@ -1,18 +1,18 @@
-name: Build Android APKs (EAS cloud, free quota)
+name: Build Android APKs (local, free)
 
-# Builds installable Android APKs for all four HUDumika apps on EAS's build
-# infrastructure (free plan = 15 Android builds/month) and publishes them to a
-# GitHub Release. The public site (public-frontend /download) links to:
+# Builds installable Android APKs for all four HUDumika apps on the GitHub runner
+# using `eas build --local` (runs inside an EAS Docker container). This does NOT
+# consume the EAS cloud build quota, so it is free and unlimited.
+# The public site (public-frontend /download) links to:
 #   https://github.com/karibuyako/hudumika-platform/releases/latest/download/hudumika-<app>.apk
 #
-# We use EAS *cloud* builds (not --local) because a native Android build hangs on
-# the free GitHub runner. Each app's metro.config.js aliases @faker-js/faker/msw
-# into the app's node_modules so the workspace @hudumika/contract bundle resolves
-# regardless of where EAS installs dependencies.
+# Each app's metro.config.js aliases @faker-js/faker/msw into the app's
+# node_modules so the workspace @hudumika/contract bundle resolves, and the
+# preview profile in eas.json sets GRADLE_OPTS (daemon disabled, -Xmx3g) and
+# NODE_OPTIONS (--max-old-space-size=2048) so the build fits the 7GB runner.
 #
 # PREREQUISITES (repo Settings -> Secrets and variables -> Actions):
-#   EXPO_TOKEN  – Expo access token for the account that owns the EAS projects
-#                 (https://expo.dev/settings/access-tokens).
+#   EXPO_TOKEN  – Expo access token (still used by the eas CLI).
 #
 # HOW TO PUBLISH A NEW SET OF APKS:
 #   git tag v1.0.0 && git push origin v1.0.0
@@ -35,6 +35,7 @@ jobs:
   build:
     name: Build ${{ matrix.name }} APK
     runs-on: ubuntu-latest
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       max-parallel: 1
@@ -56,10 +57,8 @@ jobs:
           node-version: 20
           cache: npm
 
-      # Install deps at the workspace root so `eas init` can resolve config
-      # plugins (expo-router) and EAS cloud installs the monorepo correctly.
-      # `npm install` (not `ci`) is used so a committed lockfile is not required;
-      # the root .npmrc sets legacy-peer-deps for the react-test-renderer peer
+      # Install deps at the workspace root so EAS can bundle the monorepo.
+      # The root .npmrc sets legacy-peer-deps for the react-test-renderer peer
       # conflict.
       - name: Install workspace dependencies
         run: npm install --legacy-peer-deps --no-audit --no-fund
@@ -70,44 +69,20 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      # Register the EAS project (writes expo.projectId into app.json) so the
-      # build does not prompt. --force creates the project if it does not exist
-      # yet under this account.
-      - name: Ensure EAS project
+      # Local build runs inside an EAS Docker container on the runner. Builds run
+      # sequentially (max-parallel: 1) so the 7GB runner is not starved by
+      # multiple Gradle/Metro processes at once.
+      - name: Build Android APK locally
         working-directory: ${{ matrix.app }}
-        run: eas init --non-interactive --force
+        run: eas build --local --platform android --profile preview --non-interactive
 
-      # EAS cloud builds intermittently crash the Gradle daemon ("unknown gradle
-      # error" with a binary dump). We disable the daemon and cap its heap via
-      # GRADLE_OPTS in the preview profile, and retry the build a couple of times
-      # to ride out transient EAS worker crashes.
-      - name: Build and download APK (with retry)
-        working-directory: ${{ matrix.app }}
+      - name: Locate and stage APK
         run: |
-          ATTEMPT=0
-          MAX=2
-          while [ $ATTEMPT -lt $MAX ]; do
-            ATTEMPT=$((ATTEMPT+1))
-            echo "=== Build attempt $ATTEMPT/$MAX ==="
-            if eas build --platform android --profile preview --non-interactive --json > build.json; then
-              BUILD_ID=$(python3 -c "import json,sys; d=json.load(sys.stdin); b=d[0] if isinstance(d,list) else d; print(b.get('id') or (b.get('builds') or [{}])[0].get('id'))" < build.json)
-              echo "Build succeeded (id $BUILD_ID); downloading..."
-              if eas build:download "$BUILD_ID"; then
-                APK=$(find . -name '*.apk' -maxdepth 2 | head -n1)
-                if [ -n "$APK" ]; then
-                  cp "$APK" "${{ github.workspace }}/hudumika-${{ matrix.name }}.apk"
-                  echo "APK ready: $APK"
-                  break
-                fi
-              fi
-            fi
-            echo "Attempt $ATTEMPT failed; retrying in 20s..."
-            sleep 20
-          done
-          if [ ! -f "${{ github.workspace }}/hudumika-${{ matrix.name }}.apk" ]; then
-            echo "::error::APK not produced after $MAX attempts"
-            exit 1
-          fi
+          APK=$(find "${{ matrix.app }}/android" -name '*.apk' -path '*release*' 2>/dev/null | head -n1)
+          [ -z "$APK" ] && APK=$(find "${{ matrix.app }}" -name '*.apk' 2>/dev/null | head -n1)
+          if [ -z "$APK" ]; then echo "::error::APK not found after local build"; exit 1; fi
+          echo "Found APK: $APK"
+          cp "$APK" "${{ github.workspace }}/hudumika-${{ matrix.name }}.apk"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4

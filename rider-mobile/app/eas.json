@@ -43,8 +43,8 @@
         "EXPO_PUBLIC_MOCK_VEHICLE": "false",
         "EXPO_PUBLIC_MOCK_TRIPS": "false",
             "EXPO_PUBLIC_MOCK_LOGISTICS": "false",
-            "GRADLE_OPTS": "-Xmx4g -XX:MaxMetaspaceSize=1024m -Dorg.gradle.daemon=false",
-            "NODE_OPTIONS": "--max-old-space-size=4096"
+            "GRADLE_OPTS": "-Xmx3g -XX:MaxMetaspaceSize=1024m -Dorg.gradle.daemon=false",
+            "NODE_OPTIONS": "--max-old-space-size=2048"
           }
         },
     "preview-mock": {
