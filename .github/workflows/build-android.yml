@@ -37,6 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         include:
           - name: consumer
@@ -84,7 +85,7 @@ jobs:
       - name: Download APK
         working-directory: ${{ matrix.app }}
         run: |
-          BUILD_ID=$(python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('id') or (d.get('builds') or [{}])[0].get('id'))" < build.json)
+          BUILD_ID=$(python3 -c "import json,sys; d=json.load(sys.stdin); b=d[0] if isinstance(d,list) else d; print(b.get('id') or (b.get('builds') or [{}])[0].get('id'))" < build.json)
           echo "Downloading build $BUILD_ID"
           eas build:download "$BUILD_ID"
           APK=$(find . -name '*.apk' -maxdepth 2 | head -n1)
