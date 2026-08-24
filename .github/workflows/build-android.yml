@@ -68,7 +68,14 @@ jobs:
       # multiple Gradle/Metro processes at once.
       - name: Build Android APK locally
         working-directory: ${{ matrix.app }}
-        run: eas build --local --platform android --profile preview --non-interactive
+        run: |
+          if eas build --local --platform android --profile preview --non-interactive > build.log 2>&1; then
+            echo "Build succeeded"
+          else
+            echo "=== BUILD FAILED — tail of build log ==="
+            tail -150 build.log
+            exit 1
+          fi
 
       - name: Locate and stage APK
         run: |
