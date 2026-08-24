@@ -75,12 +75,11 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       # Register the EAS project (writes expo.projectId into app.json) so the
-      # build does not prompt. Uses the EXPO_TOKEN account. If a project with
-      # the same slug already exists you can run `eas init` locally once and
-      # commit app.json instead.
+      # build does not prompt. Uses the EXPO_TOKEN account. --force creates the
+      # project if it does not exist yet under this account.
       - name: Ensure EAS project
         working-directory: ${{ matrix.app }}
-        run: eas init --non-interactive
+        run: eas init --non-interactive --force
 
       # 3) Local build uses GitHub's CPU, not EAS quota. The "preview" profile
       #    is configured with android.buildType "apk".
