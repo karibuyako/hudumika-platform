@@ -1,14 +1,18 @@
-name: Build Android APKs (free CI)
+name: Build Android APKs (EAS cloud, free quota)
 
-# Builds installable Android APKs for all four HUDumika apps using GitHub's
-# free Linux runners (this uses CI compute, NOT EAS build quota) and publishes
-# them to a GitHub Release. The public site (public-frontend /download) then
-# links to:
+# Builds installable Android APKs for all four HUDumika apps on EAS's build
+# infrastructure (free plan = 15 Android builds/month) and publishes them to a
+# GitHub Release. The public site (public-frontend /download) links to:
 #   https://github.com/karibuyako/hudumika-platform/releases/latest/download/hudumika-<app>.apk
 #
+# We use EAS *cloud* builds (not --local) because this is a monorepo: EAS cloud
+# installs dependencies at the workspace root, so @hudumika/* workspace packages
+# (and their deps like @faker-js/faker) resolve correctly. Local builds install
+# only inside the app dir and hang on the free GitHub runner.
+#
 # PREREQUISITES (repo Settings -> Secrets and variables -> Actions):
-#   EXPO_TOKEN  – an Expo access token for the account that owns the EAS
-#                 project(s): https://expo.dev/accounts/[you]/settings/access-tokens
+#   EXPO_TOKEN  – Expo access token for the account that owns the EAS projects
+#                 (https://expo.dev/settings/access-tokens).
 #
 # HOW TO PUBLISH A NEW SET OF APKs:
 #   git tag v1.0.0 && git push origin v1.0.0
@@ -35,29 +39,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - name: consumer
+            app: consumer-mobile/app
+          - name: merchant
+            app: merchant/app
+          - name: provider
+            app: provider/app
           - name: rider
             app: rider-mobile/app
-            workspace: true
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      # 1) Install the monorepo workspace. This creates root node_modules and
-      #    the @hudumika/* symlinks that every app depends on.
-      - name: Install workspace dependencies
-        run: npm ci
-
-      # 2) Apps that are NOT root workspace members need their own install so
-      #    their deps (and the @hudumika/* workspace packages via the root
-      #    node_modules symlink) resolve correctly.
-      - name: Install app dependencies
-        if: ${{ matrix.workspace == false }}
-        working-directory: ${{ matrix.app }}
-        run: npm install
 
       - name: Setup EAS
         uses: expo/expo-github-action@v8
@@ -66,24 +57,25 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       # Register the EAS project (writes expo.projectId into app.json) so the
-      # build does not prompt. Uses the EXPO_TOKEN account. --force creates the
-      # project if it does not exist yet under this account.
+      # build does not prompt. --force creates the project if it does not exist
+      # yet under this account.
       - name: Ensure EAS project
         working-directory: ${{ matrix.app }}
         run: eas init --non-interactive --force
 
-      # 3) Local build uses GitHub's CPU, not EAS quota. The "preview" profile
-      #    is configured with android.buildType "apk".
-      - name: Build Android APK locally
+      - name: Build Android APK (EAS cloud)
+        id: build
         working-directory: ${{ matrix.app }}
-        run: eas build --local --platform android --profile preview --non-interactive
+        run: eas build --platform android --profile preview --non-interactive --json > build.json
 
-      - name: Collect APK
-        id: apk
+      - name: Download APK
+        working-directory: ${{ matrix.app }}
         run: |
-          APK=$(find "${{ matrix.app }}" -name "*.apk" -maxdepth 3 | head -n1)
-          if [ -z "$APK" ]; then echo "::error::APK not produced"; exit 1; fi
-          echo "path=$APK" >> "$GITHUB_OUTPUT"
+          BUILD_ID=$(python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('id') or (d.get('builds') or [{}])[0].get('id'))" < build.json)
+          echo "Downloading build $BUILD_ID"
+          eas build:download "$BUILD_ID"
+          APK=$(find . -name '*.apk' -maxdepth 2 | head -n1)
+          if [ -z "$APK" ]; then echo "::error::APK not downloaded"; exit 1; fi
           cp "$APK" "${{ github.workspace }}/hudumika-${{ matrix.name }}.apk"
 
       - name: Upload build artifact
