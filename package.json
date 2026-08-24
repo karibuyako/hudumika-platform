@@ -9,6 +9,9 @@
     "packages/tokens",
     "public-frontend",
     "admin-web/app",
+    "consumer-mobile/app",
+    "merchant/app",
+    "provider/app",
     "rider-mobile/app"
   ],
   "scripts": {
