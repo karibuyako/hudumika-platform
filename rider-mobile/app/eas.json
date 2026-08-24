@@ -16,7 +16,6 @@
       },
       "env": {
         "EXPO_PUBLIC_ENV": "development",
-        "EXPO_PUBLIC_API_URL": "",
         "EXPO_PUBLIC_MOCK_AUTH": "true",
         "EXPO_PUBLIC_MOCK_JOBS": "true",
         "EXPO_PUBLIC_MOCK_EARNINGS": "true",
@@ -52,7 +51,6 @@
       "channel": "preview",
       "env": {
         "EXPO_PUBLIC_ENV": "staging",
-        "EXPO_PUBLIC_API_URL": "",
         "EXPO_PUBLIC_MOCK_AUTH": "true",
         "EXPO_PUBLIC_MOCK_JOBS": "true",
         "EXPO_PUBLIC_MOCK_EARNINGS": "true",

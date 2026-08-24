@@ -35,15 +35,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: consumer
-            app: consumer-mobile/app
-            workspace: false
-          - name: merchant
-            app: merchant/app
-            workspace: false
-          - name: provider
-            app: provider/app
-            workspace: false
           - name: rider
             app: rider-mobile/app
             workspace: true
