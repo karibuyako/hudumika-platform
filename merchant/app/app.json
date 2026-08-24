@@ -13,6 +13,7 @@
       "supportsTablet": false
     },
     "android": {
+      "package": "co.tz.hudumika.merchant",
       "adaptiveIcon": {
         "backgroundColor": "#1a5c44",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
