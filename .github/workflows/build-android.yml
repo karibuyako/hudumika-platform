@@ -5,16 +5,16 @@ name: Build Android APKs (EAS cloud, free quota)
 # GitHub Release. The public site (public-frontend /download) links to:
 #   https://github.com/karibuyako/hudumika-platform/releases/latest/download/hudumika-<app>.apk
 #
-# We use EAS *cloud* builds (not --local) because this is a monorepo: EAS cloud
-# installs dependencies at the workspace root, so @hudumika/* workspace packages
-# (and their deps like @faker-js/faker) resolve correctly. Local builds install
-# only inside the app dir and hang on the free GitHub runner.
+# We use EAS *cloud* builds (not --local) because a native Android build hangs on
+# the free GitHub runner. Each app's metro.config.js aliases @faker-js/faker/msw
+# into the app's node_modules so the workspace @hudumika/contract bundle resolves
+# regardless of where EAS installs dependencies.
 #
 # PREREQUISITES (repo Settings -> Secrets and variables -> Actions):
 #   EXPO_TOKEN  – Expo access token for the account that owns the EAS projects
 #                 (https://expo.dev/settings/access-tokens).
 #
-# HOW TO PUBLISH A NEW SET OF APKs:
+# HOW TO PUBLISH A NEW SET OF APKS:
 #   git tag v1.0.0 && git push origin v1.0.0
 # workflow_dispatch also builds the APKs as downloadable artifacts for testing.
 
@@ -41,14 +41,32 @@ jobs:
         include:
           - name: consumer
             app: consumer-mobile/app
+            workspace: false
           - name: merchant
             app: merchant/app
+            workspace: false
           - name: provider
             app: provider/app
+            workspace: false
           - name: rider
             app: rider-mobile/app
+            workspace: true
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # Install deps so `eas init` can resolve config plugins (expo-router).
+      - name: Install workspace dependencies
+        run: npm ci
+
+      - name: Install app dependencies
+        if: ${{ matrix.workspace == false }}
+        working-directory: ${{ matrix.app }}
+        run: npm install
 
       - name: Setup EAS
         uses: expo/expo-github-action@v8
