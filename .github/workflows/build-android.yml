@@ -77,6 +77,14 @@ jobs:
             exit 1
           fi
 
+      - name: Upload build failure log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-${{ matrix.name }}
+          path: ${{ matrix.app }}/build.log
+          if-no-files-found: ignore
+
       - name: Locate and stage APK
         run: |
           APK=$(find "${{ matrix.app }}/android" -name '*.apk' -path '*release*' 2>/dev/null | head -n1)
