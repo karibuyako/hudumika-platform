@@ -1,8 +1,31 @@
 import { useState } from 'react'
-import { requestOtp, verifyOtp } from '@hudumika/contract'
+import { getRequestOtpUrl, getVerifyOtpUrl } from '@hudumika/contract'
 import { Field, InlineError, Toast } from '../../components/FormBits'
 import { parseApiError } from '../../lib/api-error'
 import { makeMockProviderProfile, SESSION_TTL_MS, setSession } from '../../lib/session'
+import { withApiBase } from '../../lib/api-base'
+
+async function requestOtpLive(body: { channel: string; destination: string; purpose: string }) {
+  const res = await fetch(withApiBase(getRequestOtpUrl()), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const text = await res.text()
+  const data = text ? JSON.parse(text) : {}
+  return { data, status: res.status, headers: res.headers } as any
+}
+
+async function verifyOtpLive(body: { requestId: string; code: string }) {
+  const res = await fetch(withApiBase(getVerifyOtpUrl()), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const text = await res.text()
+  const data = text ? JSON.parse(text) : {}
+  return { data, status: res.status, headers: res.headers } as any
+}
 
 export function LoginPage() {
   const [phone, setPhone] = useState('')
@@ -22,7 +45,7 @@ export function LoginPage() {
     }
     setSending(true)
     try {
-      const res = await requestOtp({ channel: 'phone', destination, purpose: 'login' })
+      const res = await requestOtpLive({ channel: 'phone', destination, purpose: 'login' })
       if (res.status === 200) {
         setRequestId(res.data.requestId)
       } else if (res.status === 429) {
@@ -45,7 +68,7 @@ export function LoginPage() {
     }
     setVerifying(true)
     try {
-      const res = await verifyOtp({ requestId, code: trimmedCode })
+      const res = await verifyOtpLive({ requestId, code: trimmedCode })
       if (res.status === 200) {
         const profile = makeMockProviderProfile(phone.trim())
         setSession({
