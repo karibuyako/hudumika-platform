@@ -11,7 +11,9 @@
     "admin-web/app",
     "consumer-mobile/app",
     "merchant/app",
+    "merchant/web",
     "provider/app",
+    "provider/web",
     "rider-mobile/app"
   ],
   "scripts": {

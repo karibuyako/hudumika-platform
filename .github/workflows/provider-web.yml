@@ -1,0 +1,40 @@
+name: provider-web
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - provider/web/**
+      - .github/workflows/provider-web.yml
+  push:
+    branches:
+      - main
+    paths:
+      - provider/web/**
+      - .github/workflows/provider-web.yml
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Typecheck
+        working-directory: provider/web
+        run: npm run typecheck
+      - name: Build
+        working-directory: provider/web
+        run: npm run build
+
+      - name: Deploy to Cloudflare Pages
+        if: github.ref == 'refs/heads/main'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy provider/web/dist --project-name=hudumika-provider
