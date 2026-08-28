@@ -1,14 +1,17 @@
 name: admin-web
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - admin-web/**
+      - .github/workflows/admin-web.yml
   push:
     branches:
       - main
     paths:
       - admin-web/**
+      - .github/workflows/admin-web.yml
 
 jobs:
   build:
@@ -39,3 +42,11 @@ jobs:
       - name: Build
         working-directory: admin-web/app
         run: npm run build
+
+      - name: Deploy to Cloudflare Pages
+        if: github.ref == 'refs/heads/main'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy admin-web/app/dist --project-name=hudumika-admin
