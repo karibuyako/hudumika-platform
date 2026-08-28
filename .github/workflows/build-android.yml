@@ -41,8 +41,12 @@ jobs:
       max-parallel: 1
       matrix:
         include:
-          - name: merchant
-            app: merchant/app
+          - name: consumer
+            app: consumer-mobile/app
+          - name: provider
+            app: provider/app
+          - name: rider
+            app: rider-mobile/app
     steps:
       - uses: actions/checkout@v4
 
