@@ -29,3 +29,11 @@ jobs:
       - name: Build
         working-directory: public-frontend
         run: npm run build
+
+      - name: Deploy to Cloudflare Pages
+        if: github.event_name == 'push'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy public-frontend/dist --project-name=hudumika-public
