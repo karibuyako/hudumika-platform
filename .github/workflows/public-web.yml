@@ -1,14 +1,17 @@
 name: public-web
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - public-frontend/**
+      - .github/workflows/public-web.yml
   push:
     branches:
       - main
     paths:
       - public-frontend/**
+      - .github/workflows/public-web.yml
 
 jobs:
   build:
