@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -67,7 +68,20 @@ func main() {
 		server.SetOutbox(outbox)
 		server.SetEncryptor(encryptor)
 
-		smsGateway := gatewayFromEnv("sms", os.Getenv("OTP_SMS_GATEWAY_URL"), os.Getenv("OTP_SMS_GATEWAY_API_KEY"), os.Getenv("OTP_SMS_GATEWAY_SENDER"), logger)
+		url := os.Getenv("OTP_SMS_GATEWAY_URL")
+		apiKey := os.Getenv("OTP_SMS_GATEWAY_API_KEY")
+		sender := os.Getenv("OTP_SMS_GATEWAY_SENDER")
+		var smsGateway notifications.Provider
+		if strings.Contains(url, "textbee") {
+			if gw, err := notifications.NewTextBeeGateway(url, apiKey); err == nil {
+				smsGateway = gw
+				logger.Info("notification gateway configured", "channel", "sms", "provider", "textbee")
+			} else {
+				logger.Warn("textbee gateway disabled", "error", err)
+			}
+		} else {
+			smsGateway = gatewayFromEnv("sms", url, apiKey, sender, logger)
+		}
 		emailGateway := gatewayFromEnv("email", os.Getenv("EMAIL_GATEWAY_URL"), os.Getenv("EMAIL_GATEWAY_API_KEY"), os.Getenv("EMAIL_GATEWAY_SENDER"), logger)
 		primary := notifications.Provider(&notifications.SMSProvider{})
 		fallback := notifications.Provider(&notifications.EmailProvider{})
