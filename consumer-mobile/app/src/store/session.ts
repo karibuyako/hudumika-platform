@@ -89,8 +89,9 @@ export const useSessionStore = create<SessionState>()((set) => ({
         set({ status: 'anon', token: null, user: null });
         return;
       }
-      // Mock/backend unreachable — stay boot; the root layout retries.
-      set({ status: 'boot' });
+      // Backend unreachable — fall back to anon so user sees login instead of infinite splash.
+      console.warn('[session] restore failed, falling back to anon', e);
+      set({ status: 'anon', token: null, user: null });
     }
   },
 

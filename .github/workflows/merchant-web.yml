@@ -30,6 +30,9 @@ jobs:
       - name: Build
         working-directory: merchant/web
         run: npm run build
+        env:
+          VITE_MERCHANT_API_URL: https://hudumika-api-production.up.railway.app/api/v1
+          VITE_USE_MOCKS: "false"
 
       - name: Deploy to Cloudflare Pages
         if: github.ref == 'refs/heads/main'

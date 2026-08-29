@@ -27,7 +27,7 @@
       "env": {
         "EXPO_PUBLIC_ENVIRONMENT": "staging",
         "EXPO_PUBLIC_MOCK_ALL": "false",
-            "EXPO_PUBLIC_API_URL": "https://hudumika-api-production.up.railway.app",
+            "EXPO_PUBLIC_API_URL": "https://hudumika-api-production.up.railway.app/api/v1",
             "GRADLE_OPTS": "-Xmx3g -XX:MaxMetaspaceSize=1024m -Dorg.gradle.daemon=false",
             "NODE_OPTIONS": "--max-old-space-size=2048"
           }
@@ -40,7 +40,7 @@
       "env": {
         "EXPO_PUBLIC_ENVIRONMENT": "production",
         "EXPO_PUBLIC_MOCK_ALL": "false",
-        "EXPO_PUBLIC_API_URL": "https://hudumika-api-production.up.railway.app"
+        "EXPO_PUBLIC_API_URL": "https://hudumika-api-production.up.railway.app/api/v1"
       }
     }
   }

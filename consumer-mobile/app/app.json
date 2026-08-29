@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "hudumika",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "co.tz.hudumika.customer",
@@ -60,7 +60,7 @@
     ],
     "experiments": {
       "typedRoutes": true,
-      "reactCompiler": true
+      "reactCompiler": false
     },
     "extra": {
       "router": {},

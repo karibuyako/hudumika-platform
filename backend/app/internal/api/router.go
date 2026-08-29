@@ -36,8 +36,30 @@ const (
 	verifyRateWindowIP       = time.Minute
 )
 
+func stripApiV1Prefix(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api/v1/") {
+			r2 := r.Clone(r.Context())
+			r2.URL.Path = strings.TrimPrefix(r.URL.Path, "/api/v1")
+			if r2.URL.Path == "" {
+				r2.URL.Path = "/"
+			}
+			next.ServeHTTP(w, r2)
+			return
+		}
+		if r.URL.Path == "/api/v1" {
+			r2 := r.Clone(r.Context())
+			r2.URL.Path = "/"
+			next.ServeHTTP(w, r2)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func (s *Server) Router() http.Handler {
 	r := chi.NewRouter()
+	r.Use(stripApiV1Prefix)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)

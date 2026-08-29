@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { LoginPage } from './features/auth/LoginPage'
-import { clearSession, getSession, useSession } from './lib/session'
+import { clearSession, getSession, refreshAccessToken, useSession } from './lib/session'
+
+const REFRESH_AFTER_MS = 10 * 60 * 1000
+let refreshInFlight = false
 
 const NAV_GROUPS: Array<{ label: string; items: Array<{ to: string; label: string }> }> = [
   { label: 'Overview', items: [{ to: '/', label: 'Dashboard' }] },
@@ -28,6 +31,23 @@ export function Shell() {
   function signOut() {
     clearSession()
   }
+
+  useEffect(() => {
+    if (!session) return
+    const timer = setInterval(() => {
+      getSession()
+      if (refreshInFlight) return
+      const current = getSession()
+      if (!current?.tokenIssuedAt) return
+      if (Date.now() - current.tokenIssuedAt > REFRESH_AFTER_MS) {
+        refreshInFlight = true
+        void refreshAccessToken().finally(() => {
+          refreshInFlight = false
+        })
+      }
+    }, 30_000)
+    return () => clearInterval(timer)
+  }, [session])
 
   // Keep session fresh on focus — expire check handled in getSession()
   useEffect(() => {

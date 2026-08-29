@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { refreshToken } from '@hudumika/contract'
+import { getRefreshTokenUrl } from '@hudumika/contract'
 import { rolePermissions, STAFF_ROLES, type StaffRoleDef } from './roles'
+import { withApiBase } from './api-base'
 
 export interface StaffSession {
   userId: string
@@ -69,15 +70,20 @@ export async function refreshAccessToken(): Promise<boolean> {
   try {
     const session = getSession()
     if (!session?.refreshToken) return false
-    const res = await refreshToken({ refreshToken: session.refreshToken })
+    const res = await fetch(withApiBase(getRefreshTokenUrl()), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken: session.refreshToken }),
+    })
     if (res.status !== 200) {
       clearSession()
       return false
     }
+    const data = (await res.json()) as { accessToken: string; refreshToken: string }
     setSession({
       ...session,
-      accessToken: res.data.accessToken,
-      refreshToken: res.data.refreshToken,
+      accessToken: data.accessToken,
+      refreshToken: data.refreshToken,
       tokenIssuedAt: Date.now(),
       expiresAt: Date.now() + SESSION_TTL_MS,
     })
