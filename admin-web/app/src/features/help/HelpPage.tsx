@@ -314,7 +314,7 @@ function ScheduledNotifications() {
   }, [])
 
   async function handleCancel(id: string) {
-    const res = await adminCancelScheduledNotification(id, { reason: 'Cancelled by admin' })
+    const res = await adminCancelScheduledNotification({ notificationId: id })
     if (res.status === 200) {
       setToast('Notification cancelled')
       setNotifications((prev) => (prev ?? []).filter((n) => n.id !== id))

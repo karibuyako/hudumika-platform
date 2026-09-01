@@ -240,7 +240,7 @@ function GroupBuyDrawer({
   allowed: boolean
 }) {
   const d = deal
-  const [vouchers, setVouchers] = useState<Array<{ id: string; code: string; status: string; orderId?: string }>>([])
+  const [vouchers, setVouchers] = useState<Array<{ code: string; status: string; groupBuyId: string }>>([])
   const [showVouchers, setShowVouchers] = useState(false)
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
@@ -248,14 +248,14 @@ function GroupBuyDrawer({
   async function loadVouchers() {
     if (!d.id) return
     const res = await listGroupBuyVouchers(d.id, { limit: 50 })
-    if (res.status === 200) setVouchers(res.data as Array<{ id: string; code: string; status: string; orderId?: string }>)
+    if (res.status === 200) setVouchers(res.data as Array<{ code: string; status: string; groupBuyId: string }>)
     setShowVouchers(true)
   }
 
   async function handleExtend() {
     if (!d.id) return
     setBusy(true)
-    const res = await extendGroupBuy(d.id, { days: 7 })
+    const res = await extendGroupBuy(d.id, { newEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() })
     setBusy(false)
     if (res.status === 200) setToast('Deal extended by 7 days')
     else setToast('Extend failed')
@@ -369,7 +369,7 @@ function GroupBuyDrawer({
               {busy ? 'Working…' : 'Extend 7 days'}
             </button>
           )}
-          {d.status === 'delisted' && (
+          {String(d.status) === 'delisted' && (
             <button type="button" className="btn" disabled={busy} onClick={handleRelist}>
               {busy ? 'Working…' : 'Relist'}
             </button>
@@ -396,11 +396,11 @@ function GroupBuyDrawer({
             <table className="table table-sm">
               <thead><tr><th>Code</th><th>Status</th><th>Order</th></tr></thead>
               <tbody>
-                {vouchers.map((v) => (
-                  <tr key={v.id}>
+                {vouchers.map((v, idx) => (
+                  <tr key={v.code ?? idx}>
                     <td className="mono">{v.code}</td>
                     <td>{v.status}</td>
-                    <td className="mono small">{v.orderId ?? '—'}</td>
+                    <td className="mono small">—</td>
                   </tr>
                 ))}
               </tbody>

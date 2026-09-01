@@ -37,7 +37,7 @@ export function project(c: XY, bounds: { minLon: number; maxLon: number; minLat:
   return { x, y }
 }
 
-export function fitViewBox(coords: XY[], width = 1000, height = 700): { minLon: number; maxLon: number; minLat: number; maxLat: number } {
+export function fitViewBox(coords: XY[], _width = 1000, _height = 700): { minLon: number; maxLon: number; minLat: number; maxLat: number } {
   const finite = coords.filter(isFiniteXY)
   if (finite.length === 0) return { minLon: 0, maxLon: 1, minLat: 0, maxLat: 1 }
   const xs = finite.map((c) => c.x)
@@ -46,9 +46,7 @@ export function fitViewBox(coords: XY[], width = 1000, height = 700): { minLon: 
   const maxLon = Math.max(...xs)
   const minLat = Math.min(...ys)
   const maxLat = Math.max(...ys)
-  const padX = (maxLon - minLon) * padding
-  const padY = (maxLat - minLat) * padding
-  return { minLon: minLon - padX, maxLon: maxLon + padX, minLat: minLat - padY, maxLat: maxLat + padY }
+  return { minLon, maxLon, minLat, maxLat }
 }
 
 function isFiniteXY(c: XY): boolean {
