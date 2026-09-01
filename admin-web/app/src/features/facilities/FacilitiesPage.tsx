@@ -302,7 +302,7 @@ function FacilityDrawer({
             <tbody>
               {entries.map((e) => (
                 <tr key={e.id}>
-                  <td className="muted">{toLocal(e.createdAt)}</td>
+                  <td className="muted">{toLocal(e.scannedAt)}</td>
                   <td>{e.status}</td>
                   <td className="mono small">{e.riderId ?? '—'}</td>
                 </tr>
