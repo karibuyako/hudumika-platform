@@ -47,12 +47,12 @@ export function GeofencesPage() {
     const type = fd.get('type') as string
     const boundaryRaw = (fd.get('boundary') as string ?? '').trim()
     if (!name || !type) return
-    let boundary: Record<string, unknown> | undefined
+    let boundary: Record<string, unknown> = {}
     if (boundaryRaw) {
       try { boundary = JSON.parse(boundaryRaw) } catch { return }
     }
     setCreating(false)
-    adminCreateGeofence({ name, type, boundary }).then((res) => {
+    adminCreateGeofence({ name, type: type as any, boundary: boundary as any }).then((res) => {
       if (res.status === 201) { setToast('Geofence created'); setRetryKey((k) => k + 1) }
     })
   }

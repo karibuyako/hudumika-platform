@@ -17,9 +17,7 @@ interface LivePosition {
   status?: string
 }
 
-interface MapTrafficOverlay extends AdminMapTrafficOverlay {
-  livePositions?: LivePosition[]
-}
+type MapTrafficOverlay = AdminMapTrafficOverlay
 import { MapLibreMap, addTrafficLayer, addGeoJsonLayer } from '../../components/MapLibreMap'
 import { geocode, calculateMatrix } from '../../lib/tomtom'
 import * as maplibregl from 'maplibre-gl'
