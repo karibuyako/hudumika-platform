@@ -881,6 +881,7 @@ export * from './paySplitShareBody';
 export * from './paySplitShareBodyMethod';
 export * from './platformEvent';
 export * from './platformEventStatus';
+export * from './platformLimits';
 export * from './portfolioItem';
 export * from './portfolioItemKind';
 export * from './postLiveDealChatBody';

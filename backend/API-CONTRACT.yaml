@@ -13807,6 +13807,21 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "422": { $ref: "#/components/responses/ValidationError" }
 
+  /admin/limits:
+    get:
+      tags: [admin-pending]
+      summary: Get platform limits and thresholds
+      operationId: adminGetLimits
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformLimits"
+        "403": { $ref: "#/components/responses/Forbidden" }
+
   /admin/settings:
     get:
       tags: [admin-pending]
@@ -19263,6 +19278,17 @@ components:
         minPassingScore: { type: integer, minimum: 0, maximum: 1000 }
         enabled: { type: boolean }
         reason: { type: string, maxLength: 1000 }
+
+    PlatformLimits:
+      type: object
+      required: [twoPersonThresholdTzs, maxRefundAmountTzs, maxExportRows, sessionTimeoutMinutes, maxLoginAttempts, rateLimitPerMinute]
+      properties:
+        twoPersonThresholdTzs: { type: integer, description: "Amount in TZS requiring two-person approval" }
+        maxRefundAmountTzs: { type: integer, description: "Maximum refund amount in TZS" }
+        maxExportRows: { type: integer, description: "Maximum rows for data exports" }
+        sessionTimeoutMinutes: { type: integer, description: "Session timeout in minutes" }
+        maxLoginAttempts: { type: integer, description: "Max login attempts before lockout" }
+        rateLimitPerMinute: { type: integer, description: "API rate limit per minute" }
 
     AdminSettings:
       type: object

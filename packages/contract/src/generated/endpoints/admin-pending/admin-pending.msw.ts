@@ -58,7 +58,8 @@ import type {
   AdminTicketCloseResult,
   AdminTicketEscalateResult,
   AdminTicketReplyResult,
-  AdminTicketTransferResult
+  AdminTicketTransferResult,
+  PlatformLimits
 } from '../../model';
 
 
@@ -103,6 +104,8 @@ export const getAdminCreateScheduledReportResponseMock = (overrideResponse: Part
 export const getAdminGetQualityScoresResponseMock = (overrideResponse: Partial<Extract<AdminQualityScoreConfig, object>> = {}): AdminQualityScoreConfig => ({weights: {deliveryTimeBps: faker.number.int({min: 0, max: 10000}), cancellationBps: faker.number.int({min: 0, max: 10000}), customerRatingBps: faker.number.int({min: 0, max: 10000}), completionBps: faker.number.int({min: 0, max: 10000})}, minPassingScore: faker.number.int({min: 0, max: 1000}), enabled: faker.datatype.boolean(), ...overrideResponse})
 
 export const getAdminUpdateQualityScoresResponseMock = (overrideResponse: Partial<Extract<AdminQualityScoreConfig, object>> = {}): AdminQualityScoreConfig => ({weights: {deliveryTimeBps: faker.number.int({min: 0, max: 10000}), cancellationBps: faker.number.int({min: 0, max: 10000}), customerRatingBps: faker.number.int({min: 0, max: 10000}), completionBps: faker.number.int({min: 0, max: 10000})}, minPassingScore: faker.number.int({min: 0, max: 1000}), enabled: faker.datatype.boolean(), ...overrideResponse})
+
+export const getAdminGetLimitsResponseMock = (overrideResponse: Partial<Extract<PlatformLimits, object>> = {}): PlatformLimits => ({twoPersonThresholdTzs: faker.number.int(), maxRefundAmountTzs: faker.number.int(), maxExportRows: faker.number.int(), sessionTimeoutMinutes: faker.number.int(), maxLoginAttempts: faker.number.int(), rateLimitPerMinute: faker.number.int(), ...overrideResponse})
 
 export const getAdminGetSettingsResponseMock = (overrideResponse: Partial<Extract<AdminSettings, object>> = {}): AdminSettings => ({general: {currency: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), timezone: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), language: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])}, booking: {maxLeadTimeHours: faker.helpers.arrayElement([faker.number.int(), undefined]), minCancellationHours: faker.helpers.arrayElement([faker.number.int(), undefined]), noShowFeeTZS: faker.helpers.arrayElement([faker.number.int(), undefined])}, notification: {pushEnabled: faker.helpers.arrayElement([faker.datatype.boolean(), undefined]), smsEnabled: faker.helpers.arrayElement([faker.datatype.boolean(), undefined]), emailEnabled: faker.helpers.arrayElement([faker.datatype.boolean(), undefined])}, order: {minOrderTZS: faker.helpers.arrayElement([faker.number.int(), undefined]), maxDeliveryFeeTZS: faker.helpers.arrayElement([faker.number.int(), undefined]), autoCancelMinutes: faker.helpers.arrayElement([faker.number.int(), undefined])}, ...overrideResponse})
 
@@ -416,6 +419,18 @@ export const getAdminUpdateQualityScoresMockHandler = (overrideResponse?: AdminQ
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
     : getAdminUpdateQualityScoresResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminGetLimitsMockHandler = (overrideResponse?: PlatformLimits | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<PlatformLimits> | PlatformLimits), options?: RequestHandlerOptions) => {
+  return http.get('*/admin/limits', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminGetLimitsResponseMock(),
       { status: 200
       })
   }, options)
@@ -846,6 +861,7 @@ export const getAdminPendingMock = () => [
   getAdminCreateScheduledReportMockHandler(),
   getAdminGetQualityScoresMockHandler(),
   getAdminUpdateQualityScoresMockHandler(),
+  getAdminGetLimitsMockHandler(),
   getAdminGetSettingsMockHandler(),
   getAdminUpdateSettingsMockHandler(),
   getAdminGetGatewaysMockHandler(),

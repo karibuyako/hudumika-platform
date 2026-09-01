@@ -10,9 +10,9 @@ import { StatCard } from '../../components/StatCard'
 import { StatusPill } from '../../components/StatusPill'
 
 interface LivePosition {
-  entityId: string
-  lat: number
-  lon: number
+  entityId?: string
+  lat?: number
+  lon?: number
   speedKmh?: number
   status?: string
 }

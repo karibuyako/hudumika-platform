@@ -95,6 +95,7 @@ import type {
   ErrorResponse,
   ForbiddenResponse,
   NotFoundResponse,
+  PlatformLimits,
   RateLimitedResponse,
   ValidationErrorResponse
 } from '../../model';
@@ -1405,6 +1406,55 @@ export const adminUpdateQualityScores = async (adminQualityScoreConfigBody: Admi
 
   const data: adminUpdateQualityScoresResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as adminUpdateQualityScoresResponse
+}
+
+
+export type adminGetLimitsResponse200 = {
+  data: PlatformLimits
+  status: 200
+}
+
+export type adminGetLimitsResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminGetLimitsResponseSuccess = (adminGetLimitsResponse200) & {
+  headers: Headers;
+};
+export type adminGetLimitsResponseError = (adminGetLimitsResponse403) & {
+  headers: Headers;
+};
+
+export type adminGetLimitsResponse = (adminGetLimitsResponseSuccess | adminGetLimitsResponseError)
+
+export const getAdminGetLimitsUrl = () => {
+
+
+
+
+  return `/admin/limits`
+}
+
+/**
+ * @summary Get platform limits and thresholds
+ */
+export const adminGetLimits = async ( options?: RequestInit): Promise<adminGetLimitsResponse> => {
+
+  const res = await fetch(getAdminGetLimitsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminGetLimitsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminGetLimitsResponse
 }
 
 
