@@ -8,18 +8,13 @@
  *
  * OpenAPI spec version: 1.0.0
  */
-import type { AdminGeofenceBoundary } from './adminGeofenceBoundary';
-import type { AdminGeofenceMetadata } from './adminGeofenceMetadata';
-import type { AdminGeofenceType } from './adminGeofenceType';
 
-export interface AdminGeofence {
-  id: string;
-  name: string;
-  type: AdminGeofenceType;
-  /** GeoJSON polygon or circle */
-  boundary: AdminGeofenceBoundary;
-  active: boolean;
-  metadata: AdminGeofenceMetadata;
-  createdAt: string;
-  updatedAt: string;
-}
+export type AdminCreateGeofenceBodyType = typeof AdminCreateGeofenceBodyType[keyof typeof AdminCreateGeofenceBodyType];
+
+
+export const AdminCreateGeofenceBodyType = {
+  hub_zone: 'hub_zone',
+  delivery_zone: 'delivery_zone',
+  restricted_zone: 'restricted_zone',
+  surge_zone: 'surge_zone',
+} as const;

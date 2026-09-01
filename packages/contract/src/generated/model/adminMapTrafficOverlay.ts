@@ -9,10 +9,12 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { AdminMapTrafficOverlayIncidentsItem } from './adminMapTrafficOverlayIncidentsItem';
+import type { AdminMapTrafficOverlayLivePositionsItem } from './adminMapTrafficOverlayLivePositionsItem';
 import type { AdminMapTrafficOverlayTrafficZonesItem } from './adminMapTrafficOverlayTrafficZonesItem';
 
 export interface AdminMapTrafficOverlay {
   generatedAt: string;
   incidents: AdminMapTrafficOverlayIncidentsItem[];
   trafficZones: AdminMapTrafficOverlayTrafficZonesItem[];
+  livePositions: AdminMapTrafficOverlayLivePositionsItem[];
 }

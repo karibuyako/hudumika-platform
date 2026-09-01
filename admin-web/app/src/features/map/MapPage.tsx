@@ -32,8 +32,10 @@ export function parseCoord(raw: string): XY {
 
 export function project(c: XY, bounds: { minLon: number; maxLon: number; minLat: number; maxLat: number }, width = 1000, height = 700): XY {
   const pad = 50
-  const x = pad + ((c.x - bounds.minLon) / (bounds.maxLon - bounds.minLon)) * (width - 2 * pad)
-  const y = pad + ((bounds.maxLat - c.y) / (bounds.maxLat - bounds.minLat)) * (height - 2 * pad)
+  const lonRange = bounds.maxLon - bounds.minLon || 1
+  const latRange = bounds.maxLat - bounds.minLat || 1
+  const x = pad + ((c.x - bounds.minLon) / lonRange) * (width - 2 * pad)
+  const y = pad + ((bounds.maxLat - c.y) / latRange) * (height - 2 * pad)
   return { x, y }
 }
 

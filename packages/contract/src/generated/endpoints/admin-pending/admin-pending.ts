@@ -27,21 +27,23 @@ import type {
   AdminCrashRespondResult,
   AdminCreateAdminBody,
   AdminCreateContentBody,
+  AdminCreateGeofenceBody,
   AdminCreatePolicyBody,
   AdminCreateScheduledReportBody,
   AdminCreateTeamBody,
-  AdminCreateGeofenceBody,
   AdminDataExportDecisionBody,
   AdminDataExportDecisionResult,
-  AdminGeofence,
   AdminDataExportRerunBody,
   AdminDataExportRerunResult,
+  AdminDeleteGeofence200,
   AdminDisputeDecisionBody,
   AdminDisputeDecisionResult,
   AdminEscalateTicketBody,
   AdminFacilityEntry,
   AdminGatewayConfig,
   AdminGatewayConfigBody,
+  AdminGeofence,
+  AdminGeofenceEvent,
   AdminGetMapTrafficParams,
   AdminGetSettingsParams,
   AdminHandoff,
@@ -93,6 +95,7 @@ import type {
   ErrorResponse,
   ForbiddenResponse,
   NotFoundResponse,
+  RateLimitedResponse,
   ValidationErrorResponse
 } from '../../model';
 
@@ -3082,21 +3085,30 @@ export type adminListGeofencesResponseError = (adminListGeofencesResponse403) & 
 export type adminListGeofencesResponse = (adminListGeofencesResponseSuccess | adminListGeofencesResponseError)
 
 export const getAdminListGeofencesUrl = () => {
+
+
+
+
   return `/admin/geofences`
 }
 
 /**
- * @summary List geofences
+ * @summary List all geofences
  */
 export const adminListGeofences = async ( options?: RequestInit): Promise<adminListGeofencesResponse> => {
+
   const res = await fetch(getAdminListGeofencesUrl(),
   {
     ...options,
     method: 'GET'
+
+
   }
 )
 
+
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
   const data: adminListGeofencesResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as adminListGeofencesResponse
 }
@@ -3113,7 +3125,7 @@ export type adminCreateGeofenceResponse403 = {
 }
 
 export type adminCreateGeofenceResponse422 = {
-  data: ValidationErrorResponse
+  data: RateLimitedResponse
   status: 422
 }
 
@@ -3127,6 +3139,10 @@ export type adminCreateGeofenceResponseError = (adminCreateGeofenceResponse403 |
 export type adminCreateGeofenceResponse = (adminCreateGeofenceResponseSuccess | adminCreateGeofenceResponseError)
 
 export const getAdminCreateGeofenceUrl = () => {
+
+
+
+
   return `/admin/geofences`
 }
 
@@ -3134,6 +3150,7 @@ export const getAdminCreateGeofenceUrl = () => {
  * @summary Create a geofence
  */
 export const adminCreateGeofence = async (adminCreateGeofenceBody: AdminCreateGeofenceBody, options?: RequestInit): Promise<adminCreateGeofenceResponse> => {
+
   const res = await fetch(getAdminCreateGeofenceUrl(),
   {
     ...options,
@@ -3143,14 +3160,16 @@ export const adminCreateGeofence = async (adminCreateGeofenceBody: AdminCreateGe
   }
 )
 
+
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
   const data: adminCreateGeofenceResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as adminCreateGeofenceResponse
 }
 
 
 export type adminDeleteGeofenceResponse200 = {
-  data: void
+  data: AdminDeleteGeofence200
   status: 200
 }
 
@@ -3174,6 +3193,10 @@ export type adminDeleteGeofenceResponseError = (adminDeleteGeofenceResponse403 |
 export type adminDeleteGeofenceResponse = (adminDeleteGeofenceResponseSuccess | adminDeleteGeofenceResponseError)
 
 export const getAdminDeleteGeofenceUrl = (geofenceId: string,) => {
+
+
+
+
   return `/admin/geofences/${geofenceId}`
 }
 
@@ -3181,64 +3204,75 @@ export const getAdminDeleteGeofenceUrl = (geofenceId: string,) => {
  * @summary Delete a geofence
  */
 export const adminDeleteGeofence = async (geofenceId: string, options?: RequestInit): Promise<adminDeleteGeofenceResponse> => {
+
   const res = await fetch(getAdminDeleteGeofenceUrl(geofenceId),
   {
     ...options,
     method: 'DELETE'
+
+
   }
 )
 
+
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  const data: adminDeleteGeofenceResponse['data'] = body ? JSON.parse(body) : undefined
+
+  const data: adminDeleteGeofenceResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as adminDeleteGeofenceResponse
 }
 
 
-export interface PlatformLimits {
-  twoPersonThresholdTzs: number;
-  maxRefundAmountTzs: number;
-  maxExportRows: number;
-  sessionTimeoutMinutes: number;
-  maxLoginAttempts: number;
-  rateLimitPerMinute: number;
-}
-
-export type adminGetLimitsResponse200 = {
-  data: PlatformLimits
+export type adminListGeofenceEventsResponse200 = {
+  data: AdminGeofenceEvent[]
   status: 200
 }
 
-export type adminGetLimitsResponse403 = {
+export type adminListGeofenceEventsResponse403 = {
   data: ForbiddenResponse
   status: 403
 }
 
-export type adminGetLimitsResponseSuccess = (adminGetLimitsResponse200) & {
+export type adminListGeofenceEventsResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type adminListGeofenceEventsResponseSuccess = (adminListGeofenceEventsResponse200) & {
   headers: Headers;
 };
-export type adminGetLimitsResponseError = (adminGetLimitsResponse403) & {
+export type adminListGeofenceEventsResponseError = (adminListGeofenceEventsResponse403 | adminListGeofenceEventsResponse404) & {
   headers: Headers;
 };
 
-export type adminGetLimitsResponse = (adminGetLimitsResponseSuccess | adminGetLimitsResponseError)
+export type adminListGeofenceEventsResponse = (adminListGeofenceEventsResponseSuccess | adminListGeofenceEventsResponseError)
 
-export const getAdminGetLimitsUrl = () => {
-  return `/admin/limits`
+export const getAdminListGeofenceEventsUrl = (geofenceId: string,) => {
+
+
+
+
+  return `/admin/geofences/${geofenceId}/events`
 }
 
 /**
- * @summary Get platform limits and thresholds
+ * @summary List events for a geofence
  */
-export const adminGetLimits = async (options?: RequestInit): Promise<adminGetLimitsResponse> => {
-  const res = await fetch(getAdminGetLimitsUrl(),
+export const adminListGeofenceEvents = async (geofenceId: string, options?: RequestInit): Promise<adminListGeofenceEventsResponse> => {
+
+  const res = await fetch(getAdminListGeofenceEventsUrl(geofenceId),
   {
     ...options,
     method: 'GET'
+
+
   }
 )
 
+
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-  const data: adminGetLimitsResponse['data'] = body ? JSON.parse(body) : {} as PlatformLimits
-  return { data, status: res.status, headers: res.headers } as adminGetLimitsResponse
+
+  const data: adminListGeofenceEventsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminListGeofenceEventsResponse
 }
+
 

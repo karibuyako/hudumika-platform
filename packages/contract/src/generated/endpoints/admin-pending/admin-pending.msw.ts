@@ -30,9 +30,12 @@ import type {
   AdminCrashRespondResult,
   AdminDataExportDecisionResult,
   AdminDataExportRerunResult,
+  AdminDeleteGeofence200,
   AdminDisputeDecisionResult,
   AdminFacilityEntry,
   AdminGatewayConfig,
+  AdminGeofence,
+  AdminGeofenceEvent,
   AdminHandoff,
   AdminHandoffSealResult,
   AdminLogisticsAnomalyDecisionResult,
@@ -55,12 +58,8 @@ import type {
   AdminTicketCloseResult,
   AdminTicketEscalateResult,
   AdminTicketReplyResult,
-  AdminTicketTransferResult,
-  AdminGeofence
+  AdminTicketTransferResult
 } from '../../model';
-import type {
-  PlatformLimits
-} from './admin-pending';
 
 
 export const getAdminRiderApprovalDecisionResponseMock = (overrideResponse: Partial<Extract<AdminRiderApprovalResult, object>> = {}): AdminRiderApprovalResult => ({riderId: faker.string.uuid(), status: faker.helpers.arrayElement(['approved','changes_requested'] as const), auditEntryId: faker.string.uuid(), ...overrideResponse})
@@ -147,7 +146,7 @@ export const getAdminCreatePolicyResponseMock = (overrideResponse: Partial<Extra
 
 export const getAdminListScheduledNotificationsResponseMock = (): AdminScheduledNotification[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.uuid(), title: faker.string.alpha({length: {min: 10, max: 20}}), message: faker.string.alpha({length: {min: 10, max: 20}}), audience: {roles: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), undefined]), regions: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), undefined])}, status: faker.helpers.arrayElement(['scheduled','sent','cancelled'] as const), scheduledAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z'})))
 
-export const getAdminGetMapTrafficResponseMock = (overrideResponse: Partial<Extract<AdminMapTrafficOverlay, object>> = {}): AdminMapTrafficOverlay => ({generatedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', incidents: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.helpers.arrayElement([faker.string.uuid(), undefined]), type: faker.helpers.arrayElement([faker.helpers.arrayElement(['accident','road_closure','severe_weather','security_incident','sos'] as const), undefined]), severity: faker.helpers.arrayElement([faker.helpers.arrayElement(['low','medium','high','critical'] as const), undefined]), lat: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), undefined]), lon: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), undefined]), description: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), createdAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined])})), trafficZones: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({zoneId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), severity: faker.helpers.arrayElement([faker.helpers.arrayElement(['normal','moderate','heavy','gridlock'] as const), undefined]), avgSpeedKmh: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), undefined])})), ...overrideResponse})
+export const getAdminGetMapTrafficResponseMock = (overrideResponse: Partial<Extract<AdminMapTrafficOverlay, object>> = {}): AdminMapTrafficOverlay => ({generatedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', incidents: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.helpers.arrayElement([faker.string.uuid(), undefined]), type: faker.helpers.arrayElement([faker.helpers.arrayElement(['accident','road_closure','severe_weather','security_incident','sos'] as const), undefined]), severity: faker.helpers.arrayElement([faker.helpers.arrayElement(['low','medium','high','critical'] as const), undefined]), lat: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), undefined]), lon: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), undefined]), description: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), createdAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined])})), trafficZones: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({zoneId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), severity: faker.helpers.arrayElement([faker.helpers.arrayElement(['normal','moderate','heavy','gridlock'] as const), undefined]), avgSpeedKmh: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), undefined])})), livePositions: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({entityType: faker.helpers.arrayElement([faker.helpers.arrayElement(['rider','vehicle'] as const), undefined]), entityId: faker.helpers.arrayElement([faker.string.uuid(), undefined]), lat: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), undefined]), lon: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), undefined]), speedKmh: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), undefined]), heading: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), undefined]), accuracyM: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), undefined]), updatedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined])})), ...overrideResponse})
 
 export const getAdminListHandoffsResponseMock = (): AdminHandoff[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.uuid(), fromHubId: faker.string.uuid(), toHubId: faker.string.uuid(), consignmentId: faker.helpers.arrayElement([faker.string.uuid(), null]), carrierId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), status: faker.helpers.arrayElement(['pending','resolved','seal_broken'] as const), sealIntact: faker.helpers.arrayElement([faker.datatype.boolean(), undefined]), sealBrokenAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), resolvedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z'})))
 
@@ -160,6 +159,14 @@ export const getAdminEscalateTicketResponseMock = (overrideResponse: Partial<Ext
 export const getAdminCloseTicketResponseMock = (overrideResponse: Partial<Extract<AdminTicketCloseResult, object>> = {}): AdminTicketCloseResult => ({ticketId: faker.string.uuid(), status: faker.helpers.arrayElement(['closed'] as const), ...overrideResponse})
 
 export const getAdminTransferTicketResponseMock = (overrideResponse: Partial<Extract<AdminTicketTransferResult, object>> = {}): AdminTicketTransferResult => ({ticketId: faker.string.uuid(), status: faker.string.alpha({length: {min: 10, max: 20}}), transferredTo: faker.helpers.arrayElement([faker.string.uuid(), undefined]), ...overrideResponse})
+
+export const getAdminListGeofencesResponseMock = (): AdminGeofence[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.uuid(), name: faker.string.alpha({length: {min: 10, max: 20}}), type: faker.helpers.arrayElement(['hub_zone','delivery_zone','restricted_zone','surge_zone'] as const), boundary: {}, active: faker.datatype.boolean(), metadata: {}, createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', updatedAt: faker.date.past().toISOString().slice(0, 19) + 'Z'})))
+
+export const getAdminCreateGeofenceResponseMock = (overrideResponse: Partial<Extract<AdminGeofence, object>> = {}): AdminGeofence => ({id: faker.string.uuid(), name: faker.string.alpha({length: {min: 10, max: 20}}), type: faker.helpers.arrayElement(['hub_zone','delivery_zone','restricted_zone','surge_zone'] as const), boundary: {}, active: faker.datatype.boolean(), metadata: {}, createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', updatedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
+
+export const getAdminDeleteGeofenceResponseMock = (overrideResponse: Partial<Extract<AdminDeleteGeofence200, object>> = {}): AdminDeleteGeofence200 => ({geofenceId: faker.helpers.arrayElement([faker.string.uuid(), undefined]), status: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), ...overrideResponse})
+
+export const getAdminListGeofenceEventsResponseMock = (): AdminGeofenceEvent[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.uuid(), geofenceId: faker.string.uuid(), entityType: faker.helpers.arrayElement(['rider','vehicle'] as const), entityId: faker.string.uuid(), eventType: faker.helpers.arrayElement(['entry','exit'] as const), lat: faker.number.float({fractionDigits: 2}), lon: faker.number.float({fractionDigits: 2}), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z'})))
 
 
 export const getAdminRiderApprovalDecisionMockHandler = (overrideResponse?: AdminRiderApprovalResult | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<AdminRiderApprovalResult> | AdminRiderApprovalResult), options?: RequestHandlerOptions) => {
@@ -770,10 +777,10 @@ export const getAdminTransferTicketMockHandler = (overrideResponse?: AdminTicket
   }, options)
 }
 
-export const getAdminListGeofencesResponseMock = (): AdminGeofence[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.uuid(), name: faker.string.alpha({length: {min: 10, max: 20}}), type: faker.helpers.arrayElement(['hub_zone','delivery_zone','restricted_zone','surge_zone'] as const), active: faker.datatype.boolean(), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...{}})))
-
 export const getAdminListGeofencesMockHandler = (overrideResponse?: AdminGeofence[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminGeofence[]> | AdminGeofence[]), options?: RequestHandlerOptions) => {
   return http.get('*/admin/geofences', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
     : getAdminListGeofencesResponseMock(),
@@ -782,10 +789,10 @@ export const getAdminListGeofencesMockHandler = (overrideResponse?: AdminGeofenc
   }, options)
 }
 
-export const getAdminCreateGeofenceResponseMock = (overrideResponse: Partial<Extract<AdminGeofence, object>> = {}): AdminGeofence => ({id: faker.string.uuid(), name: faker.string.alpha({length: {min: 10, max: 20}}), type: faker.helpers.arrayElement(['hub_zone','delivery_zone','restricted_zone','surge_zone'] as const), active: faker.datatype.boolean(), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
-
 export const getAdminCreateGeofenceMockHandler = (overrideResponse?: AdminGeofence | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<AdminGeofence> | AdminGeofence), options?: RequestHandlerOptions) => {
   return http.post('*/admin/geofences', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
     : getAdminCreateGeofenceResponseMock(),
@@ -794,28 +801,29 @@ export const getAdminCreateGeofenceMockHandler = (overrideResponse?: AdminGeofen
   }, options)
 }
 
-export const getAdminDeleteGeofenceMockHandler = (overrideResponse?: void | ((info: Parameters<Parameters<typeof http.delete>[1]>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
+export const getAdminDeleteGeofenceMockHandler = (overrideResponse?: AdminDeleteGeofence200 | ((info: Parameters<Parameters<typeof http.delete>[1]>[0]) => Promise<AdminDeleteGeofence200> | AdminDeleteGeofence200), options?: RequestHandlerOptions) => {
   return http.delete('*/admin/geofences/:geofenceId', async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
-    if (overrideResponse !== undefined) {
-      const result = typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse
-      return HttpResponse.json(result as any, { status: 200 })
-    }
-    return new HttpResponse(null, { status: 204 })
-  }, options)
-}
 
-export const getAdminGetLimitsResponseMock = (overrideResponse: Partial<Extract<PlatformLimits, object>> = {}): PlatformLimits => ({twoPersonThresholdTzs: faker.number.int(), maxRefundAmountTzs: faker.number.int(), maxExportRows: faker.number.int(), sessionTimeoutMinutes: faker.number.int(), maxLoginAttempts: faker.number.int(), rateLimitPerMinute: faker.number.int(), ...overrideResponse})
 
-export const getAdminGetLimitsMockHandler = (overrideResponse?: PlatformLimits | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<PlatformLimits> | PlatformLimits), options?: RequestHandlerOptions) => {
-  return http.get('*/admin/limits', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getAdminGetLimitsResponseMock(),
+    : getAdminDeleteGeofenceResponseMock(),
       { status: 200
       })
   }, options)
 }
 
+export const getAdminListGeofenceEventsMockHandler = (overrideResponse?: AdminGeofenceEvent[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminGeofenceEvent[]> | AdminGeofenceEvent[]), options?: RequestHandlerOptions) => {
+  return http.get('*/admin/geofences/:geofenceId/events', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminListGeofenceEventsResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
 export const getAdminPendingMock = () => [
   getAdminRiderApprovalDecisionMockHandler(),
   getAdminProviderApprovalDecisionMockHandler(),
@@ -871,5 +879,5 @@ export const getAdminPendingMock = () => [
   getAdminListGeofencesMockHandler(),
   getAdminCreateGeofenceMockHandler(),
   getAdminDeleteGeofenceMockHandler(),
-  getAdminGetLimitsMockHandler()
+  getAdminListGeofenceEventsMockHandler()
 ]

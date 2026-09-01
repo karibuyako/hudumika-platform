@@ -8,18 +8,11 @@
  *
  * OpenAPI spec version: 1.0.0
  */
-import type { AdminGeofenceBoundary } from './adminGeofenceBoundary';
-import type { AdminGeofenceMetadata } from './adminGeofenceMetadata';
-import type { AdminGeofenceType } from './adminGeofenceType';
 
-export interface AdminGeofence {
-  id: string;
-  name: string;
-  type: AdminGeofenceType;
-  /** GeoJSON polygon or circle */
-  boundary: AdminGeofenceBoundary;
-  active: boolean;
-  metadata: AdminGeofenceMetadata;
-  createdAt: string;
-  updatedAt: string;
-}
+export type AdminMapTrafficOverlayLivePositionsItemEntityType = typeof AdminMapTrafficOverlayLivePositionsItemEntityType[keyof typeof AdminMapTrafficOverlayLivePositionsItemEntityType];
+
+
+export const AdminMapTrafficOverlayLivePositionsItemEntityType = {
+  rider: 'rider',
+  vehicle: 'vehicle',
+} as const;

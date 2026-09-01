@@ -193,6 +193,10 @@ describe('map helpers', () => {
   })
 
   it('returns a degenerate fit for no coordinates', () => {
-    expect(fitViewBox([], 1000, 700)).toEqual({ scale: 1, offsetX: 0, offsetY: 0, minX: 0, minY: 0 })
+    const fit = fitViewBox([], 1000, 700)
+    expect(fit.minLon).toBe(0)
+    expect(fit.maxLon).toBe(1)
+    expect(fit.minLat).toBe(0)
+    expect(fit.maxLat).toBe(1)
   })
 })

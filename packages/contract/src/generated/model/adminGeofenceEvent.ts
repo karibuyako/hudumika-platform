@@ -8,18 +8,16 @@
  *
  * OpenAPI spec version: 1.0.0
  */
-import type { AdminGeofenceBoundary } from './adminGeofenceBoundary';
-import type { AdminGeofenceMetadata } from './adminGeofenceMetadata';
-import type { AdminGeofenceType } from './adminGeofenceType';
+import type { AdminGeofenceEventEntityType } from './adminGeofenceEventEntityType';
+import type { AdminGeofenceEventEventType } from './adminGeofenceEventEventType';
 
-export interface AdminGeofence {
+export interface AdminGeofenceEvent {
   id: string;
-  name: string;
-  type: AdminGeofenceType;
-  /** GeoJSON polygon or circle */
-  boundary: AdminGeofenceBoundary;
-  active: boolean;
-  metadata: AdminGeofenceMetadata;
+  geofenceId: string;
+  entityType: AdminGeofenceEventEntityType;
+  entityId: string;
+  eventType: AdminGeofenceEventEventType;
+  lat: number;
+  lon: number;
   createdAt: string;
-  updatedAt: string;
 }
