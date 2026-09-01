@@ -157,6 +157,7 @@ function OrderDrawer({
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [busy, setBusy] = useState(false)
   const [cancelError, setCancelError] = useState<ApiErrorInfo | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
 
   // Assign rider state
   const [riders, setRiders] = useState<RiderAdmin[]>([])
@@ -515,6 +516,10 @@ function OrderDrawer({
             </div>
           </form>
         </div>
+      )}
+
+      {toast && (
+        <Toast message={toast} onClose={() => setToast(null)} />
       )}
     </div>
   )

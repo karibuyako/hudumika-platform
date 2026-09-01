@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: rider-mobile/app/package-lock.json
+          cache-dependency-path: package-lock.json
       - name: Install
         working-directory: rider-mobile/app
         run: npm ci

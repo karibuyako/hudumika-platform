@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: consumer-mobile/app/package-lock.json
+          cache-dependency-path: package-lock.json
       - name: Install
         working-directory: consumer-mobile/app
         run: npm ci
@@ -50,7 +50,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: consumer-mobile/app/package-lock.json
+          cache-dependency-path: package-lock.json
       - name: Install
         working-directory: consumer-mobile/app
         run: npm ci

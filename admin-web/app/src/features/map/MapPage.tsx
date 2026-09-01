@@ -30,6 +30,26 @@ export function parseCoord(raw: string): XY {
   return { x: lon, y: lat }
 }
 
+export function project(lon: number, lat: number, width: number, height: number, bounds: { minLon: number; maxLon: number; minLat: number; maxLat: number }): XY {
+  const x = ((lon - bounds.minLon) / (bounds.maxLon - bounds.minLon)) * width
+  const y = ((bounds.maxLat - lat) / (bounds.maxLat - bounds.minLat)) * height
+  return { x, y }
+}
+
+export function fitViewBox(coords: XY[], padding = 0.1): { minLon: number; maxLon: number; minLat: number; maxLat: number } {
+  const finite = coords.filter(isFiniteXY)
+  if (finite.length === 0) return { minLon: 0, maxLon: 1, minLat: 0, maxLat: 1 }
+  const xs = finite.map((c) => c.x)
+  const ys = finite.map((c) => c.y)
+  const minLon = Math.min(...xs)
+  const maxLon = Math.max(...xs)
+  const minLat = Math.min(...ys)
+  const maxLat = Math.max(...ys)
+  const padX = (maxLon - minLon) * padding
+  const padY = (maxLat - minLat) * padding
+  return { minLon: minLon - padX, maxLon: maxLon + padX, minLat: minLat - padY, maxLat: maxLat + padY }
+}
+
 function isFiniteXY(c: XY): boolean {
   return Number.isFinite(c.x) && Number.isFinite(c.y)
 }

@@ -796,11 +796,11 @@ export const getAdminCreateGeofenceMockHandler = (overrideResponse?: AdminGeofen
 
 export const getAdminDeleteGeofenceMockHandler = (overrideResponse?: void | ((info: Parameters<Parameters<typeof http.delete>[1]>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
   return http.delete('*/admin/geofences/:geofenceId', async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
-    return HttpResponse.json(overrideResponse !== undefined
-    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : undefined,
-      { status: 200
-      })
+    if (overrideResponse !== undefined) {
+      const result = typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse
+      return HttpResponse.json(result as any, { status: 200 })
+    }
+    return new HttpResponse(null, { status: 204 })
   }, options)
 }
 

@@ -8,6 +8,18 @@ import { ErrorState } from '../../components/ErrorState'
 import { LoadingSkeleton } from '../../components/LoadingSkeleton'
 import { StatCard } from '../../components/StatCard'
 import { StatusPill } from '../../components/StatusPill'
+
+interface LivePosition {
+  entityId: string
+  lat: number
+  lon: number
+  speedKmh?: number
+  status?: string
+}
+
+interface MapTrafficOverlay extends AdminMapTrafficOverlay {
+  livePositions?: LivePosition[]
+}
 import { MapLibreMap, addTrafficLayer, addGeoJsonLayer } from '../../components/MapLibreMap'
 import { geocode, calculateMatrix } from '../../lib/tomtom'
 import * as maplibregl from 'maplibre-gl'
@@ -35,7 +47,7 @@ function incidentIcon(type: string | undefined): string {
 type LayerToggle = 'traffic' | 'riders' | 'incidents' | 'geofences'
 
 export function MapTrafficPage() {
-  const [overlay, setOverlay] = useState<AdminMapTrafficOverlay | null>(null)
+  const [overlay, setOverlay] = useState<MapTrafficOverlay | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [retryKey, setRetryKey] = useState(0)
   const [selectedIncident, setSelectedIncident] = useState<number | null>(null)

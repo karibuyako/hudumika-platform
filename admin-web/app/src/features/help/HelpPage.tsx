@@ -344,11 +344,11 @@ function ScheduledNotifications() {
               {notifications.map((n) => (
                 <tr key={n.id}>
                   <td className="strong">{n.title}</td>
-                  <td>{n.audience}</td>
+                  <td>{String(n.audience)}</td>
                   <td className="muted">{n.scheduledAt ? new Date(n.scheduledAt).toLocaleString() : '—'}</td>
-                  <td>{n.status}</td>
+                  <td>{String(n.status)}</td>
                   <td>
-                    {n.status === 'pending' && (
+                    {String(n.status) === 'pending' && (
                       <button type="button" className="btn btn-ghost" onClick={() => handleCancel(n.id)}>Cancel</button>
                     )}
                   </td>
