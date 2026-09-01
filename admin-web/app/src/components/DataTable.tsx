@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { KeyboardEvent, ReactNode } from 'react'
 import { EmptyState } from './EmptyState'
 import { InlineError } from './FormBits'
 import { LoadingSkeleton } from './LoadingSkeleton'
 import { Pagination } from './Pagination'
 import { downloadCsv, toCsv } from '../lib/csv'
+import { deleteView, loadSavedViews, saveView, type SavedView } from '../lib/saved-views'
 
 export interface DataTableColumn<T> {
   key: string
@@ -60,6 +61,11 @@ export function DataTable<T>({
   const [page, setPage] = useState(1)
   const [focusIndex, setFocusIndex] = useState<number | null>(null)
   const [columnsOpen, setColumnsOpen] = useState(false)
+  const [viewsOpen, setViewsOpen] = useState(false)
+  const [savedViews, setSavedViews] = useState<SavedView[]>(() =>
+    tableId ? loadSavedViews(tableId) : [],
+  )
+  const [saveName, setSaveName] = useState('')
   const [visibleKeys, setVisibleKeys] = useState<string[] | null>(() => {
     if (!tableId) return null
     try {
@@ -97,6 +103,46 @@ export function DataTable<T>({
       }
       return next
     })
+  }
+
+  const refreshViews = useCallback(() => {
+    if (tableId) setSavedViews(loadSavedViews(tableId))
+  }, [tableId])
+
+  function loadView(view: SavedView) {
+    setSortKey(view.sortKey)
+    setSortDir(view.sortDir)
+    setVisibleKeys(view.visibleKeys)
+    setPage(1)
+    setFocusIndex(null)
+    if (tableId) {
+      try {
+        sessionStorage.setItem(`hudumika.columns.${tableId}`, JSON.stringify(view.visibleKeys ?? columns.map((c) => c.key)))
+      } catch {
+        // ignore
+      }
+    }
+    setViewsOpen(false)
+  }
+
+  function saveCurrentView() {
+    const name = saveName.trim()
+    if (!name || !tableId) return
+    saveView(tableId, {
+      name,
+      sortKey,
+      sortDir,
+      visibleKeys,
+      createdAt: new Date().toISOString(),
+    })
+    setSaveName('')
+    refreshViews()
+  }
+
+  function deleteSavedView(name: string) {
+    if (!tableId) return
+    deleteView(tableId, name)
+    refreshViews()
   }
 
   useEffect(() => {
@@ -183,15 +229,26 @@ export function DataTable<T>({
             </button>
           )}
           {tableId && (
-            <button
-              className="btn"
-              type="button"
-              aria-label="Toggle columns"
-              aria-expanded={columnsOpen}
-              onClick={() => setColumnsOpen((o) => !o)}
-            >
-              Columns
-            </button>
+            <>
+              <button
+                className="btn"
+                type="button"
+                aria-label="Toggle columns"
+                aria-expanded={columnsOpen}
+                onClick={() => setColumnsOpen((o) => !o)}
+              >
+                Columns
+              </button>
+              <button
+                className="btn"
+                type="button"
+                aria-label="Toggle saved views"
+                aria-expanded={viewsOpen}
+                onClick={() => setViewsOpen((o) => !o)}
+              >
+                Saved views
+              </button>
+            </>
           )}
         </div>
       )}
@@ -209,6 +266,56 @@ export function DataTable<T>({
               {column.header}
             </label>
           ))}
+        </div>
+      )}
+      {tableId && viewsOpen && (
+        <div className="state-card">
+          <div className="state-title">Saved views</div>
+          <form
+            className="toolbar"
+            onSubmit={(e) => {
+              e.preventDefault()
+              saveCurrentView()
+            }}
+          >
+            <label className="field-label" htmlFor={`save-view-${tableId}`}>
+              View name
+            </label>
+            <input
+              id={`save-view-${tableId}`}
+              className="field"
+              value={saveName}
+              onChange={(e) => setSaveName(e.target.value)}
+              placeholder="e.g. High-value orders"
+              required
+            />
+            <button className="btn" type="submit" disabled={!saveName.trim()}>
+              Save
+            </button>
+          </form>
+          {savedViews.length === 0 ? (
+            <div className="muted small">No saved views yet.</div>
+          ) : (
+            <div className="rider-list">
+              {savedViews.map((v) => (
+                <div key={v.name} className="rider-card">
+                  <div className="rider-line">
+                    <span className="strong">{v.name}</span>
+                    <button
+                      className="btn btn-ghost"
+                      type="button"
+                      onClick={() => deleteSavedView(v.name)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                  <button className="muted small" type="button" onClick={() => loadView(v)}>
+                    {v.sortKey ? `sort ${v.sortKey} ${v.sortDir}` : 'no sort'} · {v.visibleKeys ? `${v.visibleKeys.length} cols` : 'all cols'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
       {loading && rows.length === 0 ? (

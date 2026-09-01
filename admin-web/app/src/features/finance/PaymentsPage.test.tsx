@@ -79,7 +79,7 @@ describe('PaymentsPage', () => {
     )
     render(<PaymentsPage />)
 
-    expect(await screen.findByText('Failed to load payout batches')).toBeInTheDocument()
+    expect(await screen.findByText('Failed to load payment data')).toBeInTheDocument()
 
     seed([{ ...BATCH }])
     fireEvent.click(screen.getByText('Retry'))
@@ -161,7 +161,7 @@ describe('PaymentsPage', () => {
     expect(dialog.queryByRole('button', { name: 'Reconcile' })).not.toBeInTheDocument()
   })
 
-  it('shows the pending-endpoint notice after confirming a reconcile decision', async () => {
+  it('reconciles a payout batch via the live endpoint and shows success', async () => {
     seed([{ ...BATCH, id: 'bat_9', status: 'exception', exceptions: 2 }])
     render(<PaymentsPage />)
 
@@ -170,12 +170,26 @@ describe('PaymentsPage', () => {
     fireEvent.click(within(drawer).getByRole('button', { name: 'Reconcile' }))
 
     const prompt = await screen.findByRole('dialog', { name: 'Reconcile payout batch' })
-    fireEvent.change(within(prompt).getByLabelText('Reason'), { target: { value: 'Bank processed the batch' } })
     fireEvent.click(within(prompt).getByRole('button', { name: 'Confirm' }))
 
+    expect(await screen.findByText('Payout paid')).toBeInTheDocument()
     expect(screen.queryByRole('dialog', { name: 'Reconcile payout batch' })).not.toBeInTheDocument()
-    expect(within(drawer).getByText('PENDING_ENDPOINT')).toBeInTheDocument()
-    expect(within(drawer).getByText(/POST \/admin\/payouts\/\{batchId\}\/reconcile/)).toBeInTheDocument()
-    expect(within(drawer).getByText(/nothing was sent/)).toBeInTheDocument()
+    expect(within(drawer).queryByText('PENDING_ENDPOINT')).not.toBeInTheDocument()
+  })
+
+  it('shows an error when payout reconcile fails', async () => {
+    seed([{ ...BATCH, id: 'bat_9', status: 'exception', exceptions: 2 }])
+    server.use(http.post('/admin/payouts/:batchId/reconcile', async () => HttpResponse.json({ code: 'PAYOUT_ALREADY_RECONCILED', message: 'already reconciled', requestId: 'req_pay' }, { status: 409 })))
+    render(<PaymentsPage />)
+
+    fireEvent.click(await screen.findByText('bat_9'))
+    const drawer = await screen.findByRole('dialog')
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Reconcile' }))
+
+    const prompt = await screen.findByRole('dialog', { name: 'Reconcile payout batch' })
+    fireEvent.click(within(prompt).getByRole('button', { name: 'Confirm' }))
+
+    expect(await within(prompt).findByText(/already reconciled/i)).toBeInTheDocument()
+    expect(within(prompt).getByText(/req_pay/)).toBeInTheDocument()
   })
 })

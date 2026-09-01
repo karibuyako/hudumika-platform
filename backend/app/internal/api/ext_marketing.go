@@ -136,6 +136,15 @@ func (s *Server) MthExportChainReportReal(w http.ResponseWriter, r *http.Request
 }
 
 func (s *Server) exportReport(w http.ResponseWriter, r *http.Request, scope string) {
+	claims, ok := ClaimsFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid bearer token")
+		return
+	}
+	if claims.Role != RoleMerchant {
+		writeError(w, http.StatusForbidden, "FORBIDDEN", "Only merchant sessions may access merchant profiles")
+		return
+	}
 	if s.db == nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
@@ -159,7 +168,7 @@ func (s *Server) exportReport(w http.ResponseWriter, r *http.Request, scope stri
 
 	var id uuid.UUID
 	var status string
-	downloadURL := "https://api.hudumika.app/exports/" + uuid.NewString() + "/download"
+	downloadURL := GetSettings().ExportBaseURL + "/exports/" + uuid.NewString() + "/download"
 	err := s.db.Pool().QueryRow(r.Context(),
 		`INSERT INTO data_exports (user_id, scope, format, status, file_url)
 		  VALUES ($1, $2, $3, 'queued', $4)

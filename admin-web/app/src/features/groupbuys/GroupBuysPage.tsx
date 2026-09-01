@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   adminGroupBuyDecision,
   adminListGroupBuys,
+  extendGroupBuy,
+  relistGroupBuy,
+  listGroupBuyVouchers,
   GroupBuyStatus,
   type AdminGroupBuyDecisionBody,
   type GroupBuyDeal,
@@ -237,8 +240,39 @@ function GroupBuyDrawer({
   allowed: boolean
 }) {
   const d = deal
+  const [vouchers, setVouchers] = useState<Array<{ id: string; code: string; status: string; orderId?: string }>>([])
+  const [showVouchers, setShowVouchers] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
+
+  async function loadVouchers() {
+    if (!d.id) return
+    const res = await listGroupBuyVouchers(d.id, { limit: 50 })
+    if (res.status === 200) setVouchers(res.data as Array<{ id: string; code: string; status: string; orderId?: string }>)
+    setShowVouchers(true)
+  }
+
+  async function handleExtend() {
+    if (!d.id) return
+    setBusy(true)
+    const res = await extendGroupBuy(d.id, { days: 7 })
+    setBusy(false)
+    if (res.status === 200) setToast('Deal extended by 7 days')
+    else setToast('Extend failed')
+  }
+
+  async function handleRelist() {
+    if (!d.id) return
+    setBusy(true)
+    const res = await relistGroupBuy(d.id)
+    setBusy(false)
+    if (res.status === 200) setToast('Deal relisted')
+    else setToast('Relist failed')
+  }
+
   return (
     <DetailDrawer title={d.title} onClose={onClose}>
+      {toast && <Toast message={toast} />}
       <div className="detail-section">
         <h3>Deal</h3>
         <div className="meta-grid">
@@ -318,7 +352,7 @@ function GroupBuyDrawer({
         </div>
       )}
 
-      {allowed && (d.status === 'pending_review' || d.status === 'live') && (
+      {allowed && (d.status === 'pending_review' || d.status === 'live' || d.status === 'extended') && (
         <div className="form-actions">
           {d.status === 'pending_review' && (
             <button type="button" className="btn" onClick={() => onAction('approve')}>
@@ -330,11 +364,49 @@ function GroupBuyDrawer({
               Reject
             </button>
           )}
-          {d.status === 'live' && (
+          {(d.status === 'live' || d.status === 'extended') && (
+            <button type="button" className="btn" disabled={busy} onClick={handleExtend}>
+              {busy ? 'Working…' : 'Extend 7 days'}
+            </button>
+          )}
+          {d.status === 'delisted' && (
+            <button type="button" className="btn" disabled={busy} onClick={handleRelist}>
+              {busy ? 'Working…' : 'Relist'}
+            </button>
+          )}
+          {(d.status === 'live' || d.status === 'extended') && (
+            <button type="button" className="btn btn-ghost" onClick={loadVouchers}>
+              View vouchers
+            </button>
+          )}
+          {(d.status === 'live' || d.status === 'extended') && (
             <button type="button" className="btn btn-danger" onClick={() => onAction('delist')}>
               Delist
             </button>
           )}
+        </div>
+      )}
+
+      {showVouchers && (
+        <div className="detail-section">
+          <h3>Vouchers ({vouchers.length})</h3>
+          {vouchers.length === 0 ? (
+            <p className="muted small">No vouchers purchased yet.</p>
+          ) : (
+            <table className="table table-sm">
+              <thead><tr><th>Code</th><th>Status</th><th>Order</th></tr></thead>
+              <tbody>
+                {vouchers.map((v) => (
+                  <tr key={v.id}>
+                    <td className="mono">{v.code}</td>
+                    <td>{v.status}</td>
+                    <td className="mono small">{v.orderId ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          <button type="button" className="btn btn-ghost" onClick={() => setShowVouchers(false)}>Close</button>
         </div>
       )}
 

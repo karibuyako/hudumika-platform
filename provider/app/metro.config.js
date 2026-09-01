@@ -28,4 +28,13 @@ config.watchFolders = [
   path.resolve(__dirname, '../../packages/tokens'),
 ];
 
+// Block other app directories that Metro might follow through root symlinks
+config.resolver.blockList = [
+  ...(config.resolver.blockList || []),
+  /\/rider-mobile\/app\/src\/app\/.*/,
+  /\/consumer-mobile\/app\/src\/app\/.*/,
+  /\/merchant\/app\/src\/app\/.*/,
+  /\/admin-web\/app\/src\/.*/,
+];
+
 module.exports = config;

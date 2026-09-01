@@ -49,6 +49,8 @@ body {
   font-size: 14px;
 }
 
+:root { --color-white: #ffffff; }
+
 ::selection { background: var(--color-brand-500); color: var(--color-white); }
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -307,7 +309,7 @@ a.stat-card { text-decoration: none; display: block; }
 .state-request-id code { font-family: var(--font-mono); font-size: 11px; }
 
 /* ── Skeletons ──────────────────────────────────────────── */
-.skeleton { background: linear-gradient(100deg, var(--color-paper) 40%, var(--color-paper) 50%, var(--color-paper) 60%); background-size: 200% 100%; animation: shimmer 1.4s infinite linear; border-color: transparent; }
+.skeleton { background: linear-gradient(100deg, var(--color-line) 40%, var(--color-paper) 50%, var(--color-line) 60%); background-size: 200% 100%; animation: shimmer 1.4s infinite linear; border-color: transparent; }
 .skeleton-line { display: inline-block; height: 10px; border-radius: 999px; background: var(--color-line); }
 @keyframes shimmer { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }

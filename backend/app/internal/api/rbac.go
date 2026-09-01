@@ -3,6 +3,8 @@ package api
 import (
 	"net/http"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 // Role constants (AUTH.md RBAC). Values are lower-case to match JWT role
@@ -82,4 +84,45 @@ func enforcePolicy(w http.ResponseWriter, path string, c *Claims) bool {
 		return false
 	}
 	return true
+}
+
+// AdminScope represents the data scope for an admin user.
+type AdminScope struct {
+	TeamID   *uuid.UUID
+	IsGlobal bool // platform-owner and platform-administrator see everything
+}
+
+// GetAdminScope returns the data scope for the current admin.
+func (s *Server) GetAdminScope(r *http.Request) AdminScope {
+	claims, ok := ClaimsFromContext(r.Context())
+	if !ok {
+		return AdminScope{IsGlobal: true}
+	}
+
+	// Platform owner (wildcard) and admin role see everything
+	if claims.Role == "*" || claims.Role == RoleAdmin {
+		return AdminScope{IsGlobal: true}
+	}
+
+	// For other roles, look up their team
+	if s.db == nil {
+		return AdminScope{IsGlobal: true}
+	}
+
+	var teamID *uuid.UUID
+	_ = s.db.Pool().QueryRow(r.Context(),
+		`SELECT team_id FROM admin_users WHERE id = $1`,
+		newUUID(claims.Subject)).Scan(&teamID)
+
+	return AdminScope{TeamID: teamID, IsGlobal: teamID == nil}
+}
+
+// ScopeFilter returns a WHERE clause fragment for team-scoped queries.
+// If the admin is global, returns "TRUE" (no filtering).
+// If the admin has a team, returns a clause that filters by team_id.
+func (scope AdminScope) ScopeFilter(column string) string {
+	if scope.IsGlobal {
+		return "TRUE"
+	}
+	return column + " = '" + scope.TeamID.String() + "'"
 }

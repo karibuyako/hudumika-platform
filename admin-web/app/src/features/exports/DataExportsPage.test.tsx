@@ -172,7 +172,7 @@ describe('DataExportsPage', () => {
     expect(within(drawer).queryByRole('button', { name: 'Reject' })).not.toBeInTheDocument()
   })
 
-  it('approving a queued job shows the export_approve pending notice', async () => {
+  it('approving a queued job via the live endpoint and shows success', async () => {
     seedJobs([{ ...QUEUED_JOB }])
     render(<DataExportsPage />)
     fireEvent.click(await screen.findByText('exp_2'))
@@ -183,14 +183,28 @@ describe('DataExportsPage', () => {
     fireEvent.change(prompt.querySelector('textarea')!, { target: { value: 'Compliance reviewed' } })
     fireEvent.click(within(prompt).getByRole('button', { name: 'Confirm' }))
 
-    expect(await screen.findByText('PENDING_ENDPOINT')).toBeInTheDocument()
-    expect(screen.getByText(/POST \/admin\/data-exports\/\{jobId\}\/approval/)).toBeInTheDocument()
-    expect(
-      screen.getByText('This action is documented for backend implementation — nothing was sent.'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('Export approved')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Approve export' })).not.toBeInTheDocument()
+    expect(screen.queryByText('PENDING_ENDPOINT')).not.toBeInTheDocument()
   })
 
-  it('re-running a failed job shows the export_rerun pending notice', async () => {
+  it('shows an error when export approval fails', async () => {
+    seedJobs([{ ...QUEUED_JOB }])
+    server.use(http.post('/admin/data-exports/:jobId/approval', async () => HttpResponse.json({ code: 'DATA_EXPORT_ALREADY_DECIDED', message: 'already decided', requestId: 'req_exp' }, { status: 409 })))
+    render(<DataExportsPage />)
+    fireEvent.click(await screen.findByText('exp_2'))
+    const drawer = await screen.findByRole('dialog', { name: 'Export job' })
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Approve' }))
+
+    const prompt = screen.getByRole('dialog', { name: 'Approve export' })
+    fireEvent.change(prompt.querySelector('textarea')!, { target: { value: 'Try again' } })
+    fireEvent.click(within(prompt).getByRole('button', { name: 'Confirm' }))
+
+    expect(await within(prompt).findByText(/already decided/i)).toBeInTheDocument()
+    expect(within(prompt).getByText(/req_exp/)).toBeInTheDocument()
+  })
+
+  it('re-running a failed job via the live endpoint and shows success', async () => {
     seedJobs([{ ...JOB, id: 'exp_3', status: 'failed', downloadUrl: null, completedAt: null }])
     render(<DataExportsPage />)
     fireEvent.click(await screen.findByText('exp_3'))
@@ -201,7 +215,8 @@ describe('DataExportsPage', () => {
     fireEvent.change(prompt.querySelector('textarea')!, { target: { value: 'Retry after outage' } })
     fireEvent.click(within(prompt).getByRole('button', { name: 'Confirm' }))
 
-    expect(await screen.findByText('PENDING_ENDPOINT')).toBeInTheDocument()
-    expect(screen.getByText(/POST \/admin\/data-exports\/\{jobId\}\/rerun/)).toBeInTheDocument()
+    expect(await screen.findByText('Export re-queued')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Re-run export' })).not.toBeInTheDocument()
+    expect(screen.queryByText('PENDING_ENDPOINT')).not.toBeInTheDocument()
   })
 })

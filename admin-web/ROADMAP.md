@@ -193,9 +193,9 @@ launch checklist complete.
 | M1 — Test foundation | DONE | typecheck + 608 vitest tests + build gate green; no inline money/locale debt |
 | M2 — CRUD modules | DONE | all 35 modules real; every list uses the shared DataTable (sort, pagination, CSV export, J/K/Enter/E keys) |
 | M3 — Towers / dispatch / search / approvals | DONE | deep links, dispatch monitor + reassign, global search + universal entity view, two-person approvals, Ctrl+K palette |
-| M4 — COD reconciliation | DONE (read-only) | shifts/totals/signed variance/date range; decision endpoints pending backend (see `docs/PENDING-ENDPOINTS.md`) |
+| M4 — COD reconciliation | DONE | shifts/totals/signed variance/date range; `cod.*` decisions live via `adminRiderCodShiftDecision` (reconciled/mismatch) + `cod.*` audit |
 | M5 — Fleet & logistics towers | DONE | fleet + logistics towers, waybill & custody audit, hub dashboards, coverage map |
 | M6 — Hardening | DONE | staff OTP/MFA session (20-min timeout, logout), RBAC gating on 19 mutation pages, 20-role registry, permissioned unmask, long-poll freshness, self-hosted fonts, security meta |
 | Release gate | DONE | E2E 30 specs (incl. super-admin smoke) green on mocks; parity 57 cases (47 happy + 10 error paths) in CI; staging workflow wired (`admin-web-staging.yml`) |
 
-**Pending backend (documented for Team 6 in `docs/PENDING-ENDPOINTS.md`):** rider/provider approval, dispute decisions, payout reconcile, COD decisions, chain onboard/suspend, export approve/re-run, loyalty config, crash response, rest override, seal-broken resolution, anomaly decisions, order cancel, consignment missing-order resolution. Each surface renders full UI and resolves to a `PENDING_ENDPOINT` notice until the contract lands.
+**Pending backend:** `docs/PENDING-ENDPOINTS.md` now `0` pending — all 16 `admin-pending` endpoints live (`rider_approve`…`consignment_missing_resolve`) and wired, parity green. No `PENDING_ENDPOINT` UI remains.

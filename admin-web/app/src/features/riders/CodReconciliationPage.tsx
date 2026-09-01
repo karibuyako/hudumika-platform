@@ -3,6 +3,7 @@ import {
   VerificationState,
   adminListRiders,
   adminRiderCodReconciliation,
+  adminRiderCodShiftDecision,
   type AdminRiderCodReconciliationParams,
   type RiderAdmin,
   type RiderCodReconciliation,
@@ -14,9 +15,9 @@ import { ErrorState } from '../../components/ErrorState'
 import { LoadingSkeleton } from '../../components/LoadingSkeleton'
 import { ReasonPrompt } from '../../components/ReasonPrompt'
 import { StatusPill } from '../../components/StatusPill'
+import { Toast } from '../../components/FormBits'
 import { parseApiError, type ApiErrorInfo } from '../../lib/api-error'
 import { formatTZS } from '../../lib/money'
-import { PENDING_ENDPOINT_CODE, pendingEndpointNotice } from '../../lib/pending-endpoints'
 import { can } from '../../lib/permissions'
 import { useSession } from '../../lib/session'
 import { toLocal } from '../../lib/time'
@@ -52,7 +53,9 @@ export function CodReconciliationPage() {
   const [codRetryKey, setCodRetryKey] = useState(0)
 
   const [shiftDecision, setShiftDecision] = useState<ShiftDecision | null>(null)
-  const [pendingDecision, setPendingDecision] = useState<ShiftDecision | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [decisionError, setDecisionError] = useState<ApiErrorInfo | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
 
   useEffect(() => {
     setPickerError(null)
@@ -110,10 +113,44 @@ export function CodReconciliationPage() {
     totals?.varianceTZS ??
     (totals?.expectedTZS != null && totals?.collectedTZS != null ? totals.expectedTZS - totals.collectedTZS : undefined)
 
+  async function handleShiftDecision(reason: string) {
+    const target = shiftDecision
+    if (!target || !riderId) return
+    setBusy(true)
+    setDecisionError(null)
+    const res = await adminRiderCodShiftDecision(riderId, target.shift.shiftId, {
+      status: target.decision,
+      note: reason || undefined,
+    })
+    setBusy(false)
+    if (res.status === 200) {
+      const nextStatus = target.decision === 'reconciled' ? 'reconciled' : 'mismatch'
+      setCod((prev) =>
+        prev
+          ? {
+              ...prev,
+              shifts: prev.shifts.map((s) =>
+                s.shiftId === target.shift.shiftId ? { ...s, status: nextStatus as RiderCodReconciliationShiftsItemStatus, note: reason || s.note } : s,
+              ),
+            }
+          : prev,
+      )
+      setToast(target.decision === 'reconciled' ? 'Shift reconciled' : 'Shift flagged as mismatch')
+      setShiftDecision(null)
+    } else {
+      setDecisionError(parseApiError(res, 'Decision failed'))
+    }
+  }
+
   return (
     <div className="page">
       <div className="page-title-row">
         <h1>COD Reconciliation</h1>
+        {toast && (
+          <div className="page-actions">
+            <Toast message={toast} />
+          </div>
+        )}
       </div>
       <p className="muted small">Compare expected vs collected cash on delivery per rider shift.</p>
 
@@ -223,7 +260,7 @@ export function CodReconciliationPage() {
                             type="button"
                             className="btn"
                             onClick={() => {
-                              setPendingDecision(null)
+                              setDecisionError(null)
                               setShiftDecision({ shift: s, decision: 'reconciled' })
                             }}
                           >
@@ -233,7 +270,7 @@ export function CodReconciliationPage() {
                             type="button"
                             className="btn btn-danger"
                             onClick={() => {
-                              setPendingDecision(null)
+                              setDecisionError(null)
                               setShiftDecision({ shift: s, decision: 'mismatch' })
                             }}
                           >
@@ -265,19 +302,8 @@ export function CodReconciliationPage() {
             </p>
           )}
 
-          {pendingDecision && (
-            <div className="state-card">
-              <div className="state-title">
-                <span className="mono">{PENDING_ENDPOINT_CODE}</span>
-              </div>
-              <div className="state-message">{pendingEndpointNotice('cod_decision')}</div>
-              <p className="muted small">This action is documented for backend implementation — nothing was sent.</p>
-            </div>
-          )}
-
           <p className="muted small">
-            Reconciliation decisions are finance actions (cod.* audit); decision endpoints ship with the backend
-            milestone — this view is read-only. Decision endpoints are documented for backend implementation.
+            Reconciliation decisions are finance actions (cod.* audit) and update the shift status.
           </p>
         </>
       )}
@@ -287,11 +313,12 @@ export function CodReconciliationPage() {
           title={shiftDecision.decision === 'reconciled' ? 'Mark shift reconciled' : 'Flag shift mismatch'}
           description={`Shift ${shiftDecision.shift.shiftId} — expected ${formatTZS(shiftDecision.shift.expectedTZS)}, collected ${formatTZS(shiftDecision.shift.collectedTZS)}.`}
           confirmLabel="Confirm"
-          onSubmit={() => {
-            setPendingDecision(shiftDecision)
-            setShiftDecision(null)
+          busy={busy}
+          error={decisionError}
+          onSubmit={handleShiftDecision}
+          onClose={() => {
+            if (!busy) setShiftDecision(null)
           }}
-          onClose={() => setShiftDecision(null)}
         />
       )}
     </div>

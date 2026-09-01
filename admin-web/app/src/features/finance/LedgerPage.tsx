@@ -5,8 +5,9 @@ import { parseApiError } from '../../lib/api-error'
 import { formatTZS } from '../../lib/money'
 import { can } from '../../lib/permissions'
 import { useSession } from '../../lib/session'
+import { getLimits } from '../../lib/limits'
 
-const APPROVAL_THRESHOLD_TZS = 1000000
+const APPROVAL_THRESHOLD_TZS = getLimits().twoPersonThresholdTzs
 
 interface ApprovalPrompt {
   userId: string

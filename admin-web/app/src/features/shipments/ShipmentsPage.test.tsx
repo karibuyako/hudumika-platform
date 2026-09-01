@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import type { CustodyEntry, Shipment } from '@hudumika/contract'
@@ -361,23 +361,40 @@ describe('ShipmentsPage', () => {
     expect(screen.queryByText('Anomaly decision')).not.toBeInTheDocument()
   })
 
-  test('dismissing an anomaly shows the anomaly_resolve pending notice', async () => {
+  test('dismissing an anomaly via live endpoint shows success', async () => {
     const user = userEvent.setup()
     server.use(listHandler(shipment({ status: 'exception' })))
     render(<ShipmentsPage />)
     await user.click(await screen.findByText('SHP-1001'))
+    await user.type(screen.getByLabelText('Anomaly ID'), 'ano_1')
     await user.click(await screen.findByRole('button', { name: 'Dismiss' }))
 
     const prompt = screen.getByRole('dialog', { name: 'Dismiss anomaly' })
     await user.type(prompt.querySelector('textarea')!, 'Reviewed — no risk')
-    await user.click(screen.getByRole('button', { name: 'Confirm' }))
+    await user.click(within(prompt).getByRole('button', { name: 'Confirm' }))
 
-    expect(await screen.findByText('PENDING_ENDPOINT')).toBeInTheDocument()
-    expect(
-      screen.getByText(/POST \/admin\/logistics-anomalies\/\{anomalyId\}\/decision/),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText('This action is documented for backend implementation — nothing was sent.'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('Anomaly dismissed')).toBeInTheDocument()
+    expect(screen.queryByText('PENDING_ENDPOINT')).not.toBeInTheDocument()
+  })
+
+  test('shows an error when anomaly decision fails', async () => {
+    const user = userEvent.setup()
+    server.use(
+      listHandler(shipment({ status: 'exception' })),
+      http.post('/admin/logistics-anomalies/:anomalyId/decision', async () =>
+        HttpResponse.json({ code: 'ANOMALY_ALREADY_DECIDED', message: 'already decided', requestId: 'req_ano' }, { status: 409 }),
+      ),
+    )
+    render(<ShipmentsPage />)
+    await user.click(await screen.findByText('SHP-1001'))
+    await user.type(screen.getByLabelText('Anomaly ID'), 'ano_1')
+    await user.click(await screen.findByRole('button', { name: 'Dismiss' }))
+
+    const prompt = screen.getByRole('dialog', { name: 'Dismiss anomaly' })
+    await user.type(prompt.querySelector('textarea')!, 'Try again')
+    await user.click(within(prompt).getByRole('button', { name: 'Confirm' }))
+
+    expect(await within(prompt).findByText(/already decided/i)).toBeInTheDocument()
+    expect(within(prompt).getByText(/req_ano/)).toBeInTheDocument()
   })
 })

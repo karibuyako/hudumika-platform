@@ -26,6 +26,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -107,6 +108,10 @@ func toGenBanner(row adminBannerRow) gen.AdminBanner {
 // AdminListBanners returns every banner, newest first, capped at
 // adminExtraMaxListLimit (GET /admin/banners).
 func (s *Server) AdminListBanners(w http.ResponseWriter, r *http.Request) {
+	_, ok := requireRBAC(w, r, s, PermConfigurationRead)
+	if !ok {
+		return
+	}
 	if s.db == nil {
 		s.logger.Error("list banners failed: database not configured")
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
@@ -145,6 +150,10 @@ func (s *Server) AdminListBanners(w http.ResponseWriter, r *http.Request) {
 // unknown placement answers 422 VALIDATION_FAILED. The contract marks id
 // required on the body; a nil-id body gets a fresh server id.
 func (s *Server) AdminCreateBanner(w http.ResponseWriter, r *http.Request) {
+	_, ok := requireRBAC(w, r, s, PermConfigurationManage)
+	if !ok {
+		return
+	}
 	var body gen.AdminCreateBannerJSONRequestBody
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Invalid request body")
@@ -186,6 +195,8 @@ func (s *Server) AdminCreateBanner(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
+	newJSON, _ := json.Marshal(map[string]any{"title": body.Title, "placement": string(body.Placement)})
+	_ = s.AuditLog(r.Context(), r, "banner.created", "banner", nil, nil, newJSON)
 	writeJSON(w, http.StatusCreated, toGenBanner(row))
 }
 
@@ -194,6 +205,10 @@ func (s *Server) AdminCreateBanner(w http.ResponseWriter, r *http.Request) {
 // banner answers 404 BANNER_NOT_FOUND; an invalid schedule 422
 // BANNER_SCHEDULE_INVALID.
 func (s *Server) AdminUpdateBanner(w http.ResponseWriter, r *http.Request, bannerId openapi_types.UUID) {
+	_, ok := requireRBAC(w, r, s, PermConfigurationManage)
+	if !ok {
+		return
+	}
 	id, err := uuid.Parse(bannerId.String())
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "bannerId is not a valid UUID")
@@ -261,6 +276,8 @@ func (s *Server) AdminUpdateBanner(w http.ResponseWriter, r *http.Request, banne
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
+	bannerID := id
+	_ = s.AuditLog(r.Context(), r, "banner.updated", "banner", &bannerID, nil, nil)
 	writeJSON(w, http.StatusOK, toGenBanner(row))
 }
 
@@ -268,6 +285,10 @@ func (s *Server) AdminUpdateBanner(w http.ResponseWriter, r *http.Request, banne
 // The contract only declares 204/403, so deletion is idempotent: deleting a
 // banner that is already gone still answers 204.
 func (s *Server) AdminDeleteBanner(w http.ResponseWriter, r *http.Request, bannerId openapi_types.UUID) {
+	_, ok := requireRBAC(w, r, s, PermConfigurationManage)
+	if !ok {
+		return
+	}
 	id, err := uuid.Parse(bannerId.String())
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "bannerId is not a valid UUID")
@@ -283,6 +304,8 @@ func (s *Server) AdminDeleteBanner(w http.ResponseWriter, r *http.Request, banne
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
+	bannerID := id
+	_ = s.AuditLog(r.Context(), r, "banner.deleted", "banner", &bannerID, nil, nil)
 	writeJSON(w, http.StatusNoContent, nil)
 }
 
@@ -402,6 +425,8 @@ func (s *Server) AdminUpdateFeature(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
+	newJSON, _ := json.Marshal(map[string]any{"key": body.Key, "enabled": body.Enabled})
+	_ = s.AuditLog(r.Context(), r, "feature.updated", "feature_flag", nil, nil, newJSON)
 	writeJSON(w, http.StatusOK, toGenFeature(row))
 }
 
@@ -414,6 +439,10 @@ func (s *Server) AdminUpdateFeature(w http.ResponseWriter, r *http.Request) {
 // from the title; a slug collision answers 409 HELP_ARTICLE_SLUG_EXISTS
 // (ERROR-CODES.md allows adding codes — no help-article code existed).
 func (s *Server) AdminCreateHelpArticle(w http.ResponseWriter, r *http.Request) {
+	_, ok := requireRBAC(w, r, s, PermConfigurationManage)
+	if !ok {
+		return
+	}
 	var body gen.AdminCreateHelpArticleJSONRequestBody
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Invalid request body")
@@ -452,6 +481,8 @@ func (s *Server) AdminCreateHelpArticle(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
+	newJSON, _ := json.Marshal(map[string]any{"title": body.Title, "category": body.Category})
+	_ = s.AuditLog(r.Context(), r, "help_article.created", "help_article", nil, nil, newJSON)
 	writeJSON(w, http.StatusCreated, struct {
 		Id       openapi_types.UUID `json:"id"`
 		Title    string             `json:"title"`
@@ -467,6 +498,10 @@ func (s *Server) AdminCreateHelpArticle(w http.ResponseWriter, r *http.Request) 
 // 200). The slug is stable across edits so published links never break; a
 // missing article answers 404 TEMPLATE_NOT_FOUND per ERROR-CODES.md.
 func (s *Server) AdminUpdateHelpArticle(w http.ResponseWriter, r *http.Request) {
+	_, ok := requireRBAC(w, r, s, PermConfigurationManage)
+	if !ok {
+		return
+	}
 	var body gen.AdminUpdateHelpArticleJSONRequestBody
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Invalid request body")
@@ -521,6 +556,7 @@ func (s *Server) AdminUpdateHelpArticle(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
+	_ = s.AuditLog(r.Context(), r, "help_article.updated", "help_article", &id, nil, nil)
 	writeJSON(w, http.StatusOK, struct {
 		Id       openapi_types.UUID `json:"id"`
 		Title    string             `json:"title"`
@@ -547,6 +583,10 @@ func (s *Server) AdminUpdateHelpArticle(w http.ResponseWriter, r *http.Request) 
 // estimatedRecipients is the number actually inserted, so the campaign id
 // and count stay truthful even beyond the cap.
 func (s *Server) AdminBroadcastNotification(w http.ResponseWriter, r *http.Request) {
+	_, ok := requireRBAC(w, r, s, PermConfigurationManage)
+	if !ok {
+		return
+	}
 	var body gen.AdminBroadcastNotificationJSONRequestBody
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Invalid request body")
@@ -634,6 +674,8 @@ func (s *Server) AdminBroadcastNotification(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	newJSON, _ := json.Marshal(map[string]any{"title": body.Title, "estimatedRecipients": len(recipientIDs)})
+	_ = s.AuditLog(r.Context(), r, "notification.broadcast", "notification", nil, nil, newJSON)
 	writeJSON(w, http.StatusAccepted, struct {
 		CampaignId          openapi_types.UUID `json:"campaignId"`
 		EstimatedRecipients int                `json:"estimatedRecipients"`
@@ -679,6 +721,10 @@ func insertNotificationsBatched(ctx context.Context, s *Server, recipientIDs []u
 // to_regclass. The contract 'ready' status maps from the stored
 // 'completed' value.
 func (s *Server) AdminListDataExports(w http.ResponseWriter, r *http.Request) {
+	_, ok := requireRBAC(w, r, s, PermExportManage)
+	if !ok {
+		return
+	}
 	if s.db == nil {
 		s.logger.Error("list data exports failed: database not configured")
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
@@ -1209,6 +1255,10 @@ var adminIntegrationCategories = []struct {
 // configured, degraded with an honest "not configured" error otherwise. No
 // liveness probe is wired, so no integration can be reported down.
 func (s *Server) AdminIntegrationHealth(w http.ResponseWriter, r *http.Request) {
+	_, ok := requireRBAC(w, r, s, PermConfigurationRead)
+	if !ok {
+		return
+	}
 	if s.db == nil {
 		s.logger.Error("integration health failed: database not configured")
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")

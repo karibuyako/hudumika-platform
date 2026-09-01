@@ -151,7 +151,7 @@ describe('ProvidersPage', () => {
     expect(within(dialog).queryByRole('button', { name: 'Request changes' })).not.toBeInTheDocument()
   })
 
-  it('shows the pending-endpoint notice after confirming a provider decision', async () => {
+  it('requests changes for a provider via the live endpoint and shows success', async () => {
     seedProviders([{ ...PROVIDER, id: 'prv_9', verification: 'pending' }])
     render(<ProvidersPage />)
 
@@ -163,10 +163,26 @@ describe('ProvidersPage', () => {
     fireEvent.change(within(prompt).getByLabelText('Reason'), { target: { value: 'Upload business licence' } })
     fireEvent.click(within(prompt).getByRole('button', { name: 'Confirm' }))
 
+    expect(await screen.findByText('Changes requested for provider')).toBeInTheDocument()
     expect(screen.queryByRole('dialog', { name: 'Request provider changes' })).not.toBeInTheDocument()
-    expect(within(drawer).getByText('PENDING_ENDPOINT')).toBeInTheDocument()
-    expect(within(drawer).getByText(/POST \/admin\/providers\/\{providerId\}\/approval/)).toBeInTheDocument()
-    expect(within(drawer).getByText(/nothing was sent/)).toBeInTheDocument()
+    expect(within(drawer).queryByText('PENDING_ENDPOINT')).not.toBeInTheDocument()
+  })
+
+  it('shows an error when provider approval fails', async () => {
+    seedProviders([{ ...PROVIDER, id: 'prv_9', verification: 'pending' }])
+    server.use(http.post('/admin/providers/:providerId/approval', async () => HttpResponse.json({ code: 'PROVIDER_ALREADY_DECIDED', message: 'already decided', requestId: 'req_dup' }, { status: 409 })))
+    render(<ProvidersPage />)
+
+    ;(await screen.findByText('Rapid Plumbing')).click()
+    const drawer = await screen.findByRole('dialog')
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Approve' }))
+
+    const prompt = await screen.findByRole('dialog', { name: 'Approve provider' })
+    fireEvent.change(within(prompt).getByLabelText('Reason'), { target: { value: 'Try again' } })
+    fireEvent.click(within(prompt).getByRole('button', { name: 'Confirm' }))
+
+    expect(await within(prompt).findByText(/already decided/i)).toBeInTheDocument()
+    expect(within(prompt).getByText(/req_dup/)).toBeInTheDocument()
   })
 
   it('shows the per-entity audit trail in the drawer', async () => {

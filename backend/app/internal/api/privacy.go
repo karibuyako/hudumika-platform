@@ -12,12 +12,7 @@ import (
 )
 
 const (
-	// privacyExportTTL is how long an assembled export artifact stays valid;
-	// it is reported as expiresAt on the 202 response.
-	privacyExportTTL = 24 * time.Hour
-	// accountDeletionEstimatedDays is the contract's grace-period example for
-	// /privacy/delete; the sweeper job is the authority on the real window.
-	accountDeletionEstimatedDays = 30
+	// Deprecated: privacyExportTTL and accountDeletionEstimatedDays are now served from GetSettings().
 )
 
 // privacyExportPayload is the assembled personal-data export: the user's own
@@ -123,7 +118,7 @@ func (s *Server) RequestPrivacyExport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := time.Now()
-	expiresAt := now.Add(privacyExportTTL)
+	expiresAt := now.Add(time.Duration(GetSettings().ExportTTLHours) * time.Hour)
 	id, open, err := s.beginPrivacyRequest(r.Context(), user.ID, "export", &expiresAt)
 	if err != nil {
 		s.logger.Error("begin privacy export failed", "error", err)
@@ -281,6 +276,6 @@ func (s *Server) RequestAccountDeletion(w http.ResponseWriter, r *http.Request) 
 		EstimatedDays int    `json:"estimatedDays"`
 	}{
 		RequestId:     id.String(),
-		EstimatedDays: accountDeletionEstimatedDays,
+		EstimatedDays: GetSettings().AccountDeletionGraceDays,
 	})
 }

@@ -98,13 +98,13 @@ describe('ConsignmentsPage', () => {
     render(<ConsignmentsPage />)
 
     expect(await screen.findByText('Missing-order queue')).toBeInTheDocument()
-    expect(screen.getByText('CN-001')).toBeInTheDocument()
+    expect(screen.getAllByText('CN-001').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('WB-002')).toBeInTheDocument()
     expect(screen.queryByText('WB-001')).not.toBeInTheDocument()
     expect(screen.getByText('Resolved via the consignment runbook (workflow 21)')).toBeInTheDocument()
   })
 
-  it('shows the pending-endpoint notice when resolving a missing-order row', async () => {
+  it('resolves a missing-order row via live endpoint and shows success', async () => {
     seed([
       {
         ...CON,
@@ -115,18 +115,40 @@ describe('ConsignmentsPage', () => {
       },
     ])
     render(<ConsignmentsPage />)
-    await screen.findByText('CN-001')
+    expect(await screen.findByText('Missing-order queue')).toBeInTheDocument()
+    expect(screen.getAllByText('CN-001').length).toBeGreaterThanOrEqual(1)
 
     await userEvent.click(screen.getByRole('button', { name: 'Resolve' }))
     const prompt = screen.getByRole('dialog', { name: 'Resolve missing orders' })
     await userEvent.type(prompt.querySelector('textarea')!, 'Order could not be located at the hub')
     await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
 
-    expect(await screen.findByText('PENDING_ENDPOINT')).toBeInTheDocument()
-    expect(screen.getByText(/POST \/admin\/consignments\/\{consignmentId\}\/missing/)).toBeInTheDocument()
-    expect(
-      screen.getByText('This action is documented for backend implementation — nothing was sent.'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('Consignment relocated')).toBeInTheDocument()
+    expect(screen.queryByText('PENDING_ENDPOINT')).not.toBeInTheDocument()
+  })
+
+  it('shows an error when consignment resolve fails', async () => {
+    seed([
+      {
+        ...CON,
+        manifest: [
+          { orderId: 'ord_1', waybillNumber: 'WB-001', section: 'standard', scannedIn: true, scannedOut: true },
+          { orderId: 'ord_2', waybillNumber: 'WB-002', section: 'standard', scannedIn: false, scannedOut: false },
+        ],
+      },
+    ])
+    server.use(http.post('/admin/consignments/:consignmentId/missing', async () => HttpResponse.json({ code: 'CONSIGNMENT_ALREADY_DECIDED', message: 'already decided', requestId: 'req_con' }, { status: 409 })))
+    render(<ConsignmentsPage />)
+    expect(await screen.findByText('Missing-order queue')).toBeInTheDocument()
+    expect(screen.getAllByText('CN-001').length).toBeGreaterThanOrEqual(1)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Resolve' }))
+    const prompt = screen.getByRole('dialog', { name: 'Resolve missing orders' })
+    await userEvent.type(prompt.querySelector('textarea')!, 'Try again')
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+
+    expect(await screen.findByText(/already decided/i)).toBeInTheDocument()
+    expect(screen.getByText(/req_con/)).toBeInTheDocument()
   })
 
   it('shows empty states for the missing-order and seal-broken queues when nothing needs attention', async () => {

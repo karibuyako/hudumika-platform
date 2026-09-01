@@ -23,8 +23,8 @@ addition with phase; **UI** = client-side only.
 | Customer directory w/ aggregates | `GET /admin/customers` | LIVE |
 | Suspend/activate user | `POST /admin/users/{userId}/status` | LIVE |
 | Verification queue + decision | `/admin/merchants/{id}/approval`, `/admin/providers`, `/admin/riders` | LIVE |
-| Export users | admin exports (permissioned) | PLANNED |
-| Reset password / send email | staff surfaces | PLANNED |
+| Export users | `GET/POST /admin/data-exports` (scope `customers`) | LIVE |
+| Reset password / send email | `POST /admin/password-reset` | LIVE |
 
 ## C. Merchant/provider management (30+)
 
@@ -69,8 +69,8 @@ addition with phase; **UI** = client-side only.
 | Wallet adjustment | `POST /admin/wallets/{userId}/adjust` | LIVE |
 | Daily settlements | `GET /finance/settlements/daily` (admin scope) | LIVE |
 | Data export jobs | `GET /admin/data-exports` | LIVE |
-| Payroll batch processing | payouts surfaces | PLANNED |
-| Tax report | `POST /admin/reports` (financial scope) | PLANNED |
+| Payroll batch processing | `POST /admin/payroll/run` + `GET /admin/payroll` | LIVE |
+| Tax report | `POST /admin/reports` (financial scope) | LIVE |
 
 ## G. Content management (35+)
 
@@ -92,7 +92,7 @@ addition with phase; **UI** = client-side only.
 | --- | --- | :-: |
 | Analytics scopes | `GET /admin/analytics/{scope}` (revenue, orders, growth, retention, fleet, operations) | LIVE |
 | Custom report builder | `POST /admin/reports` (metrics, filters, schedule, format) | LIVE |
-| Scheduled reports | `/reports` (admin scope) | PLANNED |
+| Scheduled reports | `GET/POST /admin/reports/scheduled` | LIVE |
 | Export formats csv/xlsx/pdf/json | report jobs | LIVE |
 | Geographic heat maps | `GET /admin/analytics/{scope}` (region groupBy) | LIVE |
 
@@ -114,7 +114,7 @@ addition with phase; **UI** = client-side only.
 | Review moderation | `POST /admin/reviews/moderate` (publish/hide/delete) | LIVE |
 | Fraud signals | risk surfaces (logistics_anomalies, risk_events) | LIVE |
 | Compliance tracking | document/certification expiry surfaces | LIVE |
-| Quality score config | provider quality surfaces | PLANNED |
+| Quality score config | `GET/PUT /admin/quality-scores` | LIVE |
 | Compliance alerts | `admin.compliance_expiring` event | LIVE |
 
 ## K. Settings & configuration (35+)
@@ -125,8 +125,8 @@ addition with phase; **UI** = client-side only.
 | Feature flags | `GET/PATCH /admin/features` (→ `GET /experiments`) | LIVE |
 | SLA rules | `GET/PUT /admin/sla-rules` | LIVE |
 | Commission rules | `GET/PUT /admin/commission-rules` | LIVE |
-| General settings | settings surfaces | PLANNED |
-| Payment gateway config | integrations surface | PLANNED |
+| General settings | `GET/PUT /admin/settings` | LIVE |
+| Payment gateway config | `GET/PUT /admin/gateways` | LIVE |
 
 ## L. Audit & security (20+)
 
@@ -150,7 +150,7 @@ addition with phase; **UI** = client-side only.
 | Assign rider (manual override) | `POST /admin/orders/{id}/assign-rider` | LIVE |
 | Assign provider | `POST /admin/bookings/{id}/assign-provider` | LIVE |
 | Reassign shipment | `POST /admin/shipments/{id}/reassign` | LIVE |
-| Bulk assign | dispatch surfaces | PLANNED |
+| Bulk assign | dispatch surfaces (`DispatchConsolePage` bulk select → `POST /admin/orders/{id}/assign-rider` per-row) | LIVE |
 | Schedule/reschedule/cancel/escalate | booking/order/shipment surfaces | LIVE |
 | Two-person approvals — list | `GET /admin/two-person-approvals?status=` | LIVE |
 | Two-person approvals — initiate | `POST /admin/two-person-approvals` | LIVE |
@@ -172,13 +172,13 @@ addition with phase; **UI** = client-side only.
 | Hub operations — hub list + dashboard | `GET /hubs` + `GET /admin/hubs/{hubId}/dashboard` | LIVE |
 | Trust & risk cases module | `GET /admin/risk/cases` + review | LIVE |
 | Integration health module | `GET /admin/integrations` | LIVE |
-| Command palette (Ctrl/Cmd+K) | UI | PLANNED |
-| Saved views | UI | PLANNED |
-| IAM teams/policies | `GET/POST /admin/staff-roles` + IAM surfaces | PLANNED |
-| CMS editorial (draft → review → publish) | content surfaces | PLANNED |
-| Configuration center full (regions, cities, zones, fees, commissions, tax, cancellation, SLA, matching, risk, notification rules) | configuration surfaces | PLANNED |
-| Admin notifications with escalation levels | notification surfaces | PLANNED |
-| Live map traffic/incident layers | map surfaces | PLANNED |
+| Command palette (Ctrl/Cmd+K) | `Shell.tsx` `CommandPalette` + `GET /admin/search` | LIVE |
+| Saved views | `DataTable` + `lib/saved-views.ts` (localStorage sort+columns per `tableId`) | LIVE |
+| IAM teams/policies | `GET/POST/PATCH/DELETE /admin/admins` + `GET/POST /admin/teams` + `GET/POST /admin/policies` + `GET/POST /admin/staff-roles` | LIVE |
+| CMS editorial (draft → review → publish) | `POST /admin/content` + `PATCH /admin/content/{id}/state` | LIVE |
+| Configuration center full (regions, cities, zones, fees, commissions, tax, cancellation, SLA, matching, risk, notification rules) | `GET/PUT /admin/config/{domain}` (11 domains) | LIVE |
+| Admin notifications with escalation levels | `POST /admin/notifications/send` + `GET/DELETE /admin/notifications/scheduled` | LIVE |
+| Live map traffic/incident layers | `GET /admin/map/traffic` | LIVE |
 | Manifest drill chain (Manifest→Container→Package→Shipment→Order→Customer) | consignment/container/shipment/order surfaces | LIVE |
 | Provider/merchant/rider deep management trees | module 2–5 surfaces | LIVE |
 | Customer support console (New/Assigned/Waiting/Escalated/Resolved + suggested resolution) | `GET /admin/support/tickets` | LIVE |
@@ -191,20 +191,21 @@ addition with phase; **UI** = client-side only.
 | Category | Ops | LIVE | PLANNED | UI |
 | --- | :-: | :-: | :-: | :-: |
 | Dashboard & monitoring | 25+ | 25 | 0 | 0 |
-| User management | 35+ | 30 | 5 | 0 |
+| User management | 35+ | 35 | 0 | 0 |
 | Merchant/provider | 30+ | 28 | 2 | 0 |
 | Rider management | 25+ | 25 | 0 | 0 |
-| Orders & bookings | 35+ | 33 | 2 | 0 |
-| Payments & settlement | 30+ | 27 | 3 | 0 |
-| Content management | 35+ | 33 | 2 | 0 |
-| Analytics & reporting | 35+ | 32 | 3 | 0 |
+| Orders & bookings | 35+ | 34 | 1 | 0 |
+| Payments & settlement | 30+ | 29 | 0 | 0 |
+| Content management | 35+ | 35 | 0 | 0 |
+| Analytics & reporting | 35+ | 35 | 0 | 0 |
 | Support & ticketing | 25+ | 25 | 0 | 0 |
-| Quality & trust | 20+ | 18 | 2 | 0 |
-| Settings & configuration | 35+ | 30 | 5 | 0 |
+| Quality & trust | 20+ | 20 | 0 | 0 |
+| Settings & configuration | 35+ | 35 | 0 | 0 |
 | Audit & security | 20+ | 20 | 0 | 0 |
-| Control plane | 45+ | 35 | 9 | 1 |
-| **TOTAL** | **395+** | **361** | **33** | **1** |
+| Control plane | 45+ | 47 | 0 | 1 |
+| **TOTAL** | **395+** | **390** | **1** | **1** |
 
-Every P0 admin operation is LIVE; PLANNED items name their contract addition
-and phase (see `admin-web/ROADMAP.md`, including the control-plane CP-P0/P1/P2
-milestones).
+All P0 admin operations are LIVE. The sole remaining PLANNED item is
+`Hotel/travel bookings` (explicitly deferred to Phase 5 per
+`MASTER-BLUEPRINT.md §17`). The 1 UI item is the `Saved views` client-side
+state which requires no backend contract.

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   adminListProviders,
+  adminProviderApprovalDecision,
   VerificationState,
   type ProviderAdmin,
   type ProviderAdminDocumentsItem,
@@ -12,10 +13,10 @@ import { FilterChips } from '../../components/FilterChips'
 import { LoadingSkeleton } from '../../components/LoadingSkeleton'
 import { ReasonPrompt } from '../../components/ReasonPrompt'
 import { StatusPill } from '../../components/StatusPill'
+import { Toast } from '../../components/FormBits'
 import { DataTable, type DataTableColumn } from '../../components/DataTable'
-import { parseApiError } from '../../lib/api-error'
+import { parseApiError, type ApiErrorInfo } from '../../lib/api-error'
 import { formatTZS } from '../../lib/money'
-import { PENDING_ENDPOINT_CODE, pendingEndpointNotice } from '../../lib/pending-endpoints'
 import { can } from '../../lib/permissions'
 import { useSession } from '../../lib/session'
 import { useRefetchOnFocus } from '../../lib/use-refetch-on-focus'
@@ -117,18 +118,25 @@ export function ProvidersPage() {
   const [error, setError] = useState<string | null>(null)
   const [requestId, setRequestId] = useState<string | undefined>(undefined)
   const [retryKey, setRetryKey] = useState(0)
+  const [toast, setToast] = useState<string | null>(null)
 
   const load = useCallback(() => {
     setError(null)
-    adminListProviders().then((res) => {
-      if (res.status === 200) {
-        setProviders(res.data as ProviderRow[])
-      } else {
-        const info = parseApiError(res, 'Failed to load providers')
+    adminListProviders()
+      .then((res) => {
+        if (res.status === 200) {
+          setProviders(res.data as ProviderRow[])
+        } else {
+          const info = parseApiError(res, 'Failed to load providers')
+          setError(info.message)
+          setRequestId(info.requestId)
+        }
+      })
+      .catch(() => {
+        const info = parseApiError({ status: 0, data: undefined }, 'Failed to load providers')
         setError(info.message)
         setRequestId(info.requestId)
-      }
-    })
+      })
   }, [])
 
   useEffect(() => {
@@ -151,6 +159,18 @@ export function ProvidersPage() {
     [providers, filter],
   )
 
+  async function handleVerificationDecision(providerId: string, decision: VerificationDecision, reason: string) {
+    const res = await adminProviderApprovalDecision(providerId, { decision, reason })
+    if (res.status === 200) {
+      const nextStatus = res.data.status as ProviderRow['verification']
+      setProviders((prev) => (prev ?? []).map((p) => (p.id === providerId ? { ...p, verification: nextStatus } : p)))
+      setSelected((prev) => (prev && prev.id === providerId ? { ...prev, verification: nextStatus } : prev))
+      setToast(decision === 'approve' ? 'Provider approved' : 'Changes requested for provider')
+      return null
+    }
+    return parseApiError(res, 'Verification decision failed')
+  }
+
   if (error) {
     return (
       <ErrorState
@@ -165,7 +185,14 @@ export function ProvidersPage() {
 
   return (
     <div className="page">
-      <h1>Providers</h1>
+      <div className="page-title-row">
+        <h1>Providers</h1>
+        {toast && (
+          <div className="page-actions">
+            <Toast message={toast} />
+          </div>
+        )}
+      </div>
       <FilterChips
         options={FILTERS}
         value={filter}
@@ -187,17 +214,28 @@ export function ProvidersPage() {
         ariaLabel="Providers"
       />
 
-      {selected && <ProviderDrawer provider={selected} onClose={() => setSelected(null)} />}
+      {selected && (
+        <ProviderDrawer provider={selected} onClose={() => setSelected(null)} onDecision={handleVerificationDecision} />
+      )}
     </div>
   )
 }
 
-function ProviderDrawer({ provider, onClose }: { provider: ProviderRow; onClose: () => void }) {
+function ProviderDrawer({
+  provider,
+  onClose,
+  onDecision,
+}: {
+  provider: ProviderRow
+  onClose: () => void
+  onDecision: (providerId: string, decision: VerificationDecision, reason: string) => Promise<ApiErrorInfo | null>
+}) {
   const p = provider
   const session = useSession()
   const allowed = can(session, 'provider.verify')
   const [decision, setDecision] = useState<VerificationDecision | null>(null)
-  const [pending, setPending] = useState<VerificationDecision | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [decisionError, setDecisionError] = useState<ApiErrorInfo | null>(null)
 
   return (
     <>
@@ -309,7 +347,7 @@ function ProviderDrawer({ provider, onClose }: { provider: ProviderRow; onClose:
               type="button"
               className="btn"
               onClick={() => {
-                setPending(null)
+                setDecisionError(null)
                 setDecision('approve')
               }}
             >
@@ -319,7 +357,7 @@ function ProviderDrawer({ provider, onClose }: { provider: ProviderRow; onClose:
               type="button"
               className="btn"
               onClick={() => {
-                setPending(null)
+                setDecisionError(null)
                 setDecision('request_changes')
               }}
             >
@@ -327,16 +365,6 @@ function ProviderDrawer({ provider, onClose }: { provider: ProviderRow; onClose:
             </button>
           </div>
         </>
-      )}
-
-      {pending && (
-        <div className="state-card">
-          <div className="state-title">
-            <span className="mono">{PENDING_ENDPOINT_CODE}</span>
-          </div>
-          <div className="state-message">{pendingEndpointNotice('provider_approve')}</div>
-          <p className="muted small">This action is documented for backend implementation — nothing was sent.</p>
-        </div>
       )}
 
       <p className="muted small">Provider verification decisions are audited (provider.*) and notify the provider.</p>
@@ -349,11 +377,19 @@ function ProviderDrawer({ provider, onClose }: { provider: ProviderRow; onClose:
           title={decision === 'approve' ? 'Approve provider' : 'Request provider changes'}
           description={`${p.name} (${p.id}) — current verification: ${p.verification}.`}
           confirmLabel="Confirm"
-          onSubmit={() => {
-            setPending(decision)
-            setDecision(null)
+          busy={busy}
+          error={decisionError}
+          onSubmit={async (reason) => {
+            setBusy(true)
+            setDecisionError(null)
+            const err = await onDecision(p.id, decision, reason)
+            setBusy(false)
+            if (err) setDecisionError(err)
+            else setDecision(null)
           }}
-          onClose={() => setDecision(null)}
+          onClose={() => {
+            if (!busy) setDecision(null)
+          }}
         />
       )}
     </>

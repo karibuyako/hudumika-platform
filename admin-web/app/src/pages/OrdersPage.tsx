@@ -1,15 +1,26 @@
-import { useEffect, useMemo, useState } from 'react'
-import { adminListOrders, type OrderDetail, type OrderStatus } from '@hudumika/contract'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import {
+  adminCancelOrder,
+  adminDisputeDecision,
+  adminListOrders,
+  adminListRiders,
+  adminAssignOrderToRider,
+  type OrderDetail,
+  type OrderStatus,
+  type RiderAdmin,
+} from '@hudumika/contract'
 import { PriorityBadge } from '../components/PriorityBadge'
 import { DataTable, type DataTableColumn } from '../components/DataTable'
 import { ErrorState } from '../components/ErrorState'
 import { LoadingSkeleton } from '../components/LoadingSkeleton'
 import { ReasonPrompt } from '../components/ReasonPrompt'
+import { Toast } from '../components/FormBits'
 import { formatTZS } from '../lib/money'
-import { PENDING_ENDPOINT_CODE, pendingEndpointNotice } from '../lib/pending-endpoints'
 import { can } from '../lib/permissions'
+import { getLimits } from '../lib/limits'
 import { useSession } from '../lib/session'
 import { toLocal } from '../lib/time'
+import { parseApiError, type ApiErrorInfo } from '../lib/api-error'
 
 type Bucket = 'all' | 'needs_rider' | 'active' | 'completed' | 'failed' | 'cancelled' | 'dine_in'
 
@@ -56,16 +67,30 @@ export function OrdersPage() {
   const [orders, setOrders] = useState<OrderDetail[] | null>(null)
   const [bucket, setBucket] = useState<Bucket>('all')
   const [selected, setSelected] = useState<OrderDetail | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<ApiErrorInfo | null>(null)
   const [retryKey, setRetryKey] = useState(0)
+  const [toast, setToast] = useState<string | null>(null)
 
   useEffect(() => {
     setError(null)
-    adminListOrders().then((res) => {
-      if (res.status === 200) setOrders(res.data)
-      else setError(`Failed to load orders (${res.status})`)
-    })
+    adminListOrders()
+      .then((res) => {
+        if (res.status === 200) setOrders(res.data)
+        else setError(parseApiError(res, 'Failed to load orders'))
+      })
+      .catch(() => setError(parseApiError({ status: 0, data: undefined }, 'Failed to load orders')))
   }, [retryKey])
+
+  async function handleCancel(orderId: string, reason: string): Promise<ApiErrorInfo | null> {
+    const res = await adminCancelOrder(orderId, { reason })
+    if (res.status === 200) {
+      setOrders((prev) => (prev ?? []).map((o) => (o.id === orderId ? { ...o, status: 'cancelled' as OrderStatus } : o)))
+      setSelected((prev) => (prev && prev.id === orderId ? { ...prev, status: 'cancelled' as OrderStatus } : prev))
+      setToast('Order cancelled')
+      return null
+    }
+    return parseApiError(res, 'Cancel failed')
+  }
 
   const counts = useMemo(() => {
     if (!orders) return new Map<Bucket, number>()
@@ -76,12 +101,19 @@ export function OrdersPage() {
 
   const visible = useMemo(() => (orders ?? []).filter(BUCKETS.find((b) => b.key === bucket)!.match), [orders, bucket])
 
-  if (error) return <ErrorState title="Failed to load orders" message={error} onRetry={() => setRetryKey((k) => k + 1)} />
+  if (error) return <ErrorState title="Failed to load orders" message={error.message} requestId={error.requestId} onRetry={() => setRetryKey((k) => k + 1)} />
   if (!orders) return <LoadingSkeleton />
 
   return (
     <div className="page">
-      <h1>Orders</h1>
+      <div className="page-title-row">
+        <h1>Orders</h1>
+        {toast && (
+          <div className="page-actions">
+            <Toast message={toast} />
+          </div>
+        )}
+      </div>
       <div className="filters">
         {BUCKETS.map((b) => (
           <button
@@ -105,17 +137,62 @@ export function OrdersPage() {
         ariaLabel="Orders"
       />
 
-      {selected && <OrderDrawer order={selected} onClose={() => setSelected(null)} />}
+      {selected && <OrderDrawer order={selected} onClose={() => setSelected(null)} onCancel={handleCancel} />}
     </div>
   )
 }
 
-function OrderDrawer({ order, onClose }: { order: OrderDetail; onClose: () => void }) {
+function OrderDrawer({
+  order,
+  onClose,
+  onCancel,
+}: {
+  order: OrderDetail
+  onClose: () => void
+  onCancel: (orderId: string, reason: string) => Promise<ApiErrorInfo | null>
+}) {
   const t = order.totals
   const session = useSession()
   const allowed = can(session, 'order.cancel') && CANCELLABLE.includes(order.status)
   const [confirmCancel, setConfirmCancel] = useState(false)
-  const [pending, setPending] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [cancelError, setCancelError] = useState<ApiErrorInfo | null>(null)
+
+  // Assign rider state
+  const [riders, setRiders] = useState<RiderAdmin[]>([])
+  const [assignRiderId, setAssignRiderId] = useState('')
+  const [assigning, setAssigning] = useState(false)
+  const [assignError, setAssignError] = useState<ApiErrorInfo | null>(null)
+  const [assignPrompt, setAssignPrompt] = useState(false)
+  const canAssign = can(session, 'dispatch.assign')
+  const needsRider = !order.riderId && ['paid', 'merchant_accepted', 'preparing'].includes(order.status)
+
+  useEffect(() => {
+    if (!canAssign || !needsRider) return
+    adminListRiders().then((res) => {
+      if (res.status === 200) setRiders(res.data.filter((r) => r.verification === 'approved'))
+    })
+  }, [canAssign, needsRider])
+
+  async function handleAssign(riderId: string, reason: string) {
+    setBusy(true)
+    setAssignError(null)
+    const res = await adminAssignOrderToRider(order.id, { riderId, reason })
+    setBusy(false)
+    if (res.status === 200) {
+      setToast(`Order assigned to ${riderId}`)
+      onClose()
+    } else {
+      setAssignError(parseApiError(res, 'Assignment failed'))
+    }
+  }
+  const canDispute = can(session, 'dispute.resolve') || can(session, 'order.cancel')
+  const [disputePrompt, setDisputePrompt] = useState(false)
+  const [disputeDecision, setDisputeDecision] = useState<'refund' | 'payout' | 'reject'>('refund')
+  const [disputeAmount, setDisputeAmount] = useState('')
+  const [disputeReason, setDisputeReason] = useState('')
+  const [disputeBusy, setDisputeBusy] = useState(false)
+  const [disputeError, setDisputeError] = useState<ApiErrorInfo | null>(null)
 
   return (
     <div className="drawer-backdrop" onClick={onClose}>
@@ -216,8 +293,62 @@ function OrderDrawer({ order, onClose }: { order: OrderDetail; onClose: () => vo
               <br />
               Strategy: <span className="muted">{order.dispatchStrategy ?? '—'}</span>
             </p>
+
+            {canAssign && needsRider && riders.length > 0 && (
+              <div className="detail-section">
+                <h3>Assign rider</h3>
+                <label className="field-label" htmlFor="assign-rider-select">Select a rider</label>
+                <select
+                  id="assign-rider-select"
+                  className="field"
+                  value={assignRiderId}
+                  onChange={(e) => setAssignRiderId(e.target.value)}
+                >
+                  <option value="">Choose rider…</option>
+                  {riders.map((r) => (
+                    <option key={r.id} value={r.id}>{r.name} · {r.city} · {r.vehicle}</option>
+                  ))}
+                </select>
+                {assignError && (
+                  <div className="inline-error" role="alert">
+                    <div>{assignError.message}</div>
+                    <div className="muted small">{assignError.code}{assignError.requestId ? ` · request ${assignError.requestId}` : ''}</div>
+                  </div>
+                )}
+                <div className="form-actions">
+                  <button
+                    type="button"
+                    className="btn"
+                    disabled={!assignRiderId || busy}
+                    onClick={() => {
+                      setAssignError(null)
+                      setAssignPrompt(true)
+                    }}
+                  >
+                    {busy ? 'Assigning…' : 'Assign rider'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
+
+        {order.status === 'disputed' && canDispute && (
+          <div className="detail-section">
+            <h3>Dispute resolution</h3>
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={() => {
+                setDisputeError(null)
+                setDisputePrompt(true)
+              }}
+            >
+              Resolve dispute
+            </button>
+            <p className="muted small">Refund/payout above {formatTZS(getLimits().twoPersonThresholdTzs)} requires two-person approval.</p>
+          </div>
+        )}
 
         {allowed && (
           <>
@@ -227,7 +358,7 @@ function OrderDrawer({ order, onClose }: { order: OrderDetail; onClose: () => vo
                 type="button"
                 className="btn btn-danger"
                 onClick={() => {
-                  setPending(false)
+                  setCancelError(null)
                   setConfirmCancel(true)
                 }}
               >
@@ -235,16 +366,6 @@ function OrderDrawer({ order, onClose }: { order: OrderDetail; onClose: () => vo
               </button>
             </div>
           </>
-        )}
-
-        {pending && (
-          <div className="state-card">
-            <div className="state-title">
-              <span className="mono">{PENDING_ENDPOINT_CODE}</span>
-            </div>
-            <div className="state-message">{pendingEndpointNotice('order_cancel')}</div>
-            <p className="muted small">This action is documented for backend implementation — nothing was sent.</p>
-          </div>
         )}
       </div>
 
@@ -254,12 +375,146 @@ function OrderDrawer({ order, onClose }: { order: OrderDetail; onClose: () => vo
           description={`${order.no ?? order.id} — current status: ${order.status}.`}
           tone="danger"
           confirmLabel="Confirm"
-          onSubmit={() => {
-            setPending(true)
-            setConfirmCancel(false)
+          busy={busy}
+          error={cancelError}
+          onSubmit={async (reason) => {
+            setBusy(true)
+            setCancelError(null)
+            const err = await onCancel(order.id, reason)
+            setBusy(false)
+            if (err) {
+              setCancelError(err)
+            } else {
+              setConfirmCancel(false)
+              onClose()
+            }
           }}
-          onClose={() => setConfirmCancel(false)}
+          onClose={() => {
+            if (!busy) setConfirmCancel(false)
+          }}
         />
+      )}
+
+      {assignPrompt && (
+        <ReasonPrompt
+          title="Assign rider"
+          description={`${order.no ?? order.id} — assigning rider ${assignRiderId}.`}
+          confirmLabel="Confirm"
+          busy={busy}
+          error={assignError}
+          onSubmit={async (reason) => {
+            await handleAssign(assignRiderId, reason)
+            if (!assignError) setAssignPrompt(false)
+          }}
+          onClose={() => {
+            if (!busy) setAssignPrompt(false)
+          }}
+        />
+      )}
+
+      {disputePrompt && (
+        <div className="modal-backdrop" onClick={() => !disputeBusy && setDisputePrompt(false)}>
+          <form
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Resolve dispute"
+            onClick={(e) => e.stopPropagation()}
+            onSubmit={async (e: FormEvent) => {
+              e.preventDefault()
+              if (!disputeReason.trim()) {
+                setDisputeError({ code: 'ADMIN_REASON_REQUIRED', message: 'reason is required', retriable: false } as ApiErrorInfo)
+                return
+              }
+              const amount = disputeAmount ? Number(disputeAmount) : undefined
+              if ((disputeDecision === 'refund' || disputeDecision === 'payout') && !amount) {
+                setDisputeError({ code: 'VALIDATION_FAILED', message: 'amountTZS is required for refund or payout', retriable: false } as ApiErrorInfo)
+                return
+              }
+              setDisputeBusy(true)
+              setDisputeError(null)
+              const res = await adminDisputeDecision(order.id, {
+                decision: disputeDecision,
+                amountTZS: amount,
+                reason: disputeReason.trim(),
+              } as never)
+              setDisputeBusy(false)
+              if (res.status === 200) {
+                setDisputePrompt(false)
+                setDisputeReason('')
+                setDisputeAmount('')
+                onClose()
+              } else {
+                setDisputeError(parseApiError(res, 'Dispute decision failed'))
+              }
+            }}
+          >
+            <h3 className="modal-title">Resolve dispute</h3>
+            <p className="muted small">
+              {order.no ?? order.id} — current status: {order.status}. Refund/payout above {formatTZS(getLimits().twoPersonThresholdTzs)} requires two-person
+              approval.
+            </p>
+            <label className="field-label" htmlFor="dispute-decision">
+              Decision
+            </label>
+            <select
+              id="dispute-decision"
+              className="field"
+              value={disputeDecision}
+              onChange={(e) => setDisputeDecision(e.target.value as 'refund' | 'payout' | 'reject')}
+            >
+              <option value="refund">refund</option>
+              <option value="payout">payout</option>
+              <option value="reject">reject</option>
+            </select>
+            {(disputeDecision === 'refund' || disputeDecision === 'payout') && (
+              <>
+                <label className="field-label" htmlFor="dispute-amount">
+                  Amount TZS
+                </label>
+                <input
+                  id="dispute-amount"
+                  type="number"
+                  className="field"
+                  value={disputeAmount}
+                  onChange={(e) => setDisputeAmount(e.target.value)}
+                  placeholder="Amount in TZS (integer)"
+                  min={0}
+                />
+              </>
+            )}
+            <label className="field-label" htmlFor="dispute-reason">
+              Reason
+            </label>
+            <textarea
+              id="dispute-reason"
+              className="field"
+              rows={3}
+              maxLength={500}
+              required
+              value={disputeReason}
+              onChange={(e) => setDisputeReason(e.target.value)}
+              placeholder="Explain why this action is taken (audited)"
+            />
+            {disputeError && (
+              <div className="inline-error" role="alert">
+                <div>{disputeError.message}</div>
+                <div className="muted small">
+                  {disputeError.code}
+                  {disputeError.requestId ? ` · request ${disputeError.requestId}` : ''}
+                </div>
+              </div>
+            )}
+            <div className="modal-actions">
+              <button type="button" className="btn btn-ghost" onClick={() => setDisputePrompt(false)} disabled={disputeBusy}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-danger" disabled={disputeBusy}>
+                {disputeBusy ? 'Working…' : 'Confirm'}
+              </button>
+            </div>
+          </form>
+        </div>
       )}
     </div>
   )

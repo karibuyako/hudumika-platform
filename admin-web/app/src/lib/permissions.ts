@@ -1,16 +1,13 @@
-import { rolePermissions } from './roles'
+import { rolePermissions, effectiveRoles } from './roles'
 import type { StaffSession } from './session'
 
-export function can(session: StaffSession | null | undefined, permission: string): boolean {
-  if (!session) return false
-  if (session.permissions.includes('*')) return true
-  return session.permissions.includes(permission)
-}
+export type PermissionCatalog = Record<string, string>
 
-export function roleHasPermission(roleId: string, permission: string): boolean {
-  const permissions = rolePermissions(roleId)
-  if (permissions.includes('*')) return true
-  return permissions.includes(permission)
+function formatPermissionLabel(key: string): string {
+  return key
+    .replace(/\./g, ' ')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 export const permissionCatalog: Record<string, string> = {
@@ -84,4 +81,80 @@ export const permissionCatalog: Record<string, string> = {
   'feature.edit': 'Edit feature flags',
   'analytics.read': 'View analytics exports',
   'approval.decide': 'Decide two-person approvals',
+}
+
+let dynamicPermissionCatalog: PermissionCatalog | null = null
+
+export async function loadPermissionCatalog(): Promise<PermissionCatalog> {
+  const roles = effectiveRoles()
+  const catalog: PermissionCatalog = { ...permissionCatalog }
+  for (const role of roles) {
+    for (const key of role.permissions) {
+      if (key === '*') continue
+      if (!catalog[key]) {
+        catalog[key] = formatPermissionLabel(key)
+      }
+    }
+  }
+  dynamicPermissionCatalog = catalog
+  return catalog
+}
+
+export function effectivePermissionCatalog(): PermissionCatalog {
+  return dynamicPermissionCatalog ?? permissionCatalog
+}
+
+const PARENT_PERMISSIONS: Record<string, string> = {
+  'order.cancel': 'order.manage',
+  'order.refund': 'order.manage',
+  'order.override': 'order.manage',
+  'shipment.reassign': 'order.manage',
+  'shipment.hold': 'order.manage',
+  'shipment.release': 'order.manage',
+  'dispatch.assign': 'order.manage',
+  'dispatch.reassign': 'order.manage',
+  'merchant.suspend': 'merchant.approve',
+  'provider.suspend': 'provider.verify',
+  'provider.verify': 'provider.verify',
+  'customer.suspend': 'order.manage',
+  'user.suspend': 'iam.manage',
+  'conversation.block': 'support.manage',
+  'voucher.verify': 'voucher.manage',
+  'finance.refund': 'finance.manage',
+  'finance.payout_adjust': 'finance.manage',
+  'risk.investigate': 'risk.manage',
+  'risk.block': 'risk.manage',
+  'safety.respond': 'safety.manage',
+  'fleet.admin': 'fleet.admin',
+  'hub.manage': 'hub.manage',
+  'consignment.resolve': 'consignment.manage',
+  'handoff.resolve': 'handoff.manage',
+  'anomaly.resolve': 'anomaly.manage',
+  'exception.resolve': 'exception.manage',
+  'warehouse.manage': 'warehouse.manage',
+  'carrier.manage': 'carrier.manage',
+  'facility.manage': 'facility.manage',
+  'reconciliation.resolve': 'reconciliation.manage',
+  'webhook.retry': 'webhook.manage',
+  'feature.edit': 'feature.manage',
+  'export.approve': 'export.manage',
+  'cod.reconcile': 'cod.manage',
+  'refund.approve': 'refund.approve',
+  'audit.read': 'audit_log.view',
+  'configuration.edit': 'configuration.manage',
+}
+
+export function can(session: StaffSession | null | undefined, permission: string): boolean {
+  if (!session) return false
+  if (session.permissions.includes('*')) return true
+  if (session.permissions.includes(permission)) return true
+  const parent = PARENT_PERMISSIONS[permission]
+  if (parent && session.permissions.includes(parent)) return true
+  return false
+}
+
+export function roleHasPermission(roleId: string, permission: string): boolean {
+  const permissions = rolePermissions(roleId)
+  if (permissions.includes('*')) return true
+  return permissions.includes(permission)
 }

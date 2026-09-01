@@ -489,7 +489,7 @@ func (s *Server) CreateProviderContract(w http.ResponseWriter, r *http.Request) 
 	if !ok {
 		return
 	}
-	raw, err := io.ReadAll(http.MaxBytesReader(nil, r.Body, maxBodyBytes))
+	raw, err := io.ReadAll(http.MaxBytesReader(nil, r.Body, GetSettings().MaxBodyBytes))
 	if err != nil {
 		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Invalid request body")
 		return

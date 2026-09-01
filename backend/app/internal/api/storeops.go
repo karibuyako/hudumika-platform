@@ -28,12 +28,11 @@ import (
 // exist yet).
 
 // Limits enforced by the store-ops handlers (contract + ERROR-CODES.md).
+// Deprecated: all constants below are now served from GetSettings().
 const (
-	maxReceiptTemplatesPerMerchant = 10
-	maxPaymentAccountsPerMerchant  = 5
-	minSelfPickupMinutes           = 5
-	maxSelfPickupMinutes           = 120
-	complianceEstimatedMinutes     = 30
+	// These are retained only as compile-time documentation; runtime values
+	// come from GetSettings().
+	_ = 0 // sentinel
 )
 
 // storeOpsMerchantID resolves the authenticated session to the store-ops
@@ -330,9 +329,11 @@ func (s *Server) UploadQualification(w http.ResponseWriter, r *http.Request) {
 
 // --- store QR codes -------------------------------------------------------
 
-// storeQrPayloadPrefix is the deterministic qrPayload derivation base; the
+// storeQrPayload returns the deterministic qrPayload derivation base; the
 // payload is `prefix + code` (the code is unique per store row).
-const storeQrPayloadPrefix = "https://hudumika.app/qr/"
+func storeQrPayload(code string) string {
+	return GetSettings().StoreQrPrefix + code
+}
 
 // ListStoreQrCodes returns the merchant's active QR codes (GET
 // /store/qr-codes), newest first.
@@ -366,8 +367,8 @@ func (s *Server) ListStoreQrCodes(w http.ResponseWriter, r *http.Request) {
 		out = append(out, gen.StoreQrCode{
 			Id:        newUUID(id.String()),
 			Kind:      gen.StoreQrCodeKind(label),
-			QrPayload: storeQrPayloadPrefix + code,
-			CreatedAt: &createdAt,
+		QrPayload: storeQrPayload(code),
+		CreatedAt: &createdAt,
 		})
 	}
 	if err := rows.Err(); err != nil {
@@ -416,7 +417,7 @@ func (s *Server) CreateStoreQrCode(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, gen.StoreQrCode{
 		Id:        newUUID(id.String()),
 		Kind:      gen.StoreQrCodeKind(kind),
-		QrPayload: storeQrPayloadPrefix + code,
+		QrPayload: storeQrPayload(code),
 		CreatedAt: &createdAt,
 	})
 }
@@ -656,7 +657,7 @@ func (s *Server) CreateReceiptTemplate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
-	if count >= maxReceiptTemplatesPerMerchant {
+	if count >= GetSettings().MaxReceiptTemplates {
 		writeError(w, http.StatusConflict, "RECEIPT_TEMPLATE_LIMIT_REACHED", "Receipt template limit reached for this store")
 		return
 	}
@@ -962,7 +963,7 @@ func (s *Server) CreateStorePaymentAccount(w http.ResponseWriter, r *http.Reques
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
-	if count >= maxPaymentAccountsPerMerchant {
+	if count >= GetSettings().MaxPaymentAccounts {
 		writeError(w, http.StatusConflict, "PAYMENT_ACCOUNT_LIMIT_REACHED", "Payment account limit reached for this store")
 		return
 	}
@@ -1120,9 +1121,9 @@ func (s *Server) PutSelfPickupConfig(w http.ResponseWriter, r *http.Request) {
 	if body.PickupReadyMinutes != nil {
 		minutes = *body.PickupReadyMinutes
 	}
-	if minutes < minSelfPickupMinutes || minutes > maxSelfPickupMinutes {
-		writeError(w, http.StatusUnprocessableEntity, "SELF_PICKUP_INVALID_CONFIG",
-			fmt.Sprintf("pickupReadyMinutes must be between %d and %d", minSelfPickupMinutes, maxSelfPickupMinutes))
+	if minutes < GetSettings().MinSelfPickupMinutes || minutes > GetSettings().MaxSelfPickupMinutes {
+		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED",
+			fmt.Sprintf("pickupReadyMinutes must be between %d and %d", GetSettings().MinSelfPickupMinutes, GetSettings().MaxSelfPickupMinutes))
 		return
 	}
 	var instructions *string
@@ -1208,7 +1209,7 @@ func (s *Server) RequestComplianceRecheck(w http.ResponseWriter, r *http.Request
 	}
 	writeJSON(w, http.StatusAccepted, complianceRecheckAccepted{
 		Status:           gen.RequestComplianceRecheck202JSONResponseBodyStatusQueued,
-		EstimatedMinutes: complianceEstimatedMinutes,
+		EstimatedMinutes: GetSettings().ComplianceEstimatedMinutes,
 		RecheckId:        newUUID(id.String()),
 	})
 }

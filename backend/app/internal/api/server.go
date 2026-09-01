@@ -8,6 +8,8 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync"
+	"testing"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,19 +22,25 @@ import (
 	"github.com/hudumika/api-backend/internal/store"
 )
 
-const maxBodyBytes = 1 << 20
+// maxBodyBytes is the default max request body size; overridden by platform_settings.max_body_bytes at runtime.
+const defaultMaxBodyBytes = 1 << 20
 
 type Server struct {
 	gen.Unimplemented
-	cfg       config.Config
-	db        *db.DB
-	stores    *store.Set
-	auth      *auth.Service
-	outbox    notifications.Outbox
-	enc       *notifications.Encryptor
-	logger    *slog.Logger
-	devOtp    bool
-	startedAt time.Time
+	cfg              config.Config
+	db               *db.DB
+	stores           *store.Set
+	auth             *auth.Service
+	outbox           notifications.Outbox
+	enc              *notifications.Encryptor
+	logger           *slog.Logger
+	structuredLogger *StructuredLogger
+	devOtp           bool
+	startedAt        time.Time
+	rateLimiter      *RateLimiter
+	loginThrottler   *LoginThrottler
+	idempotencyStore *IdempotencyStore
+	locationSyncOnce sync.Once
 }
 
 func New(cfg config.Config, logger *slog.Logger) (*Server, error) {
@@ -40,13 +48,48 @@ func New(cfg config.Config, logger *slog.Logger) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Server{
-		cfg:       cfg,
-		stores:    stores,
-		logger:    logger,
-		devOtp:    cfg.DevOTPEnabled(),
-		startedAt: time.Now(),
-	}, nil
+	routeLimits := map[string]rateLimit{
+		"/auth": {rate: 10, burst: 10},
+	}
+	s := &Server{
+		cfg:              cfg,
+		stores:           stores,
+		logger:           logger,
+		structuredLogger: NewStructuredLogger(logger),
+		devOtp:           cfg.DevOTPEnabled(),
+		startedAt:        time.Now(),
+		rateLimiter:      NewRateLimiter(100, 100, routeLimits),
+		loginThrottler:   NewLoginThrottler(),
+		idempotencyStore: NewIdempotencyStore(24 * time.Hour),
+	}
+
+	// Load platform settings from the database (best-effort; defaults used on failure).
+	ctx := context.Background()
+	if _, err := s.LoadSettings(ctx); err != nil {
+		logger.Warn("initial platform settings load failed", "error", err)
+	}
+
+	if !testing.Testing() {
+		go s.StartSettingsRefresher(ctx)
+
+		// Periodically clean up expired idempotency entries.
+		go func() {
+			ticker := time.NewTicker(10 * time.Minute)
+			defer ticker.Stop()
+			for range ticker.C {
+				s.idempotencyStore.Cleanup()
+			}
+		}()
+
+		// Initialize the WebSocket hub for real-time admin map updates.
+		hub = NewWSHub()
+		go hub.Run(context.Background())
+
+		// Start the background health monitor for degradation tracking.
+		s.startHealthMonitor(context.Background())
+	}
+
+	return s, nil
 }
 
 // SetDB wires the PostgreSQL pool (used by /readyz and the auth service).
@@ -54,6 +97,12 @@ func (s *Server) SetDB(d *db.DB) {
 	s.db = d
 	if d != nil {
 		s.auth = auth.NewService(s.stores.Otp, s.stores.Sessions, auth.NewRepo(d.Pool()), s.logger)
+		// Start the background location sync worker once: bridges rider GPS
+		// positions from Redis to PostgreSQL live_locations and checks
+		// geofences on every tick.
+		s.locationSyncOnce.Do(func() {
+			go s.LocationSync(context.Background())
+		})
 	}
 }
 
@@ -254,14 +303,17 @@ func (s *Server) VerifyOtp(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case errors.Is(err, store.ErrOtpLocked):
 		s.RecordOtpOutcome("unknown", "failed")
+		s.loginThrottler.RecordFailed(throttleClientIP(r))
 		writeError(w, http.StatusUnauthorized, "OTP_MAX_ATTEMPTS", "Too many attempts — request a new code")
 		return
 	case errors.Is(err, store.ErrOtpUnknown):
 		s.RecordOtpOutcome("unknown", "failed")
+		s.loginThrottler.RecordFailed(throttleClientIP(r))
 		writeError(w, http.StatusUnauthorized, "OTP_INVALID", "Invalid or expired code")
 		return
 	case err != nil:
 		s.RecordOtpOutcome("unknown", "failed")
+		s.loginThrottler.RecordFailed(throttleClientIP(r))
 		s.logger.Error("otp verify failed", "error", err)
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
@@ -269,10 +321,12 @@ func (s *Server) VerifyOtp(w http.ResponseWriter, r *http.Request) {
 	if !result.Verified {
 		s.logger.Warn("otp verify wrong code", "requestId", body.RequestId)
 		s.RecordOtpOutcome("unknown", "failed")
+		s.loginThrottler.RecordFailed(throttleClientIP(r))
 		writeError(w, http.StatusUnauthorized, "OTP_INVALID", "Invalid or expired code")
 		return
 	}
 	s.RecordOtpOutcome("unknown", "verified")
+	s.loginThrottler.Reset(throttleClientIP(r))
 
 	// Role-aware session minting: if client explicitly requests a role, honor
 	// it — validate via requestedRole then check active assignment (roles
@@ -421,7 +475,11 @@ func (s *Server) Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func decodeJSON(r *http.Request, dst any) error {
-	r.Body = http.MaxBytesReader(nil, r.Body, maxBodyBytes)
+	maxBytes := GetSettings().MaxBodyBytes
+	if maxBytes <= 0 {
+		maxBytes = defaultMaxBodyBytes
+	}
+	r.Body = http.MaxBytesReader(nil, r.Body, maxBytes)
 	dec := json.NewDecoder(r.Body)
 	if err := dec.Decode(dst); err != nil {
 		return err

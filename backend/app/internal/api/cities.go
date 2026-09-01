@@ -15,7 +15,7 @@ import (
 // Public discovery bounds for /cities and /services. Both endpoints are
 // PUBLIC (no bearerAuth in the contract): they never look at the caller.
 const (
-	defaultCountry      = "TZ"
+	// Deprecated: defaultCountry is now served from GetSettings().DefaultCountry.
 	maxCountryLength    = 10
 	defaultServiceLimit = 20
 	maxServiceLimit     = 50
@@ -26,7 +26,7 @@ const (
 // is rejected before any database access; without a wired database (dev,
 // no DATABASE_URL) the request fails with the INTERNAL_ERROR envelope.
 func (s *Server) ListCities(w http.ResponseWriter, r *http.Request, params gen.ListCitiesParams) {
-	country := defaultCountry
+	country := GetSettings().DefaultCountry
 	if params.Country != nil {
 		country = *params.Country
 		if len(country) == 0 || len(country) > maxCountryLength {

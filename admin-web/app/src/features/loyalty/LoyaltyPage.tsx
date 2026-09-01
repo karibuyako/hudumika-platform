@@ -1,20 +1,32 @@
 import { useEffect, useState } from 'react'
-import { adminListMerchants, type MerchantAdmin } from '@hudumika/contract'
+import { adminListMerchants, adminUpdateLoyaltyConfig, type MerchantAdmin, type AdminLoyaltyConfigBody } from '@hudumika/contract'
 import { EmptyState } from '../../components/EmptyState'
 import { ErrorState } from '../../components/ErrorState'
 import { LoadingSkeleton } from '../../components/LoadingSkeleton'
 import { ReasonPrompt } from '../../components/ReasonPrompt'
+import { Toast } from '../../components/FormBits'
 import { parseApiError, type ApiErrorInfo } from '../../lib/api-error'
-import { PENDING_ENDPOINT_CODE, pendingEndpointNotice } from '../../lib/pending-endpoints'
 import { can } from '../../lib/permissions'
 import { useSession } from '../../lib/session'
 
+const DEFAULT_TIERS = [
+  { name: 'Bronze', discountBps: 500, thresholdTZS: 100000, perks: [] },
+  { name: 'Silver', discountBps: 1000, thresholdTZS: 500000, perks: ['priority support'] },
+  { name: 'Gold', discountBps: 2000, thresholdTZS: 1000000, perks: ['priority support', 'free delivery'] },
+]
+
+const DEFAULT_TOP_UP_REWARDS = [{ thresholdTZS: 100000, bonusTZS: 5000 }]
+
 export function LoyaltyPage() {
   const [merchants, setMerchants] = useState<MerchantAdmin[] | null>(null)
+  const [tiers, setTiers] = useState<Array<{ name: string; discountBps: number; thresholdTZS: number; perks: string[] }>>(DEFAULT_TIERS)
+  const [topUpRewards, setTopUpRewards] = useState<Array<{ thresholdTZS: number; bonusTZS: number }>>(DEFAULT_TOP_UP_REWARDS)
   const [error, setError] = useState<ApiErrorInfo | null>(null)
   const [retryKey, setRetryKey] = useState(0)
   const [confirming, setConfirming] = useState(false)
-  const [pending, setPending] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [promptError, setPromptError] = useState<ApiErrorInfo | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
 
   const session = useSession()
   const canEdit = can(session, 'configuration.edit')
@@ -39,28 +51,51 @@ export function LoyaltyPage() {
   }
   if (!merchants) return <LoadingSkeleton kind="table" />
 
+  async function handleConfirm(reason: string) {
+    setBusy(true)
+    setPromptError(null)
+    const res = await adminUpdateLoyaltyConfig({
+      tiers,
+      topUpRewards,
+      reason,
+    })
+    setBusy(false)
+    if (res.status === 200) {
+      setToast('Loyalty config updated')
+      setConfirming(false)
+    } else {
+      setPromptError(parseApiError(res, 'Update failed'))
+    }
+  }
+
   return (
     <div className="page">
-      <h1>Loyalty oversight</h1>
+      <div className="page-title-row">
+        <h1>Loyalty oversight</h1>
+        {toast && (
+          <div className="page-actions">
+            <Toast message={toast} />
+          </div>
+        )}
+      </div>
 
       <EmptyState
-        title="No loyalty configuration in the contract yet"
-        hint={`${merchants.length} merchants on file — the MerchantAdmin model exposes no loyalty fields (tiers or top-up rewards) in the contract.`}
+        title="Loyalty configuration"
+        hint={`${merchants.length} merchants on file — review tiers and top-up rewards for compliance. The current config is audited (loyalty.*).`}
       />
 
       <div className="state-card">
-        <div className="state-title">Pending surface — loyalty config</div>
-        <div className="state-message">{pendingEndpointNotice('loyalty_config')}</div>
+        <div className="state-title">Loyalty tiers & top-up rewards</div>
         <p className="muted small">
-          Loyalty tiers and top-up rewards (WORKFLOWS.md #12) would be configured here once the
-          contract ships the surface. Nothing is editable through this console until then.
+          Default tiers (Bronze/Silver/Gold) and a top-up reward will be applied when you confirm. Edit
+          the contract model for custom tiers; this console applies the reviewed config.
         </p>
         {canEdit && (
           <button
             type="button"
             className="btn"
             onClick={() => {
-              setPending(false)
+              setPromptError(null)
               setConfirming(true)
             }}
           >
@@ -69,16 +104,6 @@ export function LoyaltyPage() {
         )}
       </div>
 
-      {pending && (
-        <div className="state-card">
-          <div className="state-title">
-            <span className="mono">{PENDING_ENDPOINT_CODE}</span>
-          </div>
-          <div className="state-message">{pendingEndpointNotice('loyalty_config')}</div>
-          <p className="muted small">This action is documented for backend implementation — nothing was sent.</p>
-        </div>
-      )}
-
       <p className="muted small">Loyalty tiers and top-up rewards are reviewed for compliance (workflow 12).</p>
 
       {confirming && (
@@ -86,11 +111,12 @@ export function LoyaltyPage() {
           title="Oversee loyalty config"
           description="Reviews loyalty tiers and top-up rewards for compliance (workflow 12)."
           maxLength={1000}
-          onSubmit={() => {
-            setPending(true)
-            setConfirming(false)
+          busy={busy}
+          error={promptError}
+          onSubmit={handleConfirm}
+          onClose={() => {
+            if (!busy) setConfirming(false)
           }}
-          onClose={() => setConfirming(false)}
         />
       )}
     </div>

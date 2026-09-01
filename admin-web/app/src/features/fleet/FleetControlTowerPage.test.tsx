@@ -213,33 +213,46 @@ describe('FleetControlTowerPage', () => {
     expect(screen.queryByRole('button', { name: 'Enforce rest' })).not.toBeInTheDocument()
   })
 
-  it('completing a crash response shows the crash_respond pending notice', async () => {
+  it('completing a crash response via the live endpoint shows success', async () => {
     seedOverview()
     renderPage()
 
+    const riderInput = await screen.findByLabelText('Rider ID (required for safety actions)')
+    fireEvent.change(riderInput, { target: { value: 'rdr_1' } })
     fireEvent.click(await screen.findByRole('button', { name: 'Respond to crash' }))
     const prompt = screen.getByRole('dialog', { name: 'Respond to crash' })
     fireEvent.change(prompt.querySelector('textarea')!, { target: { value: 'Rider confirmed safe' } })
     fireEvent.change(within(prompt).getByLabelText('Outcome'), { target: { value: 'unsafe' } })
     fireEvent.click(within(prompt).getByRole('button', { name: 'Confirm' }))
 
-    expect(await screen.findByText('PENDING_ENDPOINT')).toBeInTheDocument()
-    expect(screen.getByText(/POST \/admin\/riders\/\{riderId\}\/safety\/crash/)).toBeInTheDocument()
-    expect(
-      screen.getByText('This action is documented for backend implementation — nothing was sent.'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('Crash response recorded: unsafe')).toBeInTheDocument()
+    expect(screen.queryByText('PENDING_ENDPOINT')).not.toBeInTheDocument()
   })
 
-  it('completing a rest action shows the rest_override pending notice', async () => {
+  it('shows an error when crash response fails without rider ID', async () => {
     seedOverview()
     renderPage()
 
+    fireEvent.click(await screen.findByRole('button', { name: 'Respond to crash' }))
+    const prompt = screen.getByRole('dialog', { name: 'Respond to crash' })
+    fireEvent.change(prompt.querySelector('textarea')!, { target: { value: 'Rider confirmed safe' } })
+    fireEvent.click(within(prompt).getByRole('button', { name: 'Confirm' }))
+
+    expect(await within(prompt).findByText(/Rider ID is required/i)).toBeInTheDocument()
+  })
+
+  it('completing a rest action via the live endpoint shows success', async () => {
+    seedOverview()
+    renderPage()
+
+    const riderInput = await screen.findByLabelText('Rider ID (required for safety actions)')
+    fireEvent.change(riderInput, { target: { value: 'rdr_2' } })
     fireEvent.click(await screen.findByRole('button', { name: 'Enforce rest' }))
     const prompt = screen.getByRole('dialog', { name: 'Enforce rest' })
     fireEvent.change(prompt.querySelector('textarea')!, { target: { value: 'Fatigue flagged by telemetry' } })
     fireEvent.click(within(prompt).getByRole('button', { name: 'Confirm' }))
 
-    expect(await screen.findByText('PENDING_ENDPOINT')).toBeInTheDocument()
-    expect(screen.getByText(/POST \/admin\/riders\/\{riderId\}\/rest/)).toBeInTheDocument()
+    expect(await screen.findByText('Rest enforced')).toBeInTheDocument()
+    expect(screen.queryByText('PENDING_ENDPOINT')).not.toBeInTheDocument()
   })
 })

@@ -217,3 +217,107 @@ func (r *Repo) ListRolesByUser(ctx context.Context, userID uuid.UUID) ([]RoleRow
 	}
 	return roles, nil
 }
+
+// ---------------------------------------------------------------------------
+// Admin session tracking (admin_sessions table)
+// ---------------------------------------------------------------------------
+
+// AdminSessionRow is the projection of one admin session row.
+type AdminSessionRow struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	TokenHash string
+	IPAddress *string
+	UserAgent *string
+	Active    bool
+	CreatedAt time.Time
+	ExpiresAt time.Time
+}
+
+// CreateAdminSession inserts a new admin session row and returns its id.
+func (r *Repo) CreateAdminSession(ctx context.Context, userID uuid.UUID, tokenHash, ip, userAgent string, expiresAt time.Time) (uuid.UUID, error) {
+	var id uuid.UUID
+	err := r.pool.QueryRow(ctx,
+		`INSERT INTO admin_sessions (user_id, token_hash, ip_address, user_agent, active, created_at, expires_at)
+		 VALUES ($1, $2, $3, $4, true, now(), $5)
+		 RETURNING id`,
+		userID, tokenHash, nullableStr(ip), nullableStr(userAgent), expiresAt).Scan(&id)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("auth: create admin session: %w", err)
+	}
+	return id, nil
+}
+
+// RevokeAdminSession sets active=false for a specific session, scoped to the
+// given user so foreign sessions cannot be revoked.
+func (r *Repo) RevokeAdminSession(ctx context.Context, sessionID, userID uuid.UUID) error {
+	tag, err := r.pool.Exec(ctx,
+		`UPDATE admin_sessions SET active = false WHERE id = $1 AND user_id = $2 AND active = true`,
+		sessionID, userID)
+	if err != nil {
+		return fmt.Errorf("auth: revoke admin session: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("auth: revoke admin session: %w", ErrSessionNotFound)
+	}
+	return nil
+}
+
+// RevokeAllAdminSessions sets active=false for every session of a user.
+func (r *Repo) RevokeAllAdminSessions(ctx context.Context, userID uuid.UUID) error {
+	if _, err := r.pool.Exec(ctx,
+		`UPDATE admin_sessions SET active = false WHERE user_id = $1 AND active = true`,
+		userID); err != nil {
+		return fmt.Errorf("auth: revoke all admin sessions: %w", err)
+	}
+	return nil
+}
+
+// ListActiveAdminSessions returns all active, non-expired sessions for a user.
+func (r *Repo) ListActiveAdminSessions(ctx context.Context, userID uuid.UUID) ([]AdminSessionRow, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, user_id, token_hash, ip_address, user_agent, active, created_at, expires_at
+		 FROM admin_sessions
+		 WHERE user_id = $1 AND active = true AND expires_at > now()
+		 ORDER BY created_at DESC`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("auth: list active admin sessions: %w", err)
+	}
+	defer rows.Close()
+
+	var sessions []AdminSessionRow
+	for rows.Next() {
+		var s AdminSessionRow
+		if err := rows.Scan(&s.ID, &s.UserID, &s.TokenHash, &s.IPAddress,
+			&s.UserAgent, &s.Active, &s.CreatedAt, &s.ExpiresAt); err != nil {
+			return nil, fmt.Errorf("auth: list active admin sessions scan: %w", err)
+		}
+		sessions = append(sessions, s)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("auth: list active admin sessions iterate: %w", err)
+	}
+	return sessions, nil
+}
+
+// IsAdminSessionValid returns true if the token hash matches an active,
+// non-expired session.
+func (r *Repo) IsAdminSessionValid(ctx context.Context, tokenHash string) (bool, error) {
+	var valid bool
+	err := r.pool.QueryRow(ctx,
+		`SELECT EXISTS(
+			SELECT 1 FROM admin_sessions
+			WHERE token_hash = $1 AND active = true AND expires_at > now()
+		)`, tokenHash).Scan(&valid)
+	if err != nil {
+		return false, fmt.Errorf("auth: check admin session valid: %w", err)
+	}
+	return valid, nil
+}
+
+func nullableStr(s string) any {
+	if s == "" {
+		return nil
+	}
+	return s
+}

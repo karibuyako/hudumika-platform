@@ -90,7 +90,7 @@ describe('OrdersPage', () => {
     expect(within(drawer).queryByRole('button', { name: 'Cancel order' })).not.toBeInTheDocument()
   })
 
-  it('shows the pending-endpoint notice after confirming an order cancel', async () => {
+  it('cancels an order via the live endpoint and shows success', async () => {
     seedOrders([{ ...ORDER }])
     render(<OrdersPage />)
 
@@ -101,10 +101,25 @@ describe('OrdersPage', () => {
     fireEvent.change(within(prompt).getByLabelText('Reason'), { target: { value: 'Stuck at merchant' } })
     fireEvent.click(within(prompt).getByRole('button', { name: 'Confirm' }))
 
+    expect(await screen.findByText('Order cancelled')).toBeInTheDocument()
     expect(screen.queryByRole('dialog', { name: 'Cancel order' })).not.toBeInTheDocument()
-    expect(within(drawer).getByText('PENDING_ENDPOINT')).toBeInTheDocument()
-    expect(within(drawer).getByText(/POST \/admin\/orders\/\{orderId\}\/cancel/)).toBeInTheDocument()
-    expect(within(drawer).getByText(/nothing was sent/)).toBeInTheDocument()
+    expect(within(drawer).queryByText('PENDING_ENDPOINT')).not.toBeInTheDocument()
+  })
+
+  it('shows an error when order cancel fails', async () => {
+    seedOrders([{ ...ORDER }])
+    server.use(http.post('/admin/orders/:orderId/cancel', async () => HttpResponse.json({ code: 'ORDER_NOT_CANCELLABLE', message: 'not cancellable', requestId: 'req_cancel' }, { status: 409 })))
+    render(<OrdersPage />)
+
+    const drawer = await openDrawer('ORD-1001')
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Cancel order' }))
+
+    const prompt = await screen.findByRole('dialog', { name: 'Cancel order' })
+    fireEvent.change(within(prompt).getByLabelText('Reason'), { target: { value: 'Try again' } })
+    fireEvent.click(within(prompt).getByRole('button', { name: 'Confirm' }))
+
+    expect(await within(prompt).findByText(/not cancellable/i)).toBeInTheDocument()
+    expect(within(prompt).getByText(/req_cancel/)).toBeInTheDocument()
   })
 
   it('lands dine-in orders in the Dine-in bucket', async () => {

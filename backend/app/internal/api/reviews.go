@@ -71,12 +71,12 @@ func (s *Server) CreateReview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	raw, err := io.ReadAll(io.LimitReader(r.Body, maxBodyBytes+1))
+	raw, err := io.ReadAll(io.LimitReader(r.Body, GetSettings().MaxBodyBytes+1))
 	if err != nil {
 		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Invalid request body")
 		return
 	}
-	if len(raw) > maxBodyBytes {
+	if len(raw) > int(GetSettings().MaxBodyBytes) {
 		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Invalid request body")
 		return
 	}

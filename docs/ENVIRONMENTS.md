@@ -10,7 +10,7 @@ Consolidated environment matrix. Source of truth for names: `docs/PLAN.md`,
 | --- | --- | --- | --- | --- |
 | dev | localhost / `dev-api.hudumika.co.tz` | localhost | localhost:5173 | Feature work, MSW parity |
 | staging | `https://staging-api.hudumika.co.tz/api/v1` | `staging-ops.hudumika.co.tz` | staging web origin | Integration, contract tests, release candidates |
-| production | `https://api.hudumika.co.tz/api/v1` | `ops.hudumika.co.tz` | `hudumika.co.tz` | Live traffic |
+| production | `https://hudumika-api-production.up.railway.app/api/v1` (Railway) | `ops.hudumika.co.tz` (Cloudflare Pages, proxies to Railway) | `hudumika.co.tz` | Live traffic |
 
 Admin surfaces are never linked from public pages and are protected by
 network policy (allow-listed IPs/VPN) plus staff MFA.

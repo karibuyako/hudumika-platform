@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   listRoutes,
+  createRoute,
   logisticsControlTower,
   type ControlTower,
   type ControlTowerCriticalExceptionsItemType,
@@ -14,6 +15,7 @@ import { ErrorState } from '../../components/ErrorState'
 import { LoadingSkeleton } from '../../components/LoadingSkeleton'
 import { StatCard } from '../../components/StatCard'
 import { StatusPill } from '../../components/StatusPill'
+import { Toast } from '../../components/FormBits'
 import { parseApiError, type ApiErrorInfo } from '../../lib/api-error'
 import { snapshotLabel } from '../../lib/time'
 import { useRefetchOnFocus } from '../../lib/use-refetch-on-focus'
@@ -42,6 +44,10 @@ export function LogisticsTowerPage() {
   const [retryKey, setRetryKey] = useState(0)
   const [routes, setRoutes] = useState<Route[] | null>(null)
   const [routesError, setRoutesError] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [createBusy, setCreateBusy] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
 
   const load = useCallback(() => {
     setError(null)
@@ -146,6 +152,10 @@ export function LogisticsTowerPage() {
       <section>
         <h2>Corridors</h2>
         <p className="muted small">Corridor map view ships with the backend map milestone.</p>
+        <div className="page-actions" style={{ marginBottom: '0.5rem' }}>
+          {toast && <Toast message={toast} />}
+          <button type="button" className="btn" onClick={() => { setCreateError(null); setCreateOpen(true) }}>New route</button>
+        </div>
         {routes === null ? (
           <LoadingSkeleton kind="table" rows={3} />
         ) : routesError ? (
@@ -228,6 +238,43 @@ export function LogisticsTowerPage() {
           </div>
         )}
       </section>
+
+      {createOpen && (
+        <div className="modal-backdrop" onClick={() => !createBusy && setCreateOpen(false)}>
+          <form className="modal" role="dialog" aria-modal="true" aria-label="Create route" onClick={(e) => e.stopPropagation()} onSubmit={async (e) => {
+            e.preventDefault()
+            const fd = new FormData(e.currentTarget as HTMLFormElement)
+            const name = (fd.get('name') as string ?? '').trim()
+            const fromHubId = (fd.get('fromHubId') as string ?? '').trim()
+            const toHubId = (fd.get('toHubId') as string ?? '').trim()
+            if (!name || !fromHubId || !toHubId) return
+            setCreateBusy(true)
+            setCreateError(null)
+            const res = await createRoute({ id: '', name, fromHubId, toHubId })
+            setCreateBusy(false)
+            if (res.status === 201) {
+              setToast('Route created')
+              setCreateOpen(false)
+              setRetryKey((k) => k + 1)
+            } else {
+              setCreateError(parseApiError(res, 'Failed to create route').message)
+            }
+          }}>
+            <h3 className="modal-title">New route</h3>
+            <label className="field-label" htmlFor="route-name">Name</label>
+            <input id="route-name" name="name" className="field" required maxLength={100} placeholder="e.g. Dar → Mwanza Express" />
+            <label className="field-label" htmlFor="route-from">From hub ID</label>
+            <input id="route-from" name="fromHubId" className="field mono" required placeholder="hub_..." />
+            <label className="field-label" htmlFor="route-to">To hub ID</label>
+            <input id="route-to" name="toHubId" className="field mono" required placeholder="hub_..." />
+            {createError && <div className="inline-error" role="alert"><div>{createError}</div></div>}
+            <div className="modal-actions">
+              <button type="button" className="btn btn-ghost" onClick={() => setCreateOpen(false)} disabled={createBusy}>Cancel</button>
+              <button type="submit" className="btn" disabled={createBusy}>{createBusy ? 'Working…' : 'Create'}</button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   )
 }

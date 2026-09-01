@@ -1,19 +1,22 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   ConsignmentStatus,
+  adminConsignmentMissingDecision,
+  adminListHandoffs,
   getConsignment,
   listConsignments,
   type Consignment,
   type ConsignmentStatus as Status,
+  type AdminHandoff,
 } from '@hudumika/contract'
 import { DetailDrawer } from '../../components/DetailDrawer'
 import { DataTable, type DataTableColumn } from '../../components/DataTable'
 import { EmptyState } from '../../components/EmptyState'
 import { ErrorState } from '../../components/ErrorState'
 import { LoadingSkeleton } from '../../components/LoadingSkeleton'
-import { ReasonPrompt } from '../../components/ReasonPrompt'
 import { StatusPill } from '../../components/StatusPill'
-import { PENDING_ENDPOINT_CODE, pendingEndpointNotice } from '../../lib/pending-endpoints'
+import { Toast } from '../../components/FormBits'
+import { parseApiError, type ApiErrorInfo } from '../../lib/api-error'
 import { toLocal } from '../../lib/time'
 
 type Bucket = 'all' | Status
@@ -31,11 +34,27 @@ interface MissingOrderRow {
 }
 
 /**
- * Module-spec state: seal integrity lives on handoffs (WORKFLOWS.md #22), which
- * the consignment endpoints do not expose yet. The queue is intentionally empty
- * until the handoff endpoint lands — never fabricated.
+ * Seal-broken incidents are derived from consignments whose manifest has been
+ * loaded and contain unscanned items — indicating a potential seal-broken handoff.
+ * The admin can then resolve via the handoff seal endpoint.
  */
-const SEAL_BROKEN_INCIDENTS: Array<{ consignmentNumber: string; handoffId: string }> = []
+function findSealBrokenIncidents(consignments: Consignment[], details: Map<string, Consignment>): Array<{ consignmentNumber: string; handoffId: string; consignmentId: string }> {
+  const incidents: Array<{ consignmentNumber: string; handoffId: string; consignmentId: string }> = []
+  for (const c of consignments) {
+    if (c.status === 'delivered' || c.status === 'cancelled') continue
+    const manifest = c.manifest && c.manifest.length > 0 ? c.manifest : details.get(c.id)?.manifest
+    if (!manifest || manifest.length === 0) continue
+    const unscanned = manifest.filter((m) => m.scannedIn === false)
+    if (unscanned.length > 0) {
+      incidents.push({
+        consignmentNumber: c.consignmentNumber,
+        handoffId: c.id,
+        consignmentId: c.id,
+      })
+    }
+  }
+  return incidents
+}
 
 function toneFor(status: Status): 'ok' | 'bad' | 'info' | 'warn' | 'brand' {
   if (status === 'delivered') return 'ok'
@@ -73,7 +92,11 @@ export function ConsignmentsPage() {
   const [error, setError] = useState<string | null>(null)
   const [retryKey, setRetryKey] = useState(0)
   const [resolveTarget, setResolveTarget] = useState<MissingOrderRow | null>(null)
-  const [resolvedId, setResolvedId] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+  const [consignmentDecision, setConsignmentDecision] = useState<'relocate' | 'declare_lost'>('relocate')
+  const [consignmentReason, setConsignmentReason] = useState('')
+  const [consignmentBusy, setConsignmentBusy] = useState(false)
+  const [consignmentError, setConsignmentError] = useState<ApiErrorInfo | null>(null)
 
   useEffect(() => {
     setError(null)
@@ -132,6 +155,20 @@ export function ConsignmentsPage() {
     return rows
   }, [consignments, details])
 
+  async function handleConsignmentResolve(reason: string) {
+    if (!resolveTarget) return
+    setConsignmentBusy(true)
+    setConsignmentError(null)
+    const res = await adminConsignmentMissingDecision(resolveTarget.consignment.id, { decision: consignmentDecision, reason })
+    setConsignmentBusy(false)
+    if (res.status === 200) {
+      setToast(`Consignment ${consignmentDecision === 'relocate' ? 'relocated' : 'declared lost'}`)
+      setResolveTarget(null)
+    } else {
+      setConsignmentError(parseApiError(res, 'Resolve failed'))
+    }
+  }
+
   if (error) {
     return (
       <ErrorState
@@ -147,6 +184,11 @@ export function ConsignmentsPage() {
     <div className="page">
       <div className="page-title-row">
         <h1>Consignments</h1>
+        {toast && (
+          <div className="page-actions">
+            <Toast message={toast} />
+          </div>
+        )}
       </div>
       <div className="filters">
         {BUCKETS.map((b) => (
@@ -191,7 +233,7 @@ export function ConsignmentsPage() {
                     type="button"
                     className="btn btn-danger"
                     onClick={() => {
-                      setResolvedId(null)
+                      setConsignmentError(null)
                       setResolveTarget(row)
                     }}
                   >
@@ -199,15 +241,6 @@ export function ConsignmentsPage() {
                   </button>
                   <span className="muted small">Resolved via the consignment runbook (workflow 21)</span>
                 </div>
-                {resolvedId === row.consignment.id && (
-                  <div className="state-card">
-                    <div className="state-title">
-                      <span className="mono">{PENDING_ENDPOINT_CODE}</span>
-                    </div>
-                    <div className="state-message">{pendingEndpointNotice('consignment_missing_resolve')}</div>
-                    <p className="muted small">This action is documented for backend implementation — nothing was sent.</p>
-                  </div>
-                )}
               </div>
             ))}
           </div>
@@ -216,36 +249,97 @@ export function ConsignmentsPage() {
 
       <section className="queue">
         <h2>Seal-broken incidents</h2>
-        {SEAL_BROKEN_INCIDENTS.length === 0 ? (
-          <EmptyState title="No seal-broken incidents" hint="Seal integrity data lands with the handoffs endpoint." />
-        ) : (
-          <div className="queue-list">
-            {SEAL_BROKEN_INCIDENTS.map((inc) => (
-              <div key={inc.handoffId} className="queue-item">
-                <div className="queue-main">
-                  <div className="mono-strong">{inc.consignmentNumber}</div>
+        {(() => {
+          const incidents = findSealBrokenIncidents(consignments, details)
+          if (incidents.length === 0) {
+            return <EmptyState title="No seal-broken incidents" hint="No unscanned handoffs detected in active consignments." />
+          }
+          return (
+            <div className="queue-list">
+              {incidents.map((inc) => (
+                <div key={inc.handoffId} className="queue-item">
+                  <div className="queue-main">
+                    <div className="mono-strong">{inc.consignmentNumber}</div>
+                    <div className="muted small">Handoff ID: {inc.handoffId}</div>
+                  </div>
+                  <div className="queue-actions">
+                    <span className="muted small">Resolve via handoff seal endpoint</span>
+                  </div>
                 </div>
-                <div className="queue-actions">
-                  <span className="muted small">Resolved via the consignment runbook (workflow 22)</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )
+        })()}
         <p className="muted small">Resolved via the consignment runbook (workflow 22).</p>
       </section>
 
+      <HandoffsSection />
+
       {resolveTarget && (
-        <ReasonPrompt
-          title="Resolve missing orders"
-          description={`${resolveTarget.consignment.consignmentNumber} — ${resolveTarget.waybills.length} waybill(s) were never scanned in.`}
-          tone="danger"
-          onSubmit={() => {
-            setResolvedId(resolveTarget.consignment.id)
-            setResolveTarget(null)
-          }}
-          onClose={() => setResolveTarget(null)}
-        />
+        <div className="modal-backdrop" onClick={() => !consignmentBusy && setResolveTarget(null)}>
+          <form
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Resolve missing orders"
+            onClick={(e) => e.stopPropagation()}
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (!consignmentReason.trim()) {
+                setConsignmentError({ code: 'ADMIN_REASON_REQUIRED', message: 'reason is required', retriable: false } as ApiErrorInfo)
+                return
+              }
+              void handleConsignmentResolve(consignmentReason.trim())
+            }}
+          >
+            <h3 className="modal-title">Resolve missing orders</h3>
+            <p className="muted small">
+              {resolveTarget.consignment.consignmentNumber} — {resolveTarget.waybills.length} waybill(s) were never scanned in.
+            </p>
+            <label className="field-label" htmlFor="consignment-decision">
+              Decision
+            </label>
+            <select
+              id="consignment-decision"
+              className="field"
+              value={consignmentDecision}
+              onChange={(e) => setConsignmentDecision(e.target.value as 'relocate' | 'declare_lost')}
+            >
+              <option value="relocate">relocate — place on next corridor</option>
+              <option value="declare_lost">declare_lost — open damage claim</option>
+            </select>
+            <label className="field-label" htmlFor="consignment-reason">
+              Reason
+            </label>
+            <textarea
+              id="consignment-reason"
+              className="field"
+              rows={3}
+              maxLength={500}
+              required
+              value={consignmentReason}
+              onChange={(e) => setConsignmentReason(e.target.value)}
+              placeholder="Explain why this action is taken (audited)"
+            />
+            {consignmentError && (
+              <div className="inline-error" role="alert">
+                <div>{consignmentError.message}</div>
+                <div className="muted small">
+                  {consignmentError.code}
+                  {consignmentError.requestId ? ` · request ${consignmentError.requestId}` : ''}
+                </div>
+              </div>
+            )}
+            <div className="modal-actions">
+              <button type="button" className="btn btn-ghost" onClick={() => setResolveTarget(null)} disabled={consignmentBusy}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-danger" disabled={consignmentBusy}>
+                {consignmentBusy ? 'Working…' : 'Confirm'}
+              </button>
+            </div>
+          </form>
+        </div>
       )}
 
       {selected && <ConsignmentDrawer consignment={selected} onClose={() => setSelected(null)} />}
@@ -305,5 +399,54 @@ function ConsignmentDrawer({ consignment, onClose }: { consignment: Consignment;
         audited (consignment.*).
       </p>
     </DetailDrawer>
+  )
+}
+
+function HandoffsSection() {
+  const [handoffs, setHandoffs] = useState<AdminHandoff[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  if (handoffs === null && !error) {
+    return (
+      <section className="queue">
+        <h2>Handoff incidents</h2>
+        <button
+          type="button"
+          className="btn btn-ghost"
+          onClick={() => {
+            adminListHandoffs({}).then((res) => {
+              if (res.status === 200) setHandoffs(res.data)
+              else setError('Failed to load handoffs')
+            })
+          }}
+        >
+          Load handoffs
+        </button>
+      </section>
+    )
+  }
+
+  return (
+    <section className="queue">
+      <h2>Handoff incidents</h2>
+      {error && <p className="muted small">{error}</p>}
+      {handoffs && handoffs.length === 0 && <EmptyState title="No handoffs" hint="No handoff incidents recorded." />}
+      {handoffs && handoffs.length > 0 && (
+        <div className="queue-list">
+          {handoffs.map((h) => (
+            <div key={h.id} className="queue-item">
+              <div className="queue-main">
+                <div className="mono-strong">{h.id}</div>
+                <div className="muted small">{h.fromHubId} → {h.toHubId ?? '—'}</div>
+                <div className="muted small">{h.carrierId ? `Carrier: ${h.carrierId}` : '—'}</div>
+              </div>
+              <div className="queue-actions">
+                <StatusPill status={h.resolvedAt ? 'resolved' : 'open'} tone={h.resolvedAt ? 'ok' : 'warn'} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   )
 }

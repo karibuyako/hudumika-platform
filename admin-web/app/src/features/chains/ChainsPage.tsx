@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
+  adminChainOnboard,
+  adminChainSuspend,
   adminListChains,
   type ChainAccountAdmin,
   type ChainAccountAdminTier,
@@ -13,7 +15,7 @@ import { FilterChips } from '../../components/FilterChips'
 import { LoadingSkeleton } from '../../components/LoadingSkeleton'
 import { ReasonPrompt } from '../../components/ReasonPrompt'
 import { StatusPill } from '../../components/StatusPill'
-import { PENDING_ENDPOINT_CODE, pendingEndpointNotice } from '../../lib/pending-endpoints'
+import { Toast } from '../../components/FormBits'
 import { can } from '../../lib/permissions'
 import { useSession } from '../../lib/session'
 import { useRefetchOnFocus } from '../../lib/use-refetch-on-focus'
@@ -57,13 +59,16 @@ export function ChainsPage() {
   const [selected, setSelected] = useState<ChainAccountAdmin | null>(null)
   const [error, setError] = useState<ApiErrorInfo | null>(null)
   const [retryKey, setRetryKey] = useState(0)
+  const [toast, setToast] = useState<string | null>(null)
 
   const load = useCallback(() => {
     setError(null)
-    adminListChains().then((res) => {
-      if (res.status === 200) setChains(res.data)
-      else setError(parseApiError(res, 'Failed to load chains'))
-    })
+    adminListChains()
+      .then((res) => {
+        if (res.status === 200) setChains(res.data)
+        else setError(parseApiError(res, 'Failed to load chains'))
+      })
+      .catch(() => setError(parseApiError({ status: 0, data: undefined }, 'Failed to load chains')))
   }, [])
 
   useEffect(() => {
@@ -95,9 +100,38 @@ export function ChainsPage() {
   }
   if (!chains) return <LoadingSkeleton kind="table" />
 
+  async function handleOnboard(merchantGroupId: string, tier: ChainAccountAdminTier, reason: string): Promise<ApiErrorInfo | null> {
+    const res = await adminChainOnboard(merchantGroupId, { tier, reason })
+    if (res.status === 200) {
+      setChains((prev) => (prev ?? []).map((c) => (c.merchantGroupId === merchantGroupId ? { ...c, tier, status: 'active' as never } : c)))
+      setSelected((prev) => (prev && prev.merchantGroupId === merchantGroupId ? { ...prev, tier, status: 'active' as never } : prev))
+      setToast('Chain onboarded')
+      return null
+    }
+    return parseApiError(res, 'Onboard failed')
+  }
+
+  async function handleSuspend(merchantGroupId: string, reason: string): Promise<ApiErrorInfo | null> {
+    const res = await adminChainSuspend(merchantGroupId, { reason })
+    if (res.status === 200) {
+      setChains((prev) => (prev ?? []).map((c) => (c.merchantGroupId === merchantGroupId ? { ...c, status: 'suspended' as never } : c)))
+      setSelected((prev) => (prev && prev.merchantGroupId === merchantGroupId ? { ...prev, status: 'suspended' as never } : prev))
+      setToast('Chain suspended')
+      return null
+    }
+    return parseApiError(res, 'Suspend failed')
+  }
+
   return (
     <div className="page">
-      <h1>Enterprise chains</h1>
+      <div className="page-title-row">
+        <h1>Enterprise chains</h1>
+        {toast && (
+          <div className="page-actions">
+            <Toast message={toast} />
+          </div>
+        )}
+      </div>
       <FilterChips
         options={FILTERS.map(({ key, label }) => ({ key, label }))}
         value={filter}
@@ -119,16 +153,27 @@ export function ChainsPage() {
         ariaLabel="Enterprise chains"
       />
 
-      {selected && <ChainDrawer chain={selected} onClose={() => setSelected(null)} />}
+      {selected && <ChainDrawer chain={selected} onClose={() => setSelected(null)} onOnboard={handleOnboard} onSuspend={handleSuspend} />}
     </div>
   )
 }
 
-function ChainDrawer({ chain, onClose }: { chain: ChainAccountAdmin; onClose: () => void }) {
+function ChainDrawer({
+  chain,
+  onClose,
+  onOnboard,
+  onSuspend,
+}: {
+  chain: ChainAccountAdmin
+  onClose: () => void
+  onOnboard: (merchantGroupId: string, tier: ChainAccountAdminTier, reason: string) => Promise<ApiErrorInfo | null>
+  onSuspend: (merchantGroupId: string, reason: string) => Promise<ApiErrorInfo | null>
+}) {
   const session = useSession()
   const canManage = can(session, 'chain.suspend')
   const [prompt, setPrompt] = useState<'onboard' | 'suspend' | null>(null)
-  const [pending, setPending] = useState<'onboard' | 'suspend' | null>(null)
+  const [suspendBusy, setSuspendBusy] = useState(false)
+  const [suspendError, setSuspendError] = useState<ApiErrorInfo | null>(null)
 
   return (
     <DetailDrawer title={chain.name} onClose={onClose}>
@@ -196,10 +241,7 @@ function ChainDrawer({ chain, onClose }: { chain: ChainAccountAdmin; onClose: ()
                 <button
                   type="button"
                   className="btn"
-                  onClick={() => {
-                    setPending(null)
-                    setPrompt('onboard')
-                  }}
+                  onClick={() => setPrompt('onboard')}
                 >
                   Onboard
                 </button>
@@ -208,10 +250,7 @@ function ChainDrawer({ chain, onClose }: { chain: ChainAccountAdmin; onClose: ()
                 <button
                   type="button"
                   className="btn btn-danger"
-                  onClick={() => {
-                    setPending(null)
-                    setPrompt('suspend')
-                  }}
+                  onClick={() => setPrompt('suspend')}
                 >
                   Suspend
                 </button>
@@ -219,16 +258,6 @@ function ChainDrawer({ chain, onClose }: { chain: ChainAccountAdmin; onClose: ()
             </div>
           </div>
         </>
-      )}
-
-      {pending && (
-        <div className="state-card">
-          <div className="state-title">
-            <span className="mono">{PENDING_ENDPOINT_CODE}</span>
-          </div>
-          <div className="state-message">{pendingEndpointNotice(pending === 'onboard' ? 'chain_onboard' : 'chain_suspend')}</div>
-          <p className="muted small">This action is documented for backend implementation — nothing was sent.</p>
-        </div>
       )}
 
       <p className="muted small">
@@ -240,9 +269,10 @@ function ChainDrawer({ chain, onClose }: { chain: ChainAccountAdmin; onClose: ()
         <OnboardPrompt
           chain={chain}
           onClose={() => setPrompt(null)}
-          onSubmit={() => {
-            setPending('onboard')
-            setPrompt(null)
+          onSubmit={async (tier, reason) => {
+            const err = await onOnboard(chain.merchantGroupId, tier, reason)
+            if (!err) setPrompt(null)
+            return err
           }}
         />
       )}
@@ -251,11 +281,19 @@ function ChainDrawer({ chain, onClose }: { chain: ChainAccountAdmin; onClose: ()
           title="Suspend chain"
           description={`${chain.name} (${chain.merchantGroupId}) — suspends the chain account. Major chains require two-person approval.`}
           tone="danger"
-          onSubmit={() => {
-            setPending('suspend')
-            setPrompt(null)
+          busy={suspendBusy}
+          error={suspendError}
+          onSubmit={async (reason) => {
+            setSuspendBusy(true)
+            setSuspendError(null)
+            const err = await onSuspend(chain.merchantGroupId, reason)
+            setSuspendBusy(false)
+            if (err) setSuspendError(err)
+            else setPrompt(null)
           }}
-          onClose={() => setPrompt(null)}
+          onClose={() => {
+            if (!suspendBusy) setPrompt(null)
+          }}
         />
       )}
     </DetailDrawer>
@@ -264,21 +302,29 @@ function ChainDrawer({ chain, onClose }: { chain: ChainAccountAdmin; onClose: ()
 
 const TIERS: ChainAccountAdminTier[] = ['standard', 'enterprise']
 
-/** Onboard — reason plus an optional tier choice (standard/enterprise). */
+/** Onboard — reason plus tier choice (standard/enterprise). */
 function OnboardPrompt({
   chain,
   onSubmit,
   onClose,
 }: {
   chain: ChainAccountAdmin
-  onSubmit: (tier: ChainAccountAdminTier) => void
+  onSubmit: (tier: ChainAccountAdminTier, reason: string) => Promise<ApiErrorInfo | null>
   onClose: () => void
 }) {
   const [tier, setTier] = useState<ChainAccountAdminTier>('standard')
+  const [reason, setReason] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<ApiErrorInfo | null>(null)
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    onSubmit(tier)
+    if (!reason.trim()) return
+    setBusy(true)
+    setError(null)
+    const err = await onSubmit(tier, reason.trim())
+    setBusy(false)
+    if (err) setError(err)
   }
 
   return (
@@ -304,6 +350,8 @@ function OnboardPrompt({
           rows={3}
           maxLength={500}
           required
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
           placeholder="Explain why this action is taken (audited)"
         />
         <label className="field-block">
@@ -316,12 +364,21 @@ function OnboardPrompt({
             ))}
           </select>
         </label>
+        {error && (
+          <div className="inline-error" role="alert">
+            <div>{error.message}</div>
+            <div className="muted small">
+              {error.code}
+              {error.requestId ? ` · request ${error.requestId}` : ''}
+            </div>
+          </div>
+        )}
         <div className="modal-actions">
-          <button type="button" className="btn btn-ghost" onClick={onClose}>
+          <button type="button" className="btn btn-ghost" onClick={onClose} disabled={busy}>
             Cancel
           </button>
-          <button type="submit" className="btn">
-            Confirm
+          <button type="submit" className="btn" disabled={busy}>
+            {busy ? 'Working…' : 'Confirm'}
           </button>
         </div>
       </form>

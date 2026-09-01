@@ -383,6 +383,11 @@ func (s *Server) AdminListMerchants(w http.ResponseWriter, r *http.Request, para
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
+
+	// Team-based scoping: once merchants.team_id is added to the schema,
+	// filter by scope.ScopeFilter("m.team_id") in the query below.
+	_ = s.GetAdminScope(r)
+
 	var status *string
 	if params.Status != nil {
 		v := string(*params.Status)

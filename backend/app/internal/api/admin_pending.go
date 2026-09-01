@@ -52,11 +52,11 @@ import (
 // adminPendingFinanceThresholdTZS is the finance threshold above which a
 // refund/payout decision or an order-cancel refund requires the two-person
 // (4-eyes) approval flow (PENDING-ENDPOINTS.md §3/§16, workflow 31).
-const adminPendingFinanceThresholdTZS = 5_000_000
+// Deprecated: use GetSettings().TwoPersonThresholdTZS instead.
 
 // adminRestEnforceWindow is the rest window enforced by AdminRiderRestOverride
 // (WORKFLOWS.md #20: a mandated continuous-rest block).
-const adminRestEnforceWindow = 8 * time.Hour
+// Deprecated: use time.Duration(GetSettings().AdminRestEnforceHours) * time.Hour instead.
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -235,9 +235,8 @@ func (s *Server) AdminRiderApprovalDecision(w http.ResponseWriter, r *http.Reque
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
-	claims, ok := ClaimsFromContext(r.Context())
+	claims, ok := requireRBAC(w, r, s, PermProviderVerify)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid bearer token")
 		return
 	}
 
@@ -273,6 +272,7 @@ func (s *Server) AdminRiderApprovalDecision(w http.ResponseWriter, r *http.Reque
 	}
 	auditEntryID := s.adminPendingAudit(r.Context(), r, claims, action, "rider", uuid.UUID(riderId).String(), body.Reason,
 		statusString(current), statusString(target))
+	_ = s.AuditLog(r.Context(), r, action, "rider", (*uuid.UUID)(&riderId), nil, nil)
 	writeJSON(w, http.StatusOK, gen.AdminRiderApprovalResult{
 		RiderId:      riderId,
 		Status:       gen.AdminRiderApprovalResultStatus(target),
@@ -304,9 +304,8 @@ func (s *Server) AdminProviderApprovalDecision(w http.ResponseWriter, r *http.Re
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
-	claims, ok := ClaimsFromContext(r.Context())
+	claims, ok := requireRBAC(w, r, s, PermProviderVerify)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid bearer token")
 		return
 	}
 
@@ -342,6 +341,7 @@ func (s *Server) AdminProviderApprovalDecision(w http.ResponseWriter, r *http.Re
 	}
 	auditEntryID := s.adminPendingAudit(r.Context(), r, claims, action, "provider", uuid.UUID(providerId).String(), body.Reason,
 		statusString(current), statusString(target))
+	_ = s.AuditLog(r.Context(), r, action, "provider", (*uuid.UUID)(&providerId), nil, nil)
 	writeJSON(w, http.StatusOK, gen.AdminProviderApprovalResult{
 		ProviderId:   providerId,
 		Status:       gen.AdminProviderApprovalResultStatus(target),
@@ -387,9 +387,8 @@ func (s *Server) AdminDisputeDecision(w http.ResponseWriter, r *http.Request, di
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
-	claims, ok := ClaimsFromContext(r.Context())
+	claims, ok := requireRBAC(w, r, s, PermRefundApprove)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid bearer token")
 		return
 	}
 
@@ -417,7 +416,7 @@ func (s *Server) AdminDisputeDecision(w http.ResponseWriter, r *http.Request, di
 	}
 
 	// Two-person gate: refund/payout above the finance threshold.
-	if body.AmountTZS != nil && *body.AmountTZS > adminPendingFinanceThresholdTZS &&
+	if body.AmountTZS != nil && int64(*body.AmountTZS) > GetSettings().TwoPersonThresholdTZS &&
 		(body.Decision == gen.AdminDisputeDecisionBodyDecisionRefund || body.Decision == gen.AdminDisputeDecisionBodyDecisionPayout) {
 		outcome, ok := s.adminPendingTwoPerson(r, "large_refund", "dispute", uuid.UUID(disputeId), body.Reason,
 			map[string]any{"decision": string(body.Decision), "amountTZS": *body.AmountTZS, "orderId": orderID})
@@ -457,6 +456,7 @@ func (s *Server) AdminDisputeDecision(w http.ResponseWriter, r *http.Request, di
 	}
 	auditEntryID := s.adminPendingAudit(r.Context(), r, claims, action, "dispute", uuid.UUID(disputeId).String(), body.Reason,
 		statusString(status), map[string]any{"status": "decided", "decision": string(body.Decision), "amountTZS": body.AmountTZS})
+	_ = s.AuditLog(r.Context(), r, action, "dispute", (*uuid.UUID)(&disputeId), nil, nil)
 	writeJSON(w, http.StatusOK, gen.AdminDisputeDecisionResult{
 		DisputeId:    disputeId,
 		Decision:     gen.AdminDisputeDecisionResultDecision(string(body.Decision)),
@@ -544,9 +544,8 @@ func (s *Server) AdminPayoutReconcile(w http.ResponseWriter, r *http.Request, ba
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
-	claims, ok := ClaimsFromContext(r.Context())
+	claims, ok := requireRBAC(w, r, s, PermFinanceManage)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid bearer token")
 		return
 	}
 
@@ -564,6 +563,24 @@ func (s *Server) AdminPayoutReconcile(w http.ResponseWriter, r *http.Request, ba
 	}
 	if current == "settled" {
 		writeError(w, http.StatusConflict, "PAYOUT_ALREADY_RECONCILED", "Payout batch was already reconciled")
+		return
+	}
+
+	// Two-person gate: payout reconciliation requires 4-eyes approval.
+	payload := map[string]any{"outcome": string(body.Outcome)}
+	if body.Note != nil {
+		payload["note"] = *body.Note
+	}
+	outcome, ok := s.adminPendingTwoPerson(r, "payout.reconcile", "payout_reconciliation", uuid.Nil, "", payload)
+	if !ok {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+		return
+	}
+	if outcome == adminPendingTwoPersonRequired {
+		writeJSON(w, http.StatusConflict, map[string]any{
+			"code": "TWO_PERSON_REQUIRED",
+			"message": "This action requires a second admin to approve",
+		})
 		return
 	}
 
@@ -615,6 +632,7 @@ func (s *Server) AdminPayoutReconcile(w http.ResponseWriter, r *http.Request, ba
 	}
 	auditEntryID := s.adminPendingAudit(r.Context(), r, claims, "payout.reconciled", "payout_batch", uuid.UUID(batchId).String(), bodyNote(body.Note),
 		statusString(current), map[string]any{"status": "reconciled", "outcome": string(body.Outcome)})
+	_ = s.AuditLog(r.Context(), r, "payout.reconciled", "payout_batch", (*uuid.UUID)(&batchId), nil, nil)
 	writeJSON(w, http.StatusOK, gen.AdminPayoutReconcileResult{
 		BatchId:      batchId,
 		Outcome:      gen.AdminPayoutReconcileResultOutcome(string(body.Outcome)),
@@ -652,9 +670,8 @@ func (s *Server) AdminRiderCodShiftDecision(w http.ResponseWriter, r *http.Reque
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
-	claims, ok := ClaimsFromContext(r.Context())
+	claims, ok := requireRBAC(w, r, s, PermCODManage)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid bearer token")
 		return
 	}
 
@@ -700,6 +717,7 @@ func (s *Server) AdminRiderCodShiftDecision(w http.ResponseWriter, r *http.Reque
 	auditEntryID := s.adminPendingAudit(r.Context(), r, claims, action, "cod_shift", uuid.UUID(shiftId).String(), bodyNote(body.Note),
 		map[string]any{"status": current, "expectedTZS": expected, "collectedTZS": collected, "varianceTZS": variance},
 		map[string]any{"status": target, "expectedTZS": expected, "collectedTZS": collected, "varianceTZS": variance})
+	_ = s.AuditLog(r.Context(), r, action, "cod_shift", (*uuid.UUID)(&shiftId), nil, nil)
 	writeJSON(w, http.StatusOK, gen.AdminCodShiftDecisionResult{
 		ShiftId:      shiftId,
 		Status:       gen.AdminCodShiftDecisionResultStatus(string(body.Status)),
@@ -735,9 +753,8 @@ func (s *Server) AdminChainOnboard(w http.ResponseWriter, r *http.Request, merch
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
-	claims, ok := ClaimsFromContext(r.Context())
+	claims, ok := requireRBAC(w, r, s, PermMerchantApprove)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid bearer token")
 		return
 	}
 
@@ -797,6 +814,7 @@ func (s *Server) AdminChainOnboard(w http.ResponseWriter, r *http.Request, merch
 	auditEntryID := s.adminPendingAudit(r.Context(), r, claims, "chain.onboarded", "chain", ownerID.String(), body.Reason,
 		map[string]any{"status": "application"},
 		map[string]any{"status": "active", "tier": string(body.Tier), "slaLevel": body.SlaLevel, "accountManager": body.AccountManager})
+	_ = s.AuditLog(r.Context(), r, "chain.onboarded", "chain", &ownerID, nil, nil)
 	writeJSON(w, http.StatusOK, gen.AdminChainOnboardResult{
 		MerchantGroupId: merchantGroupId,
 		Tier:            gen.AdminChainOnboardResultTier(string(body.Tier)),
@@ -832,9 +850,8 @@ func (s *Server) AdminChainSuspend(w http.ResponseWriter, r *http.Request, merch
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
-	claims, ok := ClaimsFromContext(r.Context())
+	claims, ok := requireRBAC(w, r, s, PermMerchantApprove)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid bearer token")
 		return
 	}
 
@@ -901,6 +918,7 @@ func (s *Server) AdminChainSuspend(w http.ResponseWriter, r *http.Request, merch
 	}
 	auditEntryID := s.adminPendingAudit(r.Context(), r, claims, "chain.suspended", "chain", ownerID.String(), body.Reason,
 		statusString(chainStateForAudit(accountStatus, activeStores)), statusString("suspended"))
+	_ = s.AuditLog(r.Context(), r, "chain.suspended", "chain", &ownerID, nil, nil)
 	writeJSON(w, http.StatusOK, gen.AdminChainSuspendResult{
 		MerchantGroupId: merchantGroupId,
 		Status:          gen.AdminChainSuspendResultStatusSuspended,
@@ -936,9 +954,8 @@ func (s *Server) AdminDataExportDecision(w http.ResponseWriter, r *http.Request,
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
-	claims, ok := ClaimsFromContext(r.Context())
+	claims, ok := requireRBAC(w, r, s, PermExportManage)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid bearer token")
 		return
 	}
 
@@ -974,6 +991,7 @@ func (s *Server) AdminDataExportDecision(w http.ResponseWriter, r *http.Request,
 	}
 	auditEntryID := s.adminPendingAudit(r.Context(), r, claims, action, "data_export", uuid.UUID(jobId).String(), body.Reason,
 		statusString(current), statusString(target))
+	_ = s.AuditLog(r.Context(), r, action, "data_export", (*uuid.UUID)(&jobId), nil, nil)
 	writeJSON(w, http.StatusOK, gen.AdminDataExportDecisionResult{
 		JobId:        jobId,
 		Decision:     gen.AdminDataExportDecisionResultDecision(string(body.Decision)),
@@ -1005,9 +1023,8 @@ func (s *Server) AdminDataExportRerun(w http.ResponseWriter, r *http.Request, jo
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
-	claims, ok := ClaimsFromContext(r.Context())
+	claims, ok := requireRBAC(w, r, s, PermExportManage)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid bearer token")
 		return
 	}
 
@@ -1038,6 +1055,7 @@ func (s *Server) AdminDataExportRerun(w http.ResponseWriter, r *http.Request, jo
 	}
 	auditEntryID := s.adminPendingAudit(r.Context(), r, claims, "export.rerun", "data_export", uuid.UUID(jobId).String(), body.Reason,
 		statusString(current), statusString("queued"))
+	_ = s.AuditLog(r.Context(), r, "export.rerun", "data_export", (*uuid.UUID)(&jobId), nil, nil)
 	writeJSON(w, http.StatusOK, gen.AdminDataExportRerunResult{
 		JobId:        jobId,
 		Status:       gen.AdminDataExportRerunResultStatusQueued,
@@ -1075,9 +1093,8 @@ func (s *Server) AdminUpdateLoyaltyConfig(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
-	claims, ok := ClaimsFromContext(r.Context())
+	claims, ok := requireRBAC(w, r, s, PermConfigurationManage)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid bearer token")
 		return
 	}
 
@@ -1122,6 +1139,7 @@ func (s *Server) AdminUpdateLoyaltyConfig(w http.ResponseWriter, r *http.Request
 	_ = json.Unmarshal(payload, &after)
 	auditEntryID := s.adminPendingAudit(r.Context(), r, claims, "loyalty.config_update", "loyalty_config", "loyalty", *body.Reason,
 		before, after)
+	_ = s.AuditLog(r.Context(), r, "loyalty.config_update", "loyalty_config", nil, nil, payload)
 
 	out := gen.AdminLoyaltyConfigResult{
 		AuditEntryId: auditEntryID,
@@ -1189,9 +1207,8 @@ func (s *Server) AdminCrashRespond(w http.ResponseWriter, r *http.Request, rider
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
-	claims, ok := ClaimsFromContext(r.Context())
+	claims, ok := requireRBAC(w, r, s, PermSafetyManage)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid bearer token")
 		return
 	}
 
@@ -1232,6 +1249,7 @@ func (s *Server) AdminCrashRespond(w http.ResponseWriter, r *http.Request, rider
 	}
 	auditEntryID := s.adminPendingAudit(r.Context(), r, claims, "safety.crash_acknowledged", "rider", uuid.UUID(riderId).String(), bodyNote(body.Note),
 		statusString("open"), map[string]any{"status": "acknowledged", "outcome": string(body.Outcome)})
+	_ = s.AuditLog(r.Context(), r, "safety.crash_acknowledged", "rider", (*uuid.UUID)(&riderId), nil, nil)
 	writeJSON(w, http.StatusOK, gen.AdminCrashRespondResult{
 		RiderId:      riderId,
 		Outcome:      gen.AdminCrashRespondResultOutcome(string(body.Outcome)),
@@ -1267,9 +1285,8 @@ func (s *Server) AdminRiderRestOverride(w http.ResponseWriter, r *http.Request, 
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
-	claims, ok := ClaimsFromContext(r.Context())
+	claims, ok := requireRBAC(w, r, s, PermSafetyManage)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid bearer token")
 		return
 	}
 
@@ -1306,7 +1323,7 @@ func (s *Server) AdminRiderRestOverride(w http.ResponseWriter, r *http.Request, 
 		value  any
 	)
 	if body.Action == gen.Enforce {
-		t := now.Add(adminRestEnforceWindow)
+		t := now.Add(time.Duration(GetSettings().AdminRestEnforceHours) * time.Hour)
 		target, value = &t, t
 	}
 	if _, err := s.db.Pool().Exec(r.Context(),
@@ -1318,6 +1335,7 @@ func (s *Server) AdminRiderRestOverride(w http.ResponseWriter, r *http.Request, 
 	}
 	auditEntryID := s.adminPendingAudit(r.Context(), r, claims, action, "rider", uuid.UUID(riderId).String(), body.Reason,
 		restUntil, target)
+	_ = s.AuditLog(r.Context(), r, action, "rider", (*uuid.UUID)(&riderId), nil, nil)
 	forced := time.Time{}
 	if target != nil {
 		forced = *target
@@ -1358,9 +1376,8 @@ func (s *Server) AdminHandoffSealDecision(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
-	claims, ok := ClaimsFromContext(r.Context())
+	claims, ok := requireRBAC(w, r, s, PermHandoffManage)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid bearer token")
 		return
 	}
 
@@ -1407,6 +1424,7 @@ func (s *Server) AdminHandoffSealDecision(w http.ResponseWriter, r *http.Request
 	auditEntryID := s.adminPendingAudit(r.Context(), r, claims, action, "handoff", uuid.UUID(handoffId).String(), body.Reason,
 		map[string]any{"sealIntact": sealVerified, "from": fromEntity, "to": toEntity},
 		map[string]any{"sealIntact": newSeal, "outcome": string(body.Outcome), "from": fromEntity, "to": toEntity})
+	_ = s.AuditLog(r.Context(), r, action, "handoff", (*uuid.UUID)(&handoffId), nil, nil)
 	writeJSON(w, http.StatusOK, gen.AdminHandoffSealResult{
 		HandoffId:    handoffId,
 		Outcome:      gen.AdminHandoffSealResultOutcome(string(body.Outcome)),
@@ -1444,9 +1462,8 @@ func (s *Server) AdminLogisticsAnomalyDecision(w http.ResponseWriter, r *http.Re
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
-	claims, ok := ClaimsFromContext(r.Context())
+	claims, ok := requireRBAC(w, r, s, PermAnomalyManage)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid bearer token")
 		return
 	}
 
@@ -1497,6 +1514,7 @@ func (s *Server) AdminLogisticsAnomalyDecision(w http.ResponseWriter, r *http.Re
 	auditEntryID := s.adminPendingAudit(r.Context(), r, claims, "anomaly."+string(body.Decision), "logistics_anomaly", uuid.UUID(anomalyId).String(), body.Reason,
 		map[string]any{"status": "open", "evidence": evidence},
 		map[string]any{"status": "resolved", "decision": string(body.Decision), "evidence": evidence})
+	_ = s.AuditLog(r.Context(), r, "anomaly."+string(body.Decision), "logistics_anomaly", (*uuid.UUID)(&anomalyId), nil, nil)
 	writeJSON(w, http.StatusOK, gen.AdminLogisticsAnomalyDecisionResult{
 		AnomalyId:    anomalyId,
 		Decision:     gen.AdminLogisticsAnomalyDecisionResultDecision(string(body.Decision)),
@@ -1548,9 +1566,8 @@ func (s *Server) AdminCancelOrder(w http.ResponseWriter, r *http.Request, orderI
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
-	claims, ok := ClaimsFromContext(r.Context())
+	claims, ok := requireRBAC(w, r, s, PermOrderManage)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid bearer token")
 		return
 	}
 
@@ -1571,7 +1588,7 @@ func (s *Server) AdminCancelOrder(w http.ResponseWriter, r *http.Request, orderI
 	}
 
 	// Two-person gate: a refund above the finance threshold.
-	if body.RefundTZS != nil && *body.RefundTZS > adminPendingFinanceThresholdTZS {
+	if body.RefundTZS != nil && int64(*body.RefundTZS) > GetSettings().TwoPersonThresholdTZS {
 		outcome, ok := s.adminPendingTwoPerson(r, "large_refund", "order", uuid.UUID(orderId), body.Reason,
 			map[string]any{"refundTZS": *body.RefundTZS})
 		if !ok {
@@ -1607,6 +1624,7 @@ func (s *Server) AdminCancelOrder(w http.ResponseWriter, r *http.Request, orderI
 	auditEntryID := s.adminPendingAudit(r.Context(), r, claims, "order.cancel", "order", uuid.UUID(orderId).String(), body.Reason,
 		map[string]any{"status": row.Status, "refundTZS": body.RefundTZS},
 		map[string]any{"status": "cancelled", "refundTZS": body.RefundTZS})
+	_ = s.AuditLog(r.Context(), r, "order.cancel", "order", (*uuid.UUID)(&orderId), nil, nil)
 	writeJSON(w, http.StatusOK, gen.AdminOrderCancelResult{
 		OrderId:      orderId,
 		Status:       gen.AdminOrderCancelResultStatusCancelled,
@@ -1685,9 +1703,8 @@ func (s *Server) AdminConsignmentMissingDecision(w http.ResponseWriter, r *http.
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
-	claims, ok := ClaimsFromContext(r.Context())
+	claims, ok := requireRBAC(w, r, s, PermExceptionManage)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid bearer token")
 		return
 	}
 
@@ -1724,6 +1741,7 @@ func (s *Server) AdminConsignmentMissingDecision(w http.ResponseWriter, r *http.
 	auditEntryID := s.adminPendingAudit(r.Context(), r, claims, "consignment."+string(body.Decision), "consignment", uuid.UUID(consignmentId).String(), body.Reason,
 		map[string]any{"status": current, "exception": "CONSIGNMENT_MISSING_ORDERS"},
 		map[string]any{"status": "exception_cleared", "decision": string(body.Decision)})
+	_ = s.AuditLog(r.Context(), r, "consignment."+string(body.Decision), "consignment", (*uuid.UUID)(&consignmentId), nil, nil)
 	writeJSON(w, http.StatusOK, gen.AdminConsignmentMissingResult{
 		ConsignmentId: consignmentId,
 		Decision:      gen.AdminConsignmentMissingResultDecision(string(body.Decision)),

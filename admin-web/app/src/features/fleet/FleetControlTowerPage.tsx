@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
+  adminCrashRespond,
   adminFleetControlTower,
+  adminRiderRestOverride,
   type AdminFleetControlTowerFleetType,
   type AdminFleetControlTowerParams,
   type adminFleetControlTowerResponseError,
@@ -15,8 +17,8 @@ import { ErrorState } from '../../components/ErrorState'
 import { LoadingSkeleton } from '../../components/LoadingSkeleton'
 import { ReasonPrompt } from '../../components/ReasonPrompt'
 import { StatCard } from '../../components/StatCard'
+import { Toast } from '../../components/FormBits'
 import { parseApiError, type ApiErrorInfo } from '../../lib/api-error'
-import { PENDING_ENDPOINT_CODE, pendingEndpointNotice } from '../../lib/pending-endpoints'
 import { can } from '../../lib/permissions'
 import { useSession } from '../../lib/session'
 import { snapshotLabel } from '../../lib/time'
@@ -231,9 +233,46 @@ function SafetyActionsPanel() {
   const session = useSession()
   const canRespond = can(session, 'safety.respond')
   const [prompt, setPrompt] = useState<SafetyPrompt | null>(null)
-  const [pending, setPending] = useState<SafetyPrompt | null>(null)
+  const [riderId, setRiderId] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<ApiErrorInfo | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
 
   if (!canRespond) return null
+
+  async function handleCrash(outcome: 'safe' | 'unsafe', reason: string) {
+    if (!riderId.trim()) {
+      setError({ code: 'VALIDATION_FAILED', message: 'Rider ID is required', retriable: false } as ApiErrorInfo)
+      return
+    }
+    setBusy(true)
+    setError(null)
+    const res = await adminCrashRespond(riderId.trim(), { outcome, note: reason || undefined } as never)
+    setBusy(false)
+    if (res.status === 200) {
+      setToast(`Crash response recorded: ${outcome}`)
+      setPrompt(null)
+    } else {
+      setError(parseApiError(res, 'Crash response failed'))
+    }
+  }
+
+  async function handleRest(action: 'enforce' | 'relieve', reason: string) {
+    if (!riderId.trim()) {
+      setError({ code: 'VALIDATION_FAILED', message: 'Rider ID is required', retriable: false } as ApiErrorInfo)
+      return
+    }
+    setBusy(true)
+    setError(null)
+    const res = await adminRiderRestOverride(riderId.trim(), { action, reason } as never)
+    setBusy(false)
+    if (res.status === 200) {
+      setToast(action === 'enforce' ? 'Rest enforced' : 'Rest relieved')
+      setPrompt(null)
+    } else {
+      setError(parseApiError(res, 'Rest override failed'))
+    }
+  }
 
   return (
     <div className="state-card">
@@ -242,12 +281,23 @@ function SafetyActionsPanel() {
         Crash and fatigue responses for open safety events (crash/fatigue); forced-rest riders are
         blocked from new offers.
       </div>
-      <div className="form-actions">
+      {toast && <Toast message={toast} />}
+      <label className="field-label" htmlFor="safety-rider-id">
+        Rider ID (required for safety actions)
+      </label>
+      <input
+        id="safety-rider-id"
+        className="field"
+        value={riderId}
+        onChange={(e) => setRiderId(e.target.value)}
+        placeholder="rdr_..."
+      />
+      <div className="form-actions" style={{ marginTop: 12 }}>
         <button
           type="button"
           className="btn btn-danger"
           onClick={() => {
-            setPending(null)
+            setError(null)
             setPrompt('crash')
           }}
         >
@@ -257,7 +307,7 @@ function SafetyActionsPanel() {
           type="button"
           className="btn"
           onClick={() => {
-            setPending(null)
+            setError(null)
             setPrompt('rest_enforce')
           }}
         >
@@ -267,7 +317,7 @@ function SafetyActionsPanel() {
           type="button"
           className="btn"
           onClick={() => {
-            setPending(null)
+            setError(null)
             setPrompt('rest_relieve')
           }}
         >
@@ -275,45 +325,48 @@ function SafetyActionsPanel() {
         </button>
       </div>
 
-      {pending && (
-        <div className="state-card">
-          <div className="state-title">
-            <span className="mono">{PENDING_ENDPOINT_CODE}</span>
+      {error && (
+        <div className="inline-error" role="alert" style={{ marginTop: 8 }}>
+          <div>{error.message}</div>
+          <div className="muted small">
+            {error.code}
+            {error.requestId ? ` · request ${error.requestId}` : ''}
           </div>
-          <div className="state-message">{pendingEndpointNotice(pending === 'crash' ? 'crash_respond' : 'rest_override')}</div>
-          <p className="muted small">This action is documented for backend implementation — nothing was sent.</p>
         </div>
       )}
 
       {prompt === 'crash' && (
         <CrashPrompt
-          onClose={() => setPrompt(null)}
-          onSubmit={() => {
-            setPending('crash')
-            setPrompt(null)
+          busy={busy}
+          error={error}
+          onClose={() => {
+            if (!busy) setPrompt(null)
           }}
+          onSubmit={(outcome, reason) => void handleCrash(outcome, reason)}
         />
       )}
       {prompt === 'rest_enforce' && (
         <ReasonPrompt
           title="Enforce rest"
           description="Places the affected rider on mandatory rest — they are blocked from new offers (REST_ENFORCED)."
-          onSubmit={() => {
-            setPending('rest_enforce')
-            setPrompt(null)
+          busy={busy}
+          error={error}
+          onSubmit={(reason) => void handleRest('enforce', reason)}
+          onClose={() => {
+            if (!busy) setPrompt(null)
           }}
-          onClose={() => setPrompt(null)}
         />
       )}
       {prompt === 'rest_relieve' && (
         <ReasonPrompt
           title="Relieve rest"
           description="Clears the mandatory-rest hold on the affected rider."
-          onSubmit={() => {
-            setPending('rest_relieve')
-            setPrompt(null)
+          busy={busy}
+          error={error}
+          onSubmit={(reason) => void handleRest('relieve', reason)}
+          onClose={() => {
+            if (!busy) setPrompt(null)
           }}
-          onClose={() => setPrompt(null)}
         />
       )}
     </div>
@@ -321,12 +374,23 @@ function SafetyActionsPanel() {
 }
 
 /** Crash response — reason plus a safe/unsafe outcome. */
-function CrashPrompt({ onSubmit, onClose }: { onSubmit: (outcome: 'safe' | 'unsafe') => void; onClose: () => void }) {
+function CrashPrompt({
+  busy,
+  error,
+  onSubmit,
+  onClose,
+}: {
+  busy?: boolean
+  error?: ApiErrorInfo | null
+  onSubmit: (outcome: 'safe' | 'unsafe', reason: string) => void
+  onClose: () => void
+}) {
   const [outcome, setOutcome] = useState<'safe' | 'unsafe'>('safe')
+  const [reason, setReason] = useState('')
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    onSubmit(outcome)
+    onSubmit(outcome, reason)
   }
 
   return (
@@ -350,6 +414,8 @@ function CrashPrompt({ onSubmit, onClose }: { onSubmit: (outcome: 'safe' | 'unsa
           rows={3}
           maxLength={500}
           required
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
           placeholder="Explain why this action is taken (audited)"
         />
         <label className="field-block">
@@ -359,12 +425,21 @@ function CrashPrompt({ onSubmit, onClose }: { onSubmit: (outcome: 'safe' | 'unsa
             <option value="unsafe">unsafe</option>
           </select>
         </label>
+        {error && (
+          <div className="inline-error" role="alert">
+            <div>{error.message}</div>
+            <div className="muted small">
+              {error.code}
+              {error.requestId ? ` · request ${error.requestId}` : ''}
+            </div>
+          </div>
+        )}
         <div className="modal-actions">
-          <button type="button" className="btn btn-ghost" onClick={onClose}>
+          <button type="button" className="btn btn-ghost" onClick={onClose} disabled={busy}>
             Cancel
           </button>
-          <button type="submit" className="btn btn-danger">
-            Confirm
+          <button type="submit" className="btn btn-danger" disabled={busy}>
+            {busy ? 'Working…' : 'Confirm'}
           </button>
         </div>
       </form>

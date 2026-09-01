@@ -205,6 +205,8 @@ func (s *Server) AdminUpsertTemplate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
+	newJSON, _ := json.Marshal(map[string]any{"key": body.Key, "channel": string(body.Channel)})
+	_ = s.AuditLog(r.Context(), r, "template.upserted", "admin_template", nil, nil, newJSON)
 	writeJSON(w, http.StatusOK, toGenTemplate(row))
 }
 
@@ -327,6 +329,8 @@ func (s *Server) AdminCreateStaffRole(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
+	newJSON, _ := json.Marshal(map[string]any{"name": body.Name, "permissions": body.Permissions})
+	_ = s.AuditLog(r.Context(), r, "staff_role.created", "staff_role", &row.id, nil, newJSON)
 	writeJSON(w, http.StatusCreated, toGenStaffRole(row))
 }
 
@@ -476,6 +480,8 @@ func (s *Server) AdminPutSlaRules(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
+	newJSON, _ := json.Marshal(map[string]any{"ruleCount": len(body.Rules)})
+	_ = s.AuditLog(r.Context(), r, "sla_rules.replaced", "sla_rule", nil, nil, newJSON)
 	writeJSON(w, http.StatusOK, out)
 }
 
@@ -700,6 +706,8 @@ func (s *Server) AdminPutCommissionRules(w http.ResponseWriter, r *http.Request)
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
+	newJSON, _ := json.Marshal(map[string]any{"ruleCount": len(body.Rules)})
+	_ = s.AuditLog(r.Context(), r, "commission_rules.replaced", "commission_rule", nil, nil, newJSON)
 	writeJSON(w, http.StatusOK, out)
 }
 
@@ -806,6 +814,11 @@ func (s *Server) AdminCreateTwoPersonApproval(w http.ResponseWriter, r *http.Req
 		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "reason is required")
 		return
 	}
+	claims, ok := requireRBAC(w, r, s, PermApprovalDecide)
+	if !ok {
+		return
+	}
+	_ = claims
 	if s.db == nil {
 		s.logger.Error("create two-person approval failed: database not configured")
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
@@ -845,6 +858,11 @@ func (s *Server) AdminListTwoPersonApprovals(w http.ResponseWriter, r *http.Requ
 		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "status must be one of pending, approved, rejected")
 		return
 	}
+	claims, ok := requireRBAC(w, r, s, PermApprovalDecide)
+	if !ok {
+		return
+	}
+	_ = claims
 	if s.db == nil {
 		s.logger.Error("list two-person approvals failed: database not configured")
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
@@ -913,6 +931,11 @@ func (s *Server) AdminDecideTwoPersonApproval(w http.ResponseWriter, r *http.Req
 		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "comment is required")
 		return
 	}
+	claims, ok := requireRBAC(w, r, s, PermApprovalDecide)
+	if !ok {
+		return
+	}
+	_ = claims
 	if s.db == nil {
 		s.logger.Error("decide two-person approval failed: database not configured")
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")

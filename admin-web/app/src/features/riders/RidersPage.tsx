@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   VerificationState,
   adminListRiders,
+  adminRiderApprovalDecision,
   type RiderAdmin,
   type RiderAdminDocumentsItemStatus,
 } from '@hudumika/contract'
@@ -12,8 +13,8 @@ import { ErrorState } from '../../components/ErrorState'
 import { LoadingSkeleton } from '../../components/LoadingSkeleton'
 import { ReasonPrompt } from '../../components/ReasonPrompt'
 import { StatusPill } from '../../components/StatusPill'
+import { Toast } from '../../components/FormBits'
 import { parseApiError, type ApiErrorInfo } from '../../lib/api-error'
-import { PENDING_ENDPOINT_CODE, pendingEndpointNotice } from '../../lib/pending-endpoints'
 import { can } from '../../lib/permissions'
 import { useSession } from '../../lib/session'
 import { useRefetchOnFocus } from '../../lib/use-refetch-on-focus'
@@ -46,13 +47,16 @@ export function RidersPage() {
   const [selected, setSelected] = useState<RiderAdmin | null>(null)
   const [error, setError] = useState<ApiErrorInfo | null>(null)
   const [retryKey, setRetryKey] = useState(0)
+  const [toast, setToast] = useState<string | null>(null)
 
   const load = useCallback(() => {
     setError(null)
-    adminListRiders().then((res) => {
-      if (res.status === 200) setRiders(res.data)
-      else setError(parseApiError(res, 'Failed to load riders'))
-    })
+    adminListRiders()
+      .then((res) => {
+        if (res.status === 200) setRiders(res.data)
+        else setError(parseApiError(res, 'Failed to load riders'))
+      })
+      .catch(() => setError(parseApiError({ status: 0, data: undefined }, 'Failed to load riders')))
   }, [])
 
   useEffect(() => {
@@ -93,9 +97,28 @@ export function RidersPage() {
     )
   }
 
+  async function handleVerificationDecision(riderId: string, decision: VerificationDecision, reason: string) {
+    const res = await adminRiderApprovalDecision(riderId, { decision, reason })
+    if (res.status === 200) {
+      const nextStatus = res.data.status as RiderAdmin['verification']
+      setRiders((prev) => (prev ?? []).map((r) => (r.id === riderId ? { ...r, verification: nextStatus } : r)))
+      setSelected((prev) => (prev && prev.id === riderId ? { ...prev, verification: nextStatus } : prev))
+      setToast(decision === 'approve' ? 'Rider approved' : 'Changes requested for rider')
+      return null
+    }
+    return parseApiError(res, 'Verification decision failed')
+  }
+
   return (
     <div className="page">
-      <h1>Riders</h1>
+      <div className="page-title-row">
+        <h1>Riders</h1>
+        {toast && (
+          <div className="page-actions">
+            <Toast message={toast} />
+          </div>
+        )}
+      </div>
       <div className="filters">
         {FILTERS.map((f) => (
           <button
@@ -144,16 +167,27 @@ export function RidersPage() {
         </tbody>
       </table>
 
-      {selected && <RiderDrawer rider={selected} onClose={() => setSelected(null)} />}
+      {selected && (
+        <RiderDrawer rider={selected} onClose={() => setSelected(null)} onDecision={handleVerificationDecision} />
+      )}
     </div>
   )
 }
 
-function RiderDrawer({ rider, onClose }: { rider: RiderAdmin; onClose: () => void }) {
+function RiderDrawer({
+  rider,
+  onClose,
+  onDecision,
+}: {
+  rider: RiderAdmin
+  onClose: () => void
+  onDecision: (riderId: string, decision: VerificationDecision, reason: string) => Promise<ApiErrorInfo | null>
+}) {
   const session = useSession()
   const allowed = can(session, 'rider.verify')
   const [decision, setDecision] = useState<VerificationDecision | null>(null)
-  const [pending, setPending] = useState<VerificationDecision | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [decisionError, setDecisionError] = useState<ApiErrorInfo | null>(null)
 
   return (
     <>
@@ -219,7 +253,7 @@ function RiderDrawer({ rider, onClose }: { rider: RiderAdmin; onClose: () => voi
               type="button"
               className="btn"
               onClick={() => {
-                setPending(null)
+                setDecisionError(null)
                 setDecision('approve')
               }}
             >
@@ -229,7 +263,7 @@ function RiderDrawer({ rider, onClose }: { rider: RiderAdmin; onClose: () => voi
               type="button"
               className="btn"
               onClick={() => {
-                setPending(null)
+                setDecisionError(null)
                 setDecision('request_changes')
               }}
             >
@@ -237,16 +271,6 @@ function RiderDrawer({ rider, onClose }: { rider: RiderAdmin; onClose: () => voi
             </button>
           </div>
         </>
-      )}
-
-      {pending && (
-        <div className="state-card">
-          <div className="state-title">
-            <span className="mono">{PENDING_ENDPOINT_CODE}</span>
-          </div>
-          <div className="state-message">{pendingEndpointNotice('rider_approve')}</div>
-          <p className="muted small">This action is documented for backend implementation — nothing was sent.</p>
-        </div>
       )}
 
       <p className="muted small">Rider verification decisions are audited (rider.*) and notify the rider.</p>
@@ -259,11 +283,22 @@ function RiderDrawer({ rider, onClose }: { rider: RiderAdmin; onClose: () => voi
           title={decision === 'approve' ? 'Approve rider' : 'Request rider changes'}
           description={`${rider.name} (${rider.id}) — current verification: ${rider.verification}.`}
           confirmLabel="Confirm"
-          onSubmit={() => {
-            setPending(decision)
-            setDecision(null)
+          busy={busy}
+          error={decisionError}
+          onSubmit={async (reason) => {
+            setBusy(true)
+            setDecisionError(null)
+            const err = await onDecision(rider.id, decision, reason)
+            setBusy(false)
+            if (err) {
+              setDecisionError(err)
+            } else {
+              setDecision(null)
+            }
           }}
-          onClose={() => setDecision(null)}
+          onClose={() => {
+            if (!busy) setDecision(null)
+          }}
         />
       )}
     </>

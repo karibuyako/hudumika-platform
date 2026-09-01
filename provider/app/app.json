@@ -17,6 +17,12 @@
     },
     "android": {
       "predictiveBackGestureEnabled": false,
+      "adaptiveIcon": {
+        "backgroundColor": "#1a5c44",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "CAMERA"

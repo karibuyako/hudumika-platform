@@ -86,8 +86,8 @@ func codShiftStatusToGen(status string) gen.RiderCodReconciliationShiftsStatus {
 // the shipments physically at the hub (custody_hub_id) and vehiclesPresent
 // counts the vehicles parked at the hub.
 func (s *Server) AdminHubDashboard(w http.ResponseWriter, r *http.Request, hubId openapi_types.UUID) {
-	if _, ok := ClaimsFromContext(r.Context()); !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid bearer token")
+	_, ok := requireRBAC(w, r, s, PermHubManage)
+	if !ok {
 		return
 	}
 	if s.db == nil {
@@ -209,8 +209,8 @@ func (s *Server) AdminHubDashboard(w http.ResponseWriter, r *http.Request, hubId
 // (total and per origin hub), the open escalation count (the at-risk set)
 // and the exception count.
 func (s *Server) LogisticsControlTower(w http.ResponseWriter, r *http.Request) {
-	if _, ok := ClaimsFromContext(r.Context()); !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid bearer token")
+	_, ok := requireRBAC(w, r, s, PermOrderRead)
+	if !ok {
 		return
 	}
 	if s.db == nil {
@@ -348,10 +348,6 @@ func (s *Server) LogisticsControlTower(w http.ResponseWriter, r *http.Request) {
 // reason is 422 ADMIN_REASON_REQUIRED. The escalation row and an 'escalated'
 // waybill event land in one transaction; the shipment itself is returned.
 func (s *Server) AdminEscalateShipment(w http.ResponseWriter, r *http.Request, shipmentId openapi_types.UUID) {
-	if _, ok := ClaimsFromContext(r.Context()); !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid bearer token")
-		return
-	}
 	var body gen.AdminEscalateShipmentJSONRequestBody
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Invalid request body")
@@ -361,6 +357,10 @@ func (s *Server) AdminEscalateShipment(w http.ResponseWriter, r *http.Request, s
 		writeError(w, http.StatusUnprocessableEntity, "ADMIN_REASON_REQUIRED", "reason is required")
 		return
 	}
+	claims, ok := requireRBAC(w, r, s, PermSafetyManage)
+	if !ok {
+		return
+	}
 	if s.db == nil {
 		s.logger.Error("admin escalate failed: database not configured")
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
@@ -368,6 +368,7 @@ func (s *Server) AdminEscalateShipment(w http.ResponseWriter, r *http.Request, s
 	}
 	ctx := r.Context()
 	reason := strings.TrimSpace(body.Reason)
+	_ = claims
 	actor := s.resolvedActorID(r)
 
 	tx, err := s.db.Pool().Begin(ctx)
@@ -469,8 +470,8 @@ func scanCodSession(row pgx.Row) (codSessionRow, error) {
 // (0 by default) — the COD order linkage (payment_method on orders) lands in
 // a later milestone. A missing rider is 404 NOT_FOUND.
 func (s *Server) AdminRiderCodReconciliation(w http.ResponseWriter, r *http.Request, riderId openapi_types.UUID, params gen.AdminRiderCodReconciliationParams) {
-	if _, ok := ClaimsFromContext(r.Context()); !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid bearer token")
+	_, ok := requireRBAC(w, r, s, PermCODManage)
+	if !ok {
 		return
 	}
 	if s.db == nil {
@@ -612,8 +613,8 @@ func (s *Server) AdminRiderCodReconciliation(w http.ResponseWriter, r *http.Requ
 // offset default 0 — the contract declares no pagination params, so they
 // ride the raw query string). The response is never nil ([] when empty).
 func (s *Server) AdminListRiskCases(w http.ResponseWriter, r *http.Request, params gen.AdminListRiskCasesParams) {
-	if _, ok := ClaimsFromContext(r.Context()); !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid bearer token")
+	_, ok := requireRBAC(w, r, s, PermRiskManage)
+	if !ok {
 		return
 	}
 	if s.db == nil {
@@ -706,10 +707,6 @@ func (s *Server) AdminListRiskCases(w http.ResponseWriter, r *http.Request, para
 // decision lands resolved; the reason and reviewer are persisted on the
 // risk_events row.
 func (s *Server) AdminReviewRiskCase(w http.ResponseWriter, r *http.Request, caseId openapi_types.UUID) {
-	if _, ok := ClaimsFromContext(r.Context()); !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid bearer token")
-		return
-	}
 	var body gen.AdminReviewRiskCaseJSONRequestBody
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Invalid request body")
@@ -723,6 +720,11 @@ func (s *Server) AdminReviewRiskCase(w http.ResponseWriter, r *http.Request, cas
 		writeError(w, http.StatusUnprocessableEntity, "ADMIN_REASON_REQUIRED", "reason is required")
 		return
 	}
+	claims, ok := requireRBAC(w, r, s, PermRiskManage)
+	if !ok {
+		return
+	}
+	_ = claims
 	if s.db == nil {
 		s.logger.Error("review risk case failed: database not configured")
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")

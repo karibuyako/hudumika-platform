@@ -26,4 +26,11 @@ config.watchFolders = [
   path.resolve(__dirname, '../../packages/tokens'),
 ];
 
+// Block stray "package" directory left behind by npm pack extraction
+// Block other app directories that Metro might follow through root symlinks
+config.resolver.blockList = [
+  new RegExp(path.resolve(__dirname, 'node_modules/package') + '/.*'),
+  new RegExp(path.resolve(__dirname, '../../(merchant|consumer-mobile|provider|admin-web)/.*')),
+];
+
 module.exports = config;

@@ -63,17 +63,25 @@ func (s *Server) Router() http.Handler {
 	r.Use(s.otelMiddleware)
 	r.Use(s.metricsMiddleware)
 	r.Use(s.logRequests)
+	r.Use(s.structuredLogger.HandlerMiddleware)
 	r.Use(s.cors)
+	r.Use(SecurityHeaders)
 
 	r.Get("/metrics", s.metrics)
 	r.Get("/healthz", s.health)
 	r.Get("/readyz", s.ready)
+
+	// Detailed health check (no auth required): database, redis, disk, memory,
+	// and degradation level. Sits outside the auth-wrapped tree so load
+	// balancers and uptime probes can reach it unauthenticated.
+	r.Get("/admin/health", s.AdminHealthCheck)
 
 	// /ws (contract /api/ws after the gateway strips the /api/v1 base path)
 	// is deliberately outside the auth-wrapped tree: the handler authenticates
 	// itself (Authorization bearer or ?token=) before upgrading, so the 401
 	// envelope can be a plain JSON response instead of a failed handshake.
 	r.Get("/ws", s.HandleWebSocket)
+	r.Get("/admin/ws", s.AdminWSHandler)
 
 	// /docs/* is the public developer surface (customer_sync.go): the
 	// contract spec (served raw with Content-Type application/yaml — the
@@ -98,8 +106,8 @@ func (s *Server) Router() http.Handler {
 	})
 
 	r.Route("/auth", func(r chi.Router) {
-		r.Post("/request-otp", s.RequestOtp)
-		r.With(s.rateLimitIP("verify-otp", verifyRateLimitIP, verifyRateWindowIP)).Post("/verify-otp", s.VerifyOtp)
+		r.With(s.loginThrottler.Middleware).Post("/request-otp", s.RequestOtp)
+		r.With(s.loginThrottler.Middleware, s.rateLimitIP("verify-otp", verifyRateLimitIP, verifyRateWindowIP)).Post("/verify-otp", s.VerifyOtp)
 		r.Post("/refresh", s.RefreshToken)
 		r.Post("/logout", s.Logout)
 		r.Post("/social", s.MthSocialAuth)
@@ -160,8 +168,8 @@ func (s *Server) Router() http.Handler {
 		// defines GET /admin/webhooks; the delivery list + manual retry are
 		// documented extensions mounted before the generated surface so they
 		// win over the generated 404/501 fallbacks.
-		r.Get("/admin/webhooks/deliveries", s.AdminListWebhookDeliveries)
-		r.Post("/admin/webhooks/deliveries/{deliveryId}/retry", s.AdminRetryWebhookDelivery)
+		r.Get("/admin/webhooks/deliveries", s.withAdminSecurity(s.AdminListWebhookDeliveries))
+		r.Post("/admin/webhooks/deliveries/{deliveryId}/retry", s.withAdminSecurity(s.AdminRetryWebhookDelivery))
 		// Integrations create (POST /integrations): contract currently has no
 		// create route (405), but DB supports it. Validate provider enum
 		// (pos/erp/accounting/payroll/crm, NOT delivery_partner) and scope
@@ -171,9 +179,22 @@ func (s *Server) Router() http.Handler {
 		// mirrors POST /conversations/{id}/block for staff moderation via the
 		// admin prefix. The main handler now allows admin bypass of the
 		// participant check.
-		r.Post("/admin/conversations/{conversationId}/block", func(w http.ResponseWriter, rq *http.Request) {
+		r.Post("/admin/conversations/{conversationId}/block", s.withAdminSecurity(func(w http.ResponseWriter, rq *http.Request) {
 			s.BlockConversation(w, rq, uuidParam(rq, "conversationId"))
+		}))
+		// Admin session management (admin_new.go): list, revoke, and revoke-all
+		// sessions for the current admin user.
+		r.Get("/admin/sessions", s.AdminListSessions)
+		r.Delete("/admin/sessions/{sessionId}", func(w http.ResponseWriter, rq *http.Request) {
+			s.AdminRevokeSession(w, rq, uuidParam(rq, "sessionId"))
 		})
+		r.Post("/admin/sessions/revoke-all", s.AdminRevokeAllSessions)
+		// Row-level audit trail (audit_log.go): query the admin_audit_log table
+		// with filters for adminId, entityType, entityId, action, from, to, limit,
+		// offset.
+		r.Get("/admin/audit-log", s.AdminListAuditLog)
+		// Platform limits endpoint (manual extension, not in OpenAPI spec).
+		r.Get("/admin/limits", s.AdminGetLimits)
 		// Customer offline replay (customer_sync.go, ARCHITECTURE.md offline
 		// contract extended to customers): a documented-extension endpoint
 		// mirroring the rider sync batch, mounted before the generated
@@ -508,6 +529,31 @@ func (s *Server) Router() http.Handler {
 		r.Post("/analytics/reports/export", s.MthExportAnalyticsReportReal)
 		r.Post("/chain/reports", s.MthExportChainReportReal)
 
+		// Proximity-based dispatch (admin_new.go): find nearest riders to a
+		// pickup point using Haversine distance against live_locations.
+		r.Post("/admin/dispatch/nearest-rider", s.AdminFindNearestRiders)
+		// Route optimization via Geoapify Route Planner API (admin_new.go).
+		r.Post("/admin/dispatch/optimize-routes", s.AdminOptimizeRoutes)
+		// Service area calculation via Geoapify Isochrone API (admin_new.go).
+		r.Post("/admin/dispatch/service-area", s.AdminCalculateServiceArea)
+
+		// ABAC-wrapped sensitive mutation endpoints (abac.go). These are
+		// mounted AFTER the generated tree to override the generated handlers
+		// with an additional ABAC policy check layer.
+		r.With(s.RequireABAC("bookings", "refund")).Post("/refunds/{refundId}/decision", func(w http.ResponseWriter, rq *http.Request) {
+			s.AdminRefundDecision(w, rq, uuidParam(rq, "refundId"))
+		})
+		r.With(s.RequireABAC("disputes", "resolve")).Post("/disputes/{disputeId}/decision", func(w http.ResponseWriter, rq *http.Request) {
+			s.AdminDisputeDecision(w, rq, uuidParam(rq, "disputeId"))
+		})
+		r.With(s.RequireABAC("payroll", "run")).Post("/payroll/run", s.AdminRunPayroll)
+		r.With(s.RequireABAC("payouts", "reconcile")).Post("/payouts/{batchId}/reconcile", func(w http.ResponseWriter, rq *http.Request) {
+			s.AdminPayoutReconcile(w, rq, uuidParam(rq, "batchId"))
+		})
+		r.With(s.RequireABAC("admins", "suspend")).Post("/admins/{adminId}/suspend", func(w http.ResponseWriter, rq *http.Request) {
+			s.AdminSuspendAdmin(w, rq, uuidParam(rq, "adminId"))
+		})
+
 		// Provider app-only routes absent from the OpenAPI contract (the
 		// generated tree never registers them). Mounted AFTER the generated
 		// tree; there is no conflict since the contract omits them.
@@ -662,4 +708,33 @@ func (s *Server) allowsOrigin(origin string) bool {
 		}
 	}
 	return false
+}
+
+func (s *Server) withAdminSecurity(next http.HandlerFunc) http.HandlerFunc {
+	var allowedIPs []string
+	if s.cfg.AdminAllowedIPs != "" {
+		for _, ip := range splitAndTrim(s.cfg.AdminAllowedIPs) {
+			if ip != "" {
+				allowedIPs = append(allowedIPs, ip)
+			}
+		}
+	}
+	ipCheck := IPAllowlist(allowedIPs)
+	rateCheck := RateLimit(s.rateLimiter)
+	return func(w http.ResponseWriter, r *http.Request) {
+		handler := http.Handler(http.HandlerFunc(next))
+		handler = rateCheck(handler)
+		handler = ipCheck(handler)
+		handler.ServeHTTP(w, r)
+	}
+}
+
+func splitAndTrim(s string) []string {
+	var result []string
+	for _, part := range strings.Split(s, ",") {
+		if trimmed := strings.TrimSpace(part); trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	return result
 }

@@ -51,15 +51,20 @@ export function DispatchConsolePage() {
   useEffect(() => {
     setError(null)
     let cancelled = false
-    Promise.all([adminListOrders(), adminListRiders()]).then(([ordersRes, ridersRes]) => {
-      if (cancelled) return
-      if (ordersRes.status !== 200 || ridersRes.status !== 200) {
-        setError('Failed to load dispatch console')
-        return
-      }
-      setOrders(ordersRes.data)
-      setRiders(ridersRes.data)
-    })
+    Promise.all([adminListOrders(), adminListRiders()])
+      .then(([ordersRes, ridersRes]) => {
+        if (cancelled) return
+        if (ordersRes.status !== 200 || ridersRes.status !== 200) {
+          const err = ordersRes.status !== 200 ? parseApiError(ordersRes as { status: number; data?: unknown }, 'Failed to load dispatch console') : parseApiError(ridersRes as { status: number; data?: unknown }, 'Failed to load dispatch console')
+          setError(`${err.code}: ${err.message}`)
+          return
+        }
+        setOrders(ordersRes.data)
+        setRiders(ridersRes.data)
+      })
+      .catch(() => {
+        if (!cancelled) setError('Failed to load dispatch console')
+      })
     return () => {
       cancelled = true
     }
@@ -152,7 +157,7 @@ export function DispatchConsolePage() {
   async function assign(order: OrderDetail, rider: RiderAdmin, reason: string) {
     setPromptBusy(true)
     setPromptError(null)
-    setAssigning(order.id)
+    setAssigning(rider.id)
     setNotice(null)
     const res = await adminAssignOrderToRider(order.id, {
       riderId: rider.id,
@@ -164,7 +169,8 @@ export function DispatchConsolePage() {
       setPrompt(null)
       setNotice(`Order ${order.no ?? short(order.id)} assigned to ${rider.name}`)
     } else {
-      setPromptError(`Assignment failed (${res.status})`)
+      const err = parseApiError(res as { status: number; data?: unknown })
+      setPromptError(`Assignment failed (${err.code}: ${err.message})`)
     }
     setAssigning(null)
     setPromptBusy(false)
@@ -173,7 +179,7 @@ export function DispatchConsolePage() {
   async function reassign(order: OrderDetail, rider: RiderAdmin, reason: string) {
     setPromptBusy(true)
     setPromptError(null)
-    setAssigning(order.id)
+    setAssigning(rider.id)
     setNotice(null)
     const res = await adminAssignOrderToRider(order.id, {
       riderId: rider.id,
@@ -186,7 +192,8 @@ export function DispatchConsolePage() {
       setPrompt(null)
       setNotice(`Order ${order.no ?? short(order.id)} reassigned to ${rider.name}`)
     } else {
-      setPromptError(`Reassignment failed (${res.status})`)
+      const err = parseApiError(res as { status: number; data?: unknown })
+      setPromptError(`Reassignment failed (${err.code}: ${err.message})`)
     }
     setAssigning(null)
     setPromptBusy(false)

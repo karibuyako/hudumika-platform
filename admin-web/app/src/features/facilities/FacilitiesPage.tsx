@@ -4,8 +4,10 @@ import {
   createFacility,
   listFacilities,
   putFacilityWhitelist,
+  adminListFacilityEntries,
   type Facility,
   type FacilityAccessPolicy,
+  type AdminFacilityEntry,
 } from '@hudumika/contract'
 import { DetailDrawer } from '../../components/DetailDrawer'
 import { DataTable, type DataTableColumn } from '../../components/DataTable'
@@ -203,6 +205,8 @@ function FacilityDrawer({
   const [whitelistOpen, setWhitelistOpen] = useState(false)
   const [whitelistBusy, setWhitelistBusy] = useState(false)
   const [whitelistError, setWhitelistError] = useState<string | null>(null)
+  const [entries, setEntries] = useState<AdminFacilityEntry[] | null>(null)
+  const [entriesError, setEntriesError] = useState<string | null>(null)
 
   function submitWhitelist(riderIds: string[]) {
     setWhitelistBusy(true)
@@ -273,6 +277,40 @@ function FacilityDrawer({
       <p className="muted small">
         Facility changes are audited (facility.*); NOT_WHITELISTED incidents are resolved via whitelist grants.
       </p>
+
+      <div className="detail-section">
+        <h3>Entry logs</h3>
+        {entries === null && !entriesError && (
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => {
+              adminListFacilityEntries(facility.id).then((res) => {
+                if (res.status === 200) setEntries(res.data)
+                else setEntriesError('Failed to load entries')
+              })
+            }}
+          >
+            Load entry logs
+          </button>
+        )}
+        {entriesError && <p className="muted small">{entriesError}</p>}
+        {entries && entries.length === 0 && <p className="muted small">No entry logs for this facility.</p>}
+        {entries && entries.length > 0 && (
+          <table className="table table-sm">
+            <thead><tr><th>Time</th><th>Status</th><th>Rider</th></tr></thead>
+            <tbody>
+              {entries.map((e) => (
+                <tr key={e.id}>
+                  <td className="muted">{toLocal(e.createdAt)}</td>
+                  <td>{e.status}</td>
+                  <td className="mono small">{e.riderId ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
 
       {whitelistOpen && (
         <WhitelistModal

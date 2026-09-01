@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { getRefreshTokenUrl } from '@hudumika/contract'
 import { rolePermissions, STAFF_ROLES, type StaffRoleDef } from './roles'
 import { withApiBase } from './api-base'
+import { getLimits } from './limits'
 
 export interface StaffSession {
   userId: string
@@ -16,7 +17,7 @@ export interface StaffSession {
   tokenIssuedAt?: number
 }
 
-export const SESSION_TTL_MS = 20 * 60 * 1000
+export const SESSION_TTL_MS = getLimits().sessionTimeoutMinutes * 60 * 1000
 export const SESSION_KEY = 'hudumika.staff.session'
 export const SESSION_EVENT = 'hudumika.staff.session.change'
 

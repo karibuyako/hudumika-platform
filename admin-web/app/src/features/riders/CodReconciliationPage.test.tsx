@@ -173,8 +173,7 @@ describe('CodReconciliationPage', () => {
     await selectRider()
 
     expect(await screen.findByText('2 mismatched shift(s) flagged for finance follow-up')).toBeInTheDocument()
-    expect(screen.getByText(/decision endpoints ship with the backend milestone/)).toBeInTheDocument()
-    expect(screen.getByText(/Decision endpoints are documented for backend implementation/)).toBeInTheDocument()
+    expect(screen.getByText(/Reconciliation decisions are finance actions/)).toBeInTheDocument()
   })
 
   it('shows decision actions for pending and mismatch shifts, gated by cod.reconcile', async () => {
@@ -223,7 +222,7 @@ describe('CodReconciliationPage', () => {
     expect(row.queryByRole('button', { name: 'Flag mismatch' })).not.toBeInTheDocument()
   })
 
-  it('shows the pending-endpoint notice after confirming a shift decision', async () => {
+  it('flags a mismatch shift via the live endpoint and shows success', async () => {
     seedRiders([RIDER])
     seedCod(RECON)
     render(<CodReconciliationPage />)
@@ -238,10 +237,29 @@ describe('CodReconciliationPage', () => {
     fireEvent.change(within(prompt).getByLabelText('Reason'), { target: { value: 'Cash short by 15000' } })
     fireEvent.click(within(prompt).getByRole('button', { name: 'Confirm' }))
 
+    expect(await screen.findByText('Shift flagged as mismatch')).toBeInTheDocument()
     expect(screen.queryByRole('dialog', { name: 'Flag shift mismatch' })).not.toBeInTheDocument()
-    expect(screen.getByText('PENDING_ENDPOINT')).toBeInTheDocument()
-    expect(screen.getByText(/POST \/admin\/riders\/\{riderId\}\/cod\/\{shiftId\}\/decision/)).toBeInTheDocument()
-    expect(screen.getByText(/nothing was sent/)).toBeInTheDocument()
+    expect(screen.queryByText('PENDING_ENDPOINT')).not.toBeInTheDocument()
+  })
+
+  it('shows an error when shift decision fails', async () => {
+    seedRiders([RIDER])
+    seedCod(RECON)
+    server.use(http.post('/admin/riders/:riderId/cod/:shiftId/decision', async () => HttpResponse.json({ code: 'SHIFT_ALREADY_DECIDED', message: 'already decided', requestId: 'req_cod' }, { status: 409 })))
+    render(<CodReconciliationPage />)
+
+    await screen.findByLabelText('Rider')
+    await selectRider()
+
+    const row = within((await screen.findByText('sh_2')).closest('tr')!)
+    fireEvent.click(row.getByRole('button', { name: 'Flag mismatch' }))
+
+    const prompt = await screen.findByRole('dialog', { name: 'Flag shift mismatch' })
+    fireEvent.change(within(prompt).getByLabelText('Reason'), { target: { value: 'Try again' } })
+    fireEvent.click(within(prompt).getByRole('button', { name: 'Confirm' }))
+
+    expect(await within(prompt).findByText(/already decided/i)).toBeInTheDocument()
+    expect(within(prompt).getByText(/req_cod/)).toBeInTheDocument()
   })
 
   it('shows the picker empty state when no approved riders exist', async () => {

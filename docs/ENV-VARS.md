@@ -106,6 +106,15 @@ The 17 public-frontend vars above are declared in `public-frontend/src/config/*.
 | `CORS_ORIGINS` | backend | backend/app | (none) | — | Comma-separated allowed origins; `*` is accepted in dev only and **refused in staging/production** |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | backend | backend/app | (none) | — | When set, OpenTelemetry spans export over OTLP/HTTP; unset runs a no-op tracer |
 | `PAYMENT_WEBHOOK_SECRET` | backend | backend/app | (none) | — | HMAC-SHA256 secret verifying payment provider webhooks (`X-Webhook-Signature`); webhooks are rejected with 503 while unset |
+| `ADMIN_ALLOWED_IPS` | backend | backend/app | (none) | — | Comma-separated allow-list for `/admin/*` (exact IP or CIDR); when set, `X-Forwarded-For` enforced, empty allows all (dev only) — **required in production** |
+| `OTP_SMS_GATEWAY_URL` / `_KEY` / `_SENDER` | backend | backend/app | (none) | — | Primary SMS gateway for OTP delivery (TextBee or generic HTTP) |
+| `OTP_SMS_GATEWAY_BACKUP_URL` / `_KEY` | backend | backend/app | (none) | — | Backup SMS gateway (failover) |
+| `EMAIL_GATEWAY_URL` / `_KEY` / `_SENDER` | backend | backend/app | (none) | — | Email gateway for OTP/notifications |
+| `EMAIL_SMTP_HOST` / `_USER` / `_PASS` | backend | backend/app | (none) | — | SMTP fallback for email delivery |
+| `EXPO_PUSH_ACCESS_TOKEN` | backend | backend/app | (none) | — | Expo push notification access token |
+| `MPESA_CONSUMER_KEY` / `_SECRET` / `MPESA_*` | backend | backend/app | (none) | — | M-Pesa Daraja credentials; also `TIGO_*`, `AIRTEL_*`, `CARD_WEBHOOK_SECRET` per provider |
+| `S3_ENDPOINT` / `S3_BUCKET` / `S3_ACCESS_KEY` / `S3_SECRET_KEY` | backend | backend/app | (none) | — | Object storage (R2/S3) for exports/media |
+| `SIMULATOR_KEY` | backend | backend/app | (none) | — | Internal simulator gate (`X-Internal-Key`); staging/dev only, constant-time compare |
 
 ## Rules
 

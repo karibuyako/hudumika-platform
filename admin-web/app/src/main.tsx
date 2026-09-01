@@ -16,6 +16,9 @@ import '@fontsource/jetbrains-mono/600.css'
 import '@hudumika/tokens/tokens.css'
 import './styles.css'
 import './styles-modules.css'
+import { installApiBaseFetch } from './lib/api-base'
+
+installApiBaseFetch()
 
 async function enableMocks() {
   const { worker } = await import('./mocks/browser')

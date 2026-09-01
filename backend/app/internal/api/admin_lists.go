@@ -169,13 +169,17 @@ func (s *Server) AdminListOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Team-based scoping: once orders carries a team_id or merchants.team_id
+	// is added, filter by scope.ScopeFilter("team_id") here.
+	_ = s.GetAdminScope(r)
+
 	rows, err := s.db.Pool().Query(r.Context(),
 		`SELECT id, no, merchant_id, rider_id, status,
-			subtotal_tzs, delivery_fee_tzs, platform_fee_tzs, tax_tzs, discount_tzs, total_tzs,
-			delivery_address, source, version, created_at, updated_at
-		FROM orders
-		ORDER BY created_at DESC, id DESC
-		LIMIT $1`, maxAdminListLimit)
+		subtotal_tzs, delivery_fee_tzs, platform_fee_tzs, tax_tzs, discount_tzs, total_tzs,
+		delivery_address, source, version, created_at, updated_at
+	FROM orders
+	ORDER BY created_at DESC, id DESC
+	LIMIT $1`, maxAdminListLimit)
 	if err != nil {
 		s.logger.Error("list admin orders query failed", "error", err)
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")

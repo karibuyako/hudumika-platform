@@ -944,6 +944,9 @@ func (s *Server) AdminListBookings(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+
+	scope := s.GetAdminScope(r)
+
 	var status *string
 	if v := strings.TrimSpace(r.URL.Query().Get("status")); v != "" {
 		if _, known := adminOpsBookingStatuses[v]; !known {
@@ -982,6 +985,12 @@ func (s *Server) AdminListBookings(w http.ResponseWriter, r *http.Request) {
 		args = append(args, cursorAt, cursorID)
 		clauses = append(clauses, fmt.Sprintf("(b.created_at, b.id) > ($%d, $%d)", len(args)-1, len(args)))
 	}
+
+	// Team-based scoping: filter bookings by provider's team (when providers.team_id exists)
+	if !scope.IsGlobal {
+		clauses = append(clauses, fmt.Sprintf("b.provider_id IN (SELECT id FROM providers WHERE %s)", scope.ScopeFilter("team_id")))
+	}
+
 	if len(clauses) > 0 {
 		query += ` WHERE ` + strings.Join(clauses, " AND ")
 	}
@@ -1279,7 +1288,7 @@ func (s *Server) AdminUpsertCity(w http.ResponseWriter, r *http.Request) {
 	}
 	country := strings.TrimSpace(body.Country)
 	if country == "" {
-		country = defaultCountry
+		country = GetSettings().DefaultCountry
 	}
 	if s.db == nil {
 		s.logger.Error("upsert city failed: database not configured")

@@ -12,7 +12,7 @@ func setEnv(t *testing.T, vars map[string]string) {
 		cleanup = append(cleanup, k)
 		t.Setenv(k, v)
 	}
-	for _, k := range []string{"ENV", "PORT", "DATABASE_URL", "REDIS_URL", "JWT_SECRET", "JWT_SIGNING_KEY", "OTP_DEV_CODE", "ACCESS_TOKEN_TTL", "REFRESH_TOKEN_TTL", "CORS_ORIGINS"} {
+	for _, k := range []string{"ENV", "PORT", "DATABASE_URL", "REDIS_URL", "JWT_SECRET", "JWT_SIGNING_KEY", "OTP_DEV_CODE", "ACCESS_TOKEN_TTL", "REFRESH_TOKEN_TTL", "CORS_ORIGINS", "ADMIN_ALLOWED_IPS"} {
 		found := false
 		for k2 := range vars {
 			if k2 == k {
@@ -45,11 +45,12 @@ func TestValidateEmptyEnvFails(t *testing.T) {
 
 func TestValidateProductionWeakSecretFails(t *testing.T) {
 	setEnv(t, map[string]string{
-		"ENV":          "production",
-		"JWT_SECRET":   "dev-secret-change-me",
-		"DATABASE_URL": "postgres://u:p@h:5432/db",
-		"REDIS_URL":    "redis://h:6379/0",
-		"CORS_ORIGINS": "https://app.hudumika.co.tz",
+		"ENV":               "production",
+		"JWT_SECRET":        "dev-secret-change-me",
+		"DATABASE_URL":      "postgres://u:p@h:5432/db",
+		"REDIS_URL":         "redis://h:6379/0",
+		"CORS_ORIGINS":      "https://app.hudumika.co.tz",
+		"ADMIN_ALLOWED_IPS": "10.0.0.1/32",
 	})
 	_, err := Load()
 	if err == nil || !strings.Contains(err.Error(), "JWT_SECRET") {
@@ -59,11 +60,12 @@ func TestValidateProductionWeakSecretFails(t *testing.T) {
 
 func TestValidateProductionShortSecretFails(t *testing.T) {
 	setEnv(t, map[string]string{
-		"ENV":          "production",
-		"JWT_SECRET":   "short",
-		"DATABASE_URL": "postgres://u:p@h:5432/db",
-		"REDIS_URL":    "redis://h:6379/0",
-		"CORS_ORIGINS": "https://app.hudumika.co.tz",
+		"ENV":               "production",
+		"JWT_SECRET":        "short",
+		"DATABASE_URL":      "postgres://u:p@h:5432/db",
+		"REDIS_URL":         "redis://h:6379/0",
+		"CORS_ORIGINS":      "https://app.hudumika.co.tz",
+		"ADMIN_ALLOWED_IPS": "10.0.0.1/32",
 	})
 	if _, err := Load(); err == nil {
 		t.Fatal("expected failure for short production secret")
@@ -83,11 +85,12 @@ func TestValidateProductionRequiresDependencies(t *testing.T) {
 
 func TestValidateProductionCorsWildcardFails(t *testing.T) {
 	setEnv(t, map[string]string{
-		"ENV":          "production",
-		"JWT_SECRET":   strings.Repeat("x", 48),
-		"DATABASE_URL": "postgres://u:p@h:5432/db",
-		"REDIS_URL":    "redis://h:6379/0",
-		"CORS_ORIGINS": "*",
+		"ENV":               "production",
+		"JWT_SECRET":        strings.Repeat("x", 48),
+		"DATABASE_URL":      "postgres://u:p@h:5432/db",
+		"REDIS_URL":         "redis://h:6379/0",
+		"CORS_ORIGINS":      "*",
+		"ADMIN_ALLOWED_IPS": "10.0.0.1/32",
 	})
 	_, err := Load()
 	if err == nil || !strings.Contains(err.Error(), "CORS_ORIGINS") {
@@ -97,16 +100,46 @@ func TestValidateProductionCorsWildcardFails(t *testing.T) {
 
 func TestValidateProductionDevOtpCodeFails(t *testing.T) {
 	setEnv(t, map[string]string{
+		"ENV":               "production",
+		"JWT_SECRET":        strings.Repeat("x", 48),
+		"DATABASE_URL":      "postgres://u:p@h:5432/db",
+		"REDIS_URL":         "redis://h:6379/0",
+		"CORS_ORIGINS":      "https://app.hudumika.co.tz",
+		"OTP_DEV_CODE":      "123456",
+		"ADMIN_ALLOWED_IPS": "10.0.0.1/32",
+	})
+	_, err := Load()
+	if err == nil || !strings.Contains(err.Error(), "OTP_DEV_CODE") {
+		t.Fatalf("expected OTP_DEV_CODE failure, got %v", err)
+	}
+}
+
+func TestValidateProductionAdminAllowedIPsRequired(t *testing.T) {
+	setEnv(t, map[string]string{
 		"ENV":          "production",
 		"JWT_SECRET":   strings.Repeat("x", 48),
 		"DATABASE_URL": "postgres://u:p@h:5432/db",
 		"REDIS_URL":    "redis://h:6379/0",
 		"CORS_ORIGINS": "https://app.hudumika.co.tz",
-		"OTP_DEV_CODE": "123456",
 	})
 	_, err := Load()
-	if err == nil || !strings.Contains(err.Error(), "OTP_DEV_CODE") {
-		t.Fatalf("expected OTP_DEV_CODE failure, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "ADMIN_ALLOWED_IPS") {
+		t.Fatalf("expected ADMIN_ALLOWED_IPS failure in production, got %v", err)
+	}
+}
+
+func TestValidateProductionAdminAllowedIPsPresent(t *testing.T) {
+	setEnv(t, map[string]string{
+		"ENV":               "production",
+		"JWT_SECRET":        strings.Repeat("x", 48),
+		"DATABASE_URL":      "postgres://u:p@h:5432/db",
+		"REDIS_URL":         "redis://h:6379/0",
+		"CORS_ORIGINS":      "https://app.hudumika.co.tz",
+		"ADMIN_ALLOWED_IPS": "10.0.0.1/32, 10.0.0.2/32",
+		"OTP_DEV_CODE":      "999999",
+	})
+	if _, err := Load(); err != nil {
+		t.Fatalf("production config with ADMIN_ALLOWED_IPS should load: %v", err)
 	}
 }
 
@@ -137,12 +170,13 @@ func TestValidateJwtSigningKeyAlias(t *testing.T) {
 
 func TestDevOTPDisabledInProduction(t *testing.T) {
 	setEnv(t, map[string]string{
-		"ENV":          "production",
-		"JWT_SECRET":   strings.Repeat("x", 48),
-		"DATABASE_URL": "postgres://u:p@h:5432/db",
-		"REDIS_URL":    "redis://h:6379/0",
-		"CORS_ORIGINS": "https://app.hudumika.co.tz",
-		"OTP_DEV_CODE": "111111",
+		"ENV":               "production",
+		"JWT_SECRET":        strings.Repeat("x", 48),
+		"DATABASE_URL":      "postgres://u:p@h:5432/db",
+		"REDIS_URL":         "redis://h:6379/0",
+		"CORS_ORIGINS":      "https://app.hudumika.co.tz",
+		"OTP_DEV_CODE":      "111111",
+		"ADMIN_ALLOWED_IPS": "10.0.0.1/32",
 	})
 	cfg, err := Load()
 	if err != nil {

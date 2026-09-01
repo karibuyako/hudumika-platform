@@ -2,6 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   adminAssignTicket,
   adminListTickets,
+  adminReplyTicket,
+  adminEscalateTicket,
+  adminCloseTicket,
+  adminTransferTicket,
   type Ticket,
   type TicketPriority,
   type TicketStatus,
@@ -31,6 +35,13 @@ const BUCKETS: Array<{ key: Bucket; label: string; match: (t: Ticket) => boolean
   { key: 'closed', label: 'Closed', match: (t) => t.status === 'closed' },
 ]
 
+function isWaiting(t: Ticket): boolean {
+  return (t.status === 'open' || t.status === 'assigned' || t.status === 'in_progress') && !t.assignedAgentId
+}
+function isEscalated(t: Ticket): boolean {
+  return (t.status === 'open' || t.status === 'in_progress') && (t.priority === 'critical' || t.priority === 'high')
+}
+
 const PRIORITIES: Array<{ key: PriorityFilter; label: string }> = [
   { key: 'all', label: 'All' },
   { key: 'low', label: 'low' },
@@ -45,6 +56,8 @@ export function InboxPage() {
   const [priority, setPriority] = useState<PriorityFilter>('all')
   const [selected, setSelected] = useState<Ticket | null>(null)
   const [assigning, setAssigning] = useState<Ticket | null>(null)
+  const [actionKind, setActionKind] = useState<'reply' | 'escalate' | 'close' | 'transfer' | null>(null)
+  const [actionReason, setActionReason] = useState('')
   const [busy, setBusy] = useState(false)
   const [assignError, setAssignError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
@@ -88,6 +101,26 @@ export function InboxPage() {
       setAssignError(parseApiError(res, 'Failed to assign ticket').message)
     }
     setBusy(false)
+  }
+
+  async function handleTicketAction() {
+    if (!selected || !actionKind || !actionReason.trim()) return
+    setBusy(true)
+    let res
+    if (actionKind === 'reply') res = await adminReplyTicket(selected.id, { message: actionReason })
+    else if (actionKind === 'escalate') res = await adminEscalateTicket(selected.id, { reason: actionReason })
+    else if (actionKind === 'close') res = await adminCloseTicket(selected.id, { reason: actionReason })
+    else if (actionKind === 'transfer') res = await adminTransferTicket(selected.id, { agentUserId: actionReason, reason: 'Transfer requested' })
+    setBusy(false)
+    if (res && res.status === 200) {
+      setToast(`Ticket ${actionKind === 'reply' ? 'replied' : actionKind === 'escalate' ? 'escalated' : actionKind === 'close' ? 'closed' : 'transferred'}`)
+      setActionKind(null)
+      setSelected(null)
+      setRetryKey((k) => k + 1)
+    } else if (res) {
+      setToast(`Action failed: ${parseApiError(res, 'Failed').message}`)
+      setActionKind(null)
+    }
   }
 
   if (error) {
@@ -168,6 +201,10 @@ export function InboxPage() {
               setAssignError(null)
               setAssigning(selected)
             }}
+            onAction={(kind) => {
+              setActionKind(kind)
+              setActionReason('')
+            }}
           />
         </DetailDrawer>
       )}
@@ -181,11 +218,47 @@ export function InboxPage() {
           onConfirm={confirmAssign}
         />
       )}
+
+      {actionKind && (
+        <div className="modal-backdrop" onClick={() => !busy && setActionKind(null)}>
+          <form
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${actionKind} ticket`}
+            onClick={(e) => e.stopPropagation()}
+            onSubmit={(e) => { e.preventDefault(); handleTicketAction() }}
+          >
+            <h3 className="modal-title">{actionKind === 'reply' ? 'Reply to ticket' : actionKind === 'escalate' ? 'Escalate ticket' : actionKind === 'close' ? 'Close ticket' : 'Transfer ticket'}</h3>
+            <p className="muted small">{selected?.subject}</p>
+            <label className="field-label" htmlFor="action-reason">
+              {actionKind === 'reply' ? 'Message' : actionKind === 'transfer' ? 'Transfer to agent ID' : 'Reason'}
+            </label>
+            <textarea
+              id="action-reason"
+              className="field"
+              rows={3}
+              maxLength={1000}
+              value={actionReason}
+              onChange={(e) => setActionReason(e.target.value)}
+              placeholder={actionKind === 'reply' ? 'Type your reply…' : actionKind === 'transfer' ? 'Agent user ID…' : 'Reason…'}
+              autoFocus
+            />
+            <div className="modal-actions">
+              <button type="button" className="btn btn-ghost" onClick={() => setActionKind(null)} disabled={busy}>Cancel</button>
+              <button type="submit" className="btn" disabled={busy || !actionReason.trim()}>
+                {busy ? 'Working…' : 'Confirm'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   )
 }
 
-function TicketDetails({ ticket, onAssign }: { ticket: Ticket; onAssign: () => void }) {
+function TicketDetails({ ticket, onAssign, onAction }: { ticket: Ticket; onAssign: () => void; onAction: (kind: 'reply' | 'escalate' | 'close' | 'transfer') => void }) {
+  const isActive = ticket.status !== 'closed' && ticket.status !== 'resolved'
   return (
     <div>
       <div className="meta-grid">
@@ -236,6 +309,15 @@ function TicketDetails({ ticket, onAssign }: { ticket: Ticket; onAssign: () => v
       <button className="btn" onClick={onAssign} type="button">
         {ticket.assignedAgentId ? 'Reassign' : 'Assign to agent'}
       </button>
+
+      {isActive && (
+        <div className="form-actions" style={{ marginTop: '1rem' }}>
+          <button type="button" className="btn" onClick={() => onAction('reply')}>Reply</button>
+          <button type="button" className="btn" onClick={() => onAction('escalate')}>Escalate</button>
+          <button type="button" className="btn" onClick={() => onAction('transfer')}>Transfer</button>
+          <button type="button" className="btn btn-danger" onClick={() => onAction('close')}>Close ticket</button>
+        </div>
+      )}
     </div>
   )
 }

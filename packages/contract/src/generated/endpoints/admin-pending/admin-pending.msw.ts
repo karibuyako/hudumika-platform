@@ -24,20 +24,43 @@ import type {
   AdminChainOnboardResult,
   AdminChainSuspendResult,
   AdminCodShiftDecisionResult,
+  AdminConfigDomain,
   AdminConsignmentMissingResult,
+  AdminContent,
   AdminCrashRespondResult,
   AdminDataExportDecisionResult,
   AdminDataExportRerunResult,
   AdminDisputeDecisionResult,
+  AdminFacilityEntry,
+  AdminGatewayConfig,
+  AdminHandoff,
   AdminHandoffSealResult,
   AdminLogisticsAnomalyDecisionResult,
   AdminLoyaltyConfigResult,
+  AdminMapTrafficOverlay,
   AdminOrderCancelResult,
+  AdminPasswordResetResult,
   AdminPayoutReconcileResult,
+  AdminPayrollBatch,
+  AdminPolicy,
   AdminProviderApprovalResult,
+  AdminQualityScoreConfig,
   AdminRestOverrideResult,
-  AdminRiderApprovalResult
+  AdminRiderApprovalResult,
+  AdminScheduledNotification,
+  AdminScheduledReport,
+  AdminSettings,
+  AdminStaffUser,
+  AdminTeam,
+  AdminTicketCloseResult,
+  AdminTicketEscalateResult,
+  AdminTicketReplyResult,
+  AdminTicketTransferResult,
+  AdminGeofence
 } from '../../model';
+import type {
+  PlatformLimits
+} from './admin-pending';
 
 
 export const getAdminRiderApprovalDecisionResponseMock = (overrideResponse: Partial<Extract<AdminRiderApprovalResult, object>> = {}): AdminRiderApprovalResult => ({riderId: faker.string.uuid(), status: faker.helpers.arrayElement(['approved','changes_requested'] as const), auditEntryId: faker.string.uuid(), ...overrideResponse})
@@ -71,6 +94,72 @@ export const getAdminLogisticsAnomalyDecisionResponseMock = (overrideResponse: P
 export const getAdminCancelOrderResponseMock = (overrideResponse: Partial<Extract<AdminOrderCancelResult, object>> = {}): AdminOrderCancelResult => ({orderId: faker.string.uuid(), status: faker.helpers.arrayElement(['cancelled'] as const), refundTZS: faker.helpers.arrayElement([faker.number.int(), null]), auditEntryId: faker.string.uuid(), ...overrideResponse})
 
 export const getAdminConsignmentMissingDecisionResponseMock = (overrideResponse: Partial<Extract<AdminConsignmentMissingResult, object>> = {}): AdminConsignmentMissingResult => ({consignmentId: faker.string.uuid(), decision: faker.helpers.arrayElement(['relocate','declare_lost'] as const), status: faker.helpers.arrayElement(['exception_cleared'] as const), auditEntryId: faker.string.uuid(), ...overrideResponse})
+
+export const getAdminResetPasswordResponseMock = (overrideResponse: Partial<Extract<AdminPasswordResetResult, object>> = {}): AdminPasswordResetResult => ({userId: faker.string.uuid(), status: faker.helpers.arrayElement(['sent','failed'] as const), resetId: faker.string.uuid(), ...overrideResponse})
+
+export const getAdminListScheduledReportsResponseMock = (): AdminScheduledReport[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.uuid(), name: faker.string.alpha({length: {min: 10, max: 20}}), metrics: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), schedule: faker.helpers.arrayElement(['daily','weekly','monthly'] as const), format: faker.helpers.arrayElement(['csv','xlsx','pdf','json'] as const), status: faker.helpers.arrayElement(['pending','completed','failed'] as const), nextRunAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z'})))
+
+export const getAdminCreateScheduledReportResponseMock = (overrideResponse: Partial<Extract<AdminScheduledReport, object>> = {}): AdminScheduledReport => ({id: faker.string.uuid(), name: faker.string.alpha({length: {min: 10, max: 20}}), metrics: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), schedule: faker.helpers.arrayElement(['daily','weekly','monthly'] as const), format: faker.helpers.arrayElement(['csv','xlsx','pdf','json'] as const), status: faker.helpers.arrayElement(['pending','completed','failed'] as const), nextRunAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
+
+export const getAdminGetQualityScoresResponseMock = (overrideResponse: Partial<Extract<AdminQualityScoreConfig, object>> = {}): AdminQualityScoreConfig => ({weights: {deliveryTimeBps: faker.number.int({min: 0, max: 10000}), cancellationBps: faker.number.int({min: 0, max: 10000}), customerRatingBps: faker.number.int({min: 0, max: 10000}), completionBps: faker.number.int({min: 0, max: 10000})}, minPassingScore: faker.number.int({min: 0, max: 1000}), enabled: faker.datatype.boolean(), ...overrideResponse})
+
+export const getAdminUpdateQualityScoresResponseMock = (overrideResponse: Partial<Extract<AdminQualityScoreConfig, object>> = {}): AdminQualityScoreConfig => ({weights: {deliveryTimeBps: faker.number.int({min: 0, max: 10000}), cancellationBps: faker.number.int({min: 0, max: 10000}), customerRatingBps: faker.number.int({min: 0, max: 10000}), completionBps: faker.number.int({min: 0, max: 10000})}, minPassingScore: faker.number.int({min: 0, max: 1000}), enabled: faker.datatype.boolean(), ...overrideResponse})
+
+export const getAdminGetSettingsResponseMock = (overrideResponse: Partial<Extract<AdminSettings, object>> = {}): AdminSettings => ({general: {currency: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), timezone: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), language: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])}, booking: {maxLeadTimeHours: faker.helpers.arrayElement([faker.number.int(), undefined]), minCancellationHours: faker.helpers.arrayElement([faker.number.int(), undefined]), noShowFeeTZS: faker.helpers.arrayElement([faker.number.int(), undefined])}, notification: {pushEnabled: faker.helpers.arrayElement([faker.datatype.boolean(), undefined]), smsEnabled: faker.helpers.arrayElement([faker.datatype.boolean(), undefined]), emailEnabled: faker.helpers.arrayElement([faker.datatype.boolean(), undefined])}, order: {minOrderTZS: faker.helpers.arrayElement([faker.number.int(), undefined]), maxDeliveryFeeTZS: faker.helpers.arrayElement([faker.number.int(), undefined]), autoCancelMinutes: faker.helpers.arrayElement([faker.number.int(), undefined])}, ...overrideResponse})
+
+export const getAdminUpdateSettingsResponseMock = (overrideResponse: Partial<Extract<AdminSettings, object>> = {}): AdminSettings => ({general: {currency: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), timezone: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), language: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])}, booking: {maxLeadTimeHours: faker.helpers.arrayElement([faker.number.int(), undefined]), minCancellationHours: faker.helpers.arrayElement([faker.number.int(), undefined]), noShowFeeTZS: faker.helpers.arrayElement([faker.number.int(), undefined])}, notification: {pushEnabled: faker.helpers.arrayElement([faker.datatype.boolean(), undefined]), smsEnabled: faker.helpers.arrayElement([faker.datatype.boolean(), undefined]), emailEnabled: faker.helpers.arrayElement([faker.datatype.boolean(), undefined])}, order: {minOrderTZS: faker.helpers.arrayElement([faker.number.int(), undefined]), maxDeliveryFeeTZS: faker.helpers.arrayElement([faker.number.int(), undefined]), autoCancelMinutes: faker.helpers.arrayElement([faker.number.int(), undefined])}, ...overrideResponse})
+
+export const getAdminGetGatewaysResponseMock = (): AdminGatewayConfig[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.uuid(), provider: faker.string.alpha({length: {min: 10, max: 20}}), category: faker.helpers.arrayElement(['payment','sms','email','push','logistics'] as const), enabled: faker.datatype.boolean(), config: {}, lastTestedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null])})))
+
+export const getAdminUpdateGatewayResponseMock = (overrideResponse: Partial<Extract<AdminGatewayConfig, object>> = {}): AdminGatewayConfig => ({id: faker.string.uuid(), provider: faker.string.alpha({length: {min: 10, max: 20}}), category: faker.helpers.arrayElement(['payment','sms','email','push','logistics'] as const), enabled: faker.datatype.boolean(), config: {}, lastTestedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), ...overrideResponse})
+
+export const getAdminListContentResponseMock = (): AdminContent[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.uuid(), title: faker.string.alpha({length: {min: 10, max: 20}}), body: faker.string.alpha({length: {min: 10, max: 20}}), type: faker.helpers.arrayElement(['article','page','faq','announcement'] as const), state: faker.helpers.arrayElement(['draft','review','published','archived'] as const), authorId: faker.helpers.arrayElement([faker.string.uuid(), undefined]), publishedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), createdBy: faker.string.uuid(), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', updatedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined])})))
+
+export const getAdminCreateContentResponseMock = (overrideResponse: Partial<Extract<AdminContent, object>> = {}): AdminContent => ({id: faker.string.uuid(), title: faker.string.alpha({length: {min: 10, max: 20}}), body: faker.string.alpha({length: {min: 10, max: 20}}), type: faker.helpers.arrayElement(['article','page','faq','announcement'] as const), state: faker.helpers.arrayElement(['draft','review','published','archived'] as const), authorId: faker.helpers.arrayElement([faker.string.uuid(), undefined]), publishedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), createdBy: faker.string.uuid(), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', updatedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), ...overrideResponse})
+
+export const getAdminUpdateContentStateResponseMock = (overrideResponse: Partial<Extract<AdminContent, object>> = {}): AdminContent => ({id: faker.string.uuid(), title: faker.string.alpha({length: {min: 10, max: 20}}), body: faker.string.alpha({length: {min: 10, max: 20}}), type: faker.helpers.arrayElement(['article','page','faq','announcement'] as const), state: faker.helpers.arrayElement(['draft','review','published','archived'] as const), authorId: faker.helpers.arrayElement([faker.string.uuid(), undefined]), publishedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), createdBy: faker.string.uuid(), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', updatedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), ...overrideResponse})
+
+export const getAdminRunPayrollResponseMock = (overrideResponse: Partial<Extract<AdminPayrollBatch, object>> = {}): AdminPayrollBatch => ({id: faker.string.uuid(), periodStart: faker.date.past().toISOString().slice(0, 10), periodEnd: faker.date.past().toISOString().slice(0, 10), totalTZS: faker.number.int(), count: faker.number.int(), status: faker.helpers.arrayElement(['pending','processing','completed','failed'] as const), dryRun: faker.helpers.arrayElement([faker.datatype.boolean(), undefined]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
+
+export const getAdminListPayrollResponseMock = (): AdminPayrollBatch[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.uuid(), periodStart: faker.date.past().toISOString().slice(0, 10), periodEnd: faker.date.past().toISOString().slice(0, 10), totalTZS: faker.number.int(), count: faker.number.int(), status: faker.helpers.arrayElement(['pending','processing','completed','failed'] as const), dryRun: faker.helpers.arrayElement([faker.datatype.boolean(), undefined]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z'})))
+
+export const getAdminGetConfigResponseMock = (overrideResponse: Partial<Extract<AdminConfigDomain, object>> = {}): AdminConfigDomain => ({domain: faker.string.alpha({length: {min: 10, max: 20}}), config: {}, updatedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
+
+export const getAdminUpdateConfigResponseMock = (overrideResponse: Partial<Extract<AdminConfigDomain, object>> = {}): AdminConfigDomain => ({domain: faker.string.alpha({length: {min: 10, max: 20}}), config: {}, updatedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
+
+export const getAdminListAdminsResponseMock = (): AdminStaffUser[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.uuid(), displayName: faker.string.alpha({length: {min: 10, max: 20}}), role: faker.string.alpha({length: {min: 10, max: 20}}), email: faker.string.alpha({length: {min: 10, max: 20}}), phone: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), status: faker.helpers.arrayElement(['active','suspended'] as const), teamId: faker.helpers.arrayElement([faker.string.uuid(), null]), teamName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), lastLoginAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z'})))
+
+export const getAdminCreateAdminResponseMock = (overrideResponse: Partial<Extract<AdminStaffUser, object>> = {}): AdminStaffUser => ({id: faker.string.uuid(), displayName: faker.string.alpha({length: {min: 10, max: 20}}), role: faker.string.alpha({length: {min: 10, max: 20}}), email: faker.string.alpha({length: {min: 10, max: 20}}), phone: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), status: faker.helpers.arrayElement(['active','suspended'] as const), teamId: faker.helpers.arrayElement([faker.string.uuid(), null]), teamName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), lastLoginAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
+
+export const getAdminUpdateAdminResponseMock = (overrideResponse: Partial<Extract<AdminStaffUser, object>> = {}): AdminStaffUser => ({id: faker.string.uuid(), displayName: faker.string.alpha({length: {min: 10, max: 20}}), role: faker.string.alpha({length: {min: 10, max: 20}}), email: faker.string.alpha({length: {min: 10, max: 20}}), phone: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), status: faker.helpers.arrayElement(['active','suspended'] as const), teamId: faker.helpers.arrayElement([faker.string.uuid(), null]), teamName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), lastLoginAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
+
+export const getAdminSuspendAdminResponseMock = (overrideResponse: Partial<Extract<AdminStaffUser, object>> = {}): AdminStaffUser => ({id: faker.string.uuid(), displayName: faker.string.alpha({length: {min: 10, max: 20}}), role: faker.string.alpha({length: {min: 10, max: 20}}), email: faker.string.alpha({length: {min: 10, max: 20}}), phone: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), status: faker.helpers.arrayElement(['active','suspended'] as const), teamId: faker.helpers.arrayElement([faker.string.uuid(), null]), teamName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), lastLoginAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
+
+export const getAdminListTeamsResponseMock = (): AdminTeam[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.uuid(), name: faker.string.alpha({length: {min: 10, max: 20}}), description: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), memberCount: faker.helpers.arrayElement([faker.number.int(), undefined]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z'})))
+
+export const getAdminCreateTeamResponseMock = (overrideResponse: Partial<Extract<AdminTeam, object>> = {}): AdminTeam => ({id: faker.string.uuid(), name: faker.string.alpha({length: {min: 10, max: 20}}), description: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), memberCount: faker.helpers.arrayElement([faker.number.int(), undefined]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
+
+export const getAdminUpdateTeamResponseMock = (overrideResponse: Partial<Extract<AdminTeam, object>> = {}): AdminTeam => ({id: faker.string.uuid(), name: faker.string.alpha({length: {min: 10, max: 20}}), description: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), memberCount: faker.helpers.arrayElement([faker.number.int(), undefined]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
+
+export const getAdminListPoliciesResponseMock = (): AdminPolicy[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.uuid(), name: faker.string.alpha({length: {min: 10, max: 20}}), type: faker.helpers.arrayElement(['allow','deny'] as const), resource: faker.string.alpha({length: {min: 10, max: 20}}), action: faker.string.alpha({length: {min: 10, max: 20}}), effect: faker.helpers.arrayElement(['allow','deny'] as const), conditions: faker.helpers.arrayElement([faker.helpers.arrayElement([{}, null]), null]), reason: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z'})))
+
+export const getAdminCreatePolicyResponseMock = (overrideResponse: Partial<Extract<AdminPolicy, object>> = {}): AdminPolicy => ({id: faker.string.uuid(), name: faker.string.alpha({length: {min: 10, max: 20}}), type: faker.helpers.arrayElement(['allow','deny'] as const), resource: faker.string.alpha({length: {min: 10, max: 20}}), action: faker.string.alpha({length: {min: 10, max: 20}}), effect: faker.helpers.arrayElement(['allow','deny'] as const), conditions: faker.helpers.arrayElement([faker.helpers.arrayElement([{}, null]), null]), reason: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
+
+export const getAdminListScheduledNotificationsResponseMock = (): AdminScheduledNotification[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.uuid(), title: faker.string.alpha({length: {min: 10, max: 20}}), message: faker.string.alpha({length: {min: 10, max: 20}}), audience: {roles: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), undefined]), regions: faker.helpers.arrayElement([Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), undefined])}, status: faker.helpers.arrayElement(['scheduled','sent','cancelled'] as const), scheduledAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z'})))
+
+export const getAdminGetMapTrafficResponseMock = (overrideResponse: Partial<Extract<AdminMapTrafficOverlay, object>> = {}): AdminMapTrafficOverlay => ({generatedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', incidents: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.helpers.arrayElement([faker.string.uuid(), undefined]), type: faker.helpers.arrayElement([faker.helpers.arrayElement(['accident','road_closure','severe_weather','security_incident','sos'] as const), undefined]), severity: faker.helpers.arrayElement([faker.helpers.arrayElement(['low','medium','high','critical'] as const), undefined]), lat: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), undefined]), lon: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), undefined]), description: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), createdAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined])})), trafficZones: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({zoneId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), severity: faker.helpers.arrayElement([faker.helpers.arrayElement(['normal','moderate','heavy','gridlock'] as const), undefined]), avgSpeedKmh: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), undefined])})), ...overrideResponse})
+
+export const getAdminListHandoffsResponseMock = (): AdminHandoff[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.uuid(), fromHubId: faker.string.uuid(), toHubId: faker.string.uuid(), consignmentId: faker.helpers.arrayElement([faker.string.uuid(), null]), carrierId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), status: faker.helpers.arrayElement(['pending','resolved','seal_broken'] as const), sealIntact: faker.helpers.arrayElement([faker.datatype.boolean(), undefined]), sealBrokenAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), resolvedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z'})))
+
+export const getAdminListFacilityEntriesResponseMock = (): AdminFacilityEntry[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.uuid(), facilityId: faker.string.uuid(), riderId: faker.string.uuid(), riderName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), status: faker.helpers.arrayElement(['granted','denied'] as const), reason: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), scannedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', lat: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), lon: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null])})))
+
+export const getAdminReplyTicketResponseMock = (overrideResponse: Partial<Extract<AdminTicketReplyResult, object>> = {}): AdminTicketReplyResult => ({ticketId: faker.string.uuid(), status: faker.string.alpha({length: {min: 10, max: 20}}), createdAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), ...overrideResponse})
+
+export const getAdminEscalateTicketResponseMock = (overrideResponse: Partial<Extract<AdminTicketEscalateResult, object>> = {}): AdminTicketEscalateResult => ({ticketId: faker.string.uuid(), status: faker.helpers.arrayElement(['escalated'] as const), ...overrideResponse})
+
+export const getAdminCloseTicketResponseMock = (overrideResponse: Partial<Extract<AdminTicketCloseResult, object>> = {}): AdminTicketCloseResult => ({ticketId: faker.string.uuid(), status: faker.helpers.arrayElement(['closed'] as const), ...overrideResponse})
+
+export const getAdminTransferTicketResponseMock = (overrideResponse: Partial<Extract<AdminTicketTransferResult, object>> = {}): AdminTicketTransferResult => ({ticketId: faker.string.uuid(), status: faker.string.alpha({length: {min: 10, max: 20}}), transferredTo: faker.helpers.arrayElement([faker.string.uuid(), undefined]), ...overrideResponse})
 
 
 export const getAdminRiderApprovalDecisionMockHandler = (overrideResponse?: AdminRiderApprovalResult | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<AdminRiderApprovalResult> | AdminRiderApprovalResult), options?: RequestHandlerOptions) => {
@@ -264,6 +353,469 @@ export const getAdminConsignmentMissingDecisionMockHandler = (overrideResponse?:
       })
   }, options)
 }
+
+export const getAdminResetPasswordMockHandler = (overrideResponse?: AdminPasswordResetResult | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<AdminPasswordResetResult> | AdminPasswordResetResult), options?: RequestHandlerOptions) => {
+  return http.post('*/admin/password-reset', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminResetPasswordResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminListScheduledReportsMockHandler = (overrideResponse?: AdminScheduledReport[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminScheduledReport[]> | AdminScheduledReport[]), options?: RequestHandlerOptions) => {
+  return http.get('*/admin/reports/scheduled', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminListScheduledReportsResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminCreateScheduledReportMockHandler = (overrideResponse?: AdminScheduledReport | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<AdminScheduledReport> | AdminScheduledReport), options?: RequestHandlerOptions) => {
+  return http.post('*/admin/reports/scheduled', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminCreateScheduledReportResponseMock(),
+      { status: 201
+      })
+  }, options)
+}
+
+export const getAdminGetQualityScoresMockHandler = (overrideResponse?: AdminQualityScoreConfig | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminQualityScoreConfig> | AdminQualityScoreConfig), options?: RequestHandlerOptions) => {
+  return http.get('*/admin/quality-scores', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminGetQualityScoresResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminUpdateQualityScoresMockHandler = (overrideResponse?: AdminQualityScoreConfig | ((info: Parameters<Parameters<typeof http.put>[1]>[0]) => Promise<AdminQualityScoreConfig> | AdminQualityScoreConfig), options?: RequestHandlerOptions) => {
+  return http.put('*/admin/quality-scores', async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminUpdateQualityScoresResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminGetSettingsMockHandler = (overrideResponse?: AdminSettings | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminSettings> | AdminSettings), options?: RequestHandlerOptions) => {
+  return http.get('*/admin/settings', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminGetSettingsResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminUpdateSettingsMockHandler = (overrideResponse?: AdminSettings | ((info: Parameters<Parameters<typeof http.put>[1]>[0]) => Promise<AdminSettings> | AdminSettings), options?: RequestHandlerOptions) => {
+  return http.put('*/admin/settings', async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminUpdateSettingsResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminGetGatewaysMockHandler = (overrideResponse?: AdminGatewayConfig[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminGatewayConfig[]> | AdminGatewayConfig[]), options?: RequestHandlerOptions) => {
+  return http.get('*/admin/gateways', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminGetGatewaysResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminUpdateGatewayMockHandler = (overrideResponse?: AdminGatewayConfig | ((info: Parameters<Parameters<typeof http.put>[1]>[0]) => Promise<AdminGatewayConfig> | AdminGatewayConfig), options?: RequestHandlerOptions) => {
+  return http.put('*/admin/gateways', async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminUpdateGatewayResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminListContentMockHandler = (overrideResponse?: AdminContent[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminContent[]> | AdminContent[]), options?: RequestHandlerOptions) => {
+  return http.get('*/admin/content', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminListContentResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminCreateContentMockHandler = (overrideResponse?: AdminContent | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<AdminContent> | AdminContent), options?: RequestHandlerOptions) => {
+  return http.post('*/admin/content', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminCreateContentResponseMock(),
+      { status: 201
+      })
+  }, options)
+}
+
+export const getAdminUpdateContentStateMockHandler = (overrideResponse?: AdminContent | ((info: Parameters<Parameters<typeof http.patch>[1]>[0]) => Promise<AdminContent> | AdminContent), options?: RequestHandlerOptions) => {
+  return http.patch('*/admin/content/:contentId/state', async (info: Parameters<Parameters<typeof http.patch>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminUpdateContentStateResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminRunPayrollMockHandler = (overrideResponse?: AdminPayrollBatch | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<AdminPayrollBatch> | AdminPayrollBatch), options?: RequestHandlerOptions) => {
+  return http.post('*/admin/payroll/run', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminRunPayrollResponseMock(),
+      { status: 201
+      })
+  }, options)
+}
+
+export const getAdminListPayrollMockHandler = (overrideResponse?: AdminPayrollBatch[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminPayrollBatch[]> | AdminPayrollBatch[]), options?: RequestHandlerOptions) => {
+  return http.get('*/admin/payroll', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminListPayrollResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminGetConfigMockHandler = (overrideResponse?: AdminConfigDomain | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminConfigDomain> | AdminConfigDomain), options?: RequestHandlerOptions) => {
+  return http.get('*/admin/config/:domain', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminGetConfigResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminUpdateConfigMockHandler = (overrideResponse?: AdminConfigDomain | ((info: Parameters<Parameters<typeof http.put>[1]>[0]) => Promise<AdminConfigDomain> | AdminConfigDomain), options?: RequestHandlerOptions) => {
+  return http.put('*/admin/config/:domain', async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminUpdateConfigResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminListAdminsMockHandler = (overrideResponse?: AdminStaffUser[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminStaffUser[]> | AdminStaffUser[]), options?: RequestHandlerOptions) => {
+  return http.get('*/admin/admins', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminListAdminsResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminCreateAdminMockHandler = (overrideResponse?: AdminStaffUser | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<AdminStaffUser> | AdminStaffUser), options?: RequestHandlerOptions) => {
+  return http.post('*/admin/admins', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminCreateAdminResponseMock(),
+      { status: 201
+      })
+  }, options)
+}
+
+export const getAdminUpdateAdminMockHandler = (overrideResponse?: AdminStaffUser | ((info: Parameters<Parameters<typeof http.patch>[1]>[0]) => Promise<AdminStaffUser> | AdminStaffUser), options?: RequestHandlerOptions) => {
+  return http.patch('*/admin/admins/:adminId', async (info: Parameters<Parameters<typeof http.patch>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminUpdateAdminResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminSuspendAdminMockHandler = (overrideResponse?: AdminStaffUser | ((info: Parameters<Parameters<typeof http.delete>[1]>[0]) => Promise<AdminStaffUser> | AdminStaffUser), options?: RequestHandlerOptions) => {
+  return http.delete('*/admin/admins/:adminId', async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminSuspendAdminResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminListTeamsMockHandler = (overrideResponse?: AdminTeam[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminTeam[]> | AdminTeam[]), options?: RequestHandlerOptions) => {
+  return http.get('*/admin/teams', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminListTeamsResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminCreateTeamMockHandler = (overrideResponse?: AdminTeam | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<AdminTeam> | AdminTeam), options?: RequestHandlerOptions) => {
+  return http.post('*/admin/teams', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminCreateTeamResponseMock(),
+      { status: 201
+      })
+  }, options)
+}
+
+export const getAdminUpdateTeamMockHandler = (overrideResponse?: AdminTeam | ((info: Parameters<Parameters<typeof http.patch>[1]>[0]) => Promise<AdminTeam> | AdminTeam), options?: RequestHandlerOptions) => {
+  return http.patch('*/admin/teams/:teamId', async (info: Parameters<Parameters<typeof http.patch>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminUpdateTeamResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminDeleteTeamMockHandler = (overrideResponse?: void | ((info: Parameters<Parameters<typeof http.delete>[1]>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
+  return http.delete('*/admin/teams/:teamId', async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
+  if (typeof overrideResponse === 'function') {await overrideResponse(info); }
+
+    return new HttpResponse(null,
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminListPoliciesMockHandler = (overrideResponse?: AdminPolicy[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminPolicy[]> | AdminPolicy[]), options?: RequestHandlerOptions) => {
+  return http.get('*/admin/policies', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminListPoliciesResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminCreatePolicyMockHandler = (overrideResponse?: AdminPolicy | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<AdminPolicy> | AdminPolicy), options?: RequestHandlerOptions) => {
+  return http.post('*/admin/policies', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminCreatePolicyResponseMock(),
+      { status: 201
+      })
+  }, options)
+}
+
+export const getAdminListScheduledNotificationsMockHandler = (overrideResponse?: AdminScheduledNotification[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminScheduledNotification[]> | AdminScheduledNotification[]), options?: RequestHandlerOptions) => {
+  return http.get('*/admin/notifications/scheduled', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminListScheduledNotificationsResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminCancelScheduledNotificationMockHandler = (overrideResponse?: void | ((info: Parameters<Parameters<typeof http.delete>[1]>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
+  return http.delete('*/admin/notifications/scheduled', async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
+  if (typeof overrideResponse === 'function') {await overrideResponse(info); }
+
+    return new HttpResponse(null,
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminGetMapTrafficMockHandler = (overrideResponse?: AdminMapTrafficOverlay | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminMapTrafficOverlay> | AdminMapTrafficOverlay), options?: RequestHandlerOptions) => {
+  return http.get('*/admin/map/traffic', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminGetMapTrafficResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminListHandoffsMockHandler = (overrideResponse?: AdminHandoff[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminHandoff[]> | AdminHandoff[]), options?: RequestHandlerOptions) => {
+  return http.get('*/admin/handoffs', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminListHandoffsResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminListFacilityEntriesMockHandler = (overrideResponse?: AdminFacilityEntry[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminFacilityEntry[]> | AdminFacilityEntry[]), options?: RequestHandlerOptions) => {
+  return http.get('*/admin/facilities/:facilityId/entries', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminListFacilityEntriesResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminReplyTicketMockHandler = (overrideResponse?: AdminTicketReplyResult | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<AdminTicketReplyResult> | AdminTicketReplyResult), options?: RequestHandlerOptions) => {
+  return http.post('*/admin/support/tickets/:ticketId/reply', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminReplyTicketResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminEscalateTicketMockHandler = (overrideResponse?: AdminTicketEscalateResult | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<AdminTicketEscalateResult> | AdminTicketEscalateResult), options?: RequestHandlerOptions) => {
+  return http.post('*/admin/support/tickets/:ticketId/escalate', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminEscalateTicketResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminCloseTicketMockHandler = (overrideResponse?: AdminTicketCloseResult | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<AdminTicketCloseResult> | AdminTicketCloseResult), options?: RequestHandlerOptions) => {
+  return http.post('*/admin/support/tickets/:ticketId/close', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminCloseTicketResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminTransferTicketMockHandler = (overrideResponse?: AdminTicketTransferResult | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<AdminTicketTransferResult> | AdminTicketTransferResult), options?: RequestHandlerOptions) => {
+  return http.post('*/admin/support/tickets/:ticketId/transfer', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminTransferTicketResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminListGeofencesResponseMock = (): AdminGeofence[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.uuid(), name: faker.string.alpha({length: {min: 10, max: 20}}), type: faker.helpers.arrayElement(['hub_zone','delivery_zone','restricted_zone','surge_zone'] as const), active: faker.datatype.boolean(), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...{}})))
+
+export const getAdminListGeofencesMockHandler = (overrideResponse?: AdminGeofence[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminGeofence[]> | AdminGeofence[]), options?: RequestHandlerOptions) => {
+  return http.get('*/admin/geofences', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminListGeofencesResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminCreateGeofenceResponseMock = (overrideResponse: Partial<Extract<AdminGeofence, object>> = {}): AdminGeofence => ({id: faker.string.uuid(), name: faker.string.alpha({length: {min: 10, max: 20}}), type: faker.helpers.arrayElement(['hub_zone','delivery_zone','restricted_zone','surge_zone'] as const), active: faker.datatype.boolean(), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
+
+export const getAdminCreateGeofenceMockHandler = (overrideResponse?: AdminGeofence | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<AdminGeofence> | AdminGeofence), options?: RequestHandlerOptions) => {
+  return http.post('*/admin/geofences', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminCreateGeofenceResponseMock(),
+      { status: 201
+      })
+  }, options)
+}
+
+export const getAdminDeleteGeofenceMockHandler = (overrideResponse?: void | ((info: Parameters<Parameters<typeof http.delete>[1]>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
+  return http.delete('*/admin/geofences/:geofenceId', async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : undefined,
+      { status: 200
+      })
+  }, options)
+}
+
+export const getAdminGetLimitsResponseMock = (overrideResponse: Partial<Extract<PlatformLimits, object>> = {}): PlatformLimits => ({twoPersonThresholdTzs: faker.number.int(), maxRefundAmountTzs: faker.number.int(), maxExportRows: faker.number.int(), sessionTimeoutMinutes: faker.number.int(), maxLoginAttempts: faker.number.int(), rateLimitPerMinute: faker.number.int(), ...overrideResponse})
+
+export const getAdminGetLimitsMockHandler = (overrideResponse?: PlatformLimits | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<PlatformLimits> | PlatformLimits), options?: RequestHandlerOptions) => {
+  return http.get('*/admin/limits', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getAdminGetLimitsResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
 export const getAdminPendingMock = () => [
   getAdminRiderApprovalDecisionMockHandler(),
   getAdminProviderApprovalDecisionMockHandler(),
@@ -280,5 +832,44 @@ export const getAdminPendingMock = () => [
   getAdminHandoffSealDecisionMockHandler(),
   getAdminLogisticsAnomalyDecisionMockHandler(),
   getAdminCancelOrderMockHandler(),
-  getAdminConsignmentMissingDecisionMockHandler()
+  getAdminConsignmentMissingDecisionMockHandler(),
+  getAdminResetPasswordMockHandler(),
+  getAdminListScheduledReportsMockHandler(),
+  getAdminCreateScheduledReportMockHandler(),
+  getAdminGetQualityScoresMockHandler(),
+  getAdminUpdateQualityScoresMockHandler(),
+  getAdminGetSettingsMockHandler(),
+  getAdminUpdateSettingsMockHandler(),
+  getAdminGetGatewaysMockHandler(),
+  getAdminUpdateGatewayMockHandler(),
+  getAdminListContentMockHandler(),
+  getAdminCreateContentMockHandler(),
+  getAdminUpdateContentStateMockHandler(),
+  getAdminRunPayrollMockHandler(),
+  getAdminListPayrollMockHandler(),
+  getAdminGetConfigMockHandler(),
+  getAdminUpdateConfigMockHandler(),
+  getAdminListAdminsMockHandler(),
+  getAdminCreateAdminMockHandler(),
+  getAdminUpdateAdminMockHandler(),
+  getAdminSuspendAdminMockHandler(),
+  getAdminListTeamsMockHandler(),
+  getAdminCreateTeamMockHandler(),
+  getAdminUpdateTeamMockHandler(),
+  getAdminDeleteTeamMockHandler(),
+  getAdminListPoliciesMockHandler(),
+  getAdminCreatePolicyMockHandler(),
+  getAdminListScheduledNotificationsMockHandler(),
+  getAdminCancelScheduledNotificationMockHandler(),
+  getAdminGetMapTrafficMockHandler(),
+  getAdminListHandoffsMockHandler(),
+  getAdminListFacilityEntriesMockHandler(),
+  getAdminReplyTicketMockHandler(),
+  getAdminEscalateTicketMockHandler(),
+  getAdminCloseTicketMockHandler(),
+  getAdminTransferTicketMockHandler(),
+  getAdminListGeofencesMockHandler(),
+  getAdminCreateGeofenceMockHandler(),
+  getAdminDeleteGeofenceMockHandler(),
+  getAdminGetLimitsMockHandler()
 ]

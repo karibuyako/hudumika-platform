@@ -223,7 +223,7 @@ func TestChatSendListAndValidation(t *testing.T) {
 		t.Fatalf("empty send = %d, want 422 (%s)", rec.Code, rec.Body)
 	}
 	assertErrorCode(t, rec, "MESSAGE_EMPTY")
-	tooLong := `{"body":"` + strings.Repeat("x", chatMaxMessageLength+1) + `"}`
+	tooLong := `{"body":"` + strings.Repeat("x", GetSettings().ChatMaxMessageLength+1) + `"}`
 	rec = authedDo(t, h, http.MethodPost, "/conversations/"+conv.Id.String()+"/messages", tooLong, customerToken)
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("long send = %d, want 422", rec.Code)

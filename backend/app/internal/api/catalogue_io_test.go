@@ -114,8 +114,9 @@ func TestImportCatalogueTooManyRowsRejectedBeforeDB(t *testing.T) {
 	s := newTestServer()
 	token := tokenFor(t, s, "+255700000006", RoleMerchant, false)
 
-	rows := make([]string, 0, maxImportRows+1)
-	for i := 0; i < maxImportRows+1; i++ {
+	maxRows := GetSettings().MaxImportRows
+	rows := make([]string, 0, maxRows+1)
+	for i := 0; i < maxRows+1; i++ {
 		rows = append(rows, fmt.Sprintf(`{"name":"Item %d","priceTZS":100,"category":""}`, i))
 	}
 	rec := authedPOSTJSON(t, s.Router(), "/catalogues/import",

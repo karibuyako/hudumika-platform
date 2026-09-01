@@ -44,7 +44,7 @@ export default function Splash() {
         // eslint-disable-next-line react-hooks/refs
         style={{ opacity, transform: [{ scale }], alignItems: 'center', gap: Spacing.lg }}>
         <View style={styles.logo}>
-          <Icon name="flame" size={44} color={Colors.primary} />
+          <Icon name="leaf" size={44} color={Colors.primary} />
         </View>
         <View style={{ alignItems: 'center' }}>
           <Text style={styles.title}>Merchant Pro</Text>

@@ -293,6 +293,47 @@ function VehicleDrawer({ vehicle, onClose }: { vehicle: Vehicle; onClose: () => 
             <span className="meta-value mono">{vehicle.currentTripId ?? '—'}</span>
           </div>
         </div>
+
+        {vehicle.capacity?.compartments && vehicle.capacity.compartments.length > 0 && (
+          <>
+            <h3>Compartments</h3>
+            <div className="table-wrap">
+              <table className="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Compartment</th>
+                    <th>Capacity</th>
+                    <th>Used</th>
+                    <th>Weight</th>
+                    <th>Volume</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {vehicle.capacity.compartments.map((comp, i) => (
+                    <tr key={i}>
+                      <td><span className="tag">{comp.name}</span></td>
+                      <td className="mono">{comp.capacity}</td>
+                      <td className="mono">{comp.used ?? 0}</td>
+                      <td className="mono">{comp.usedWeightKg != null ? `${comp.usedWeightKg} kg` : '—'}</td>
+                      <td className="mono">{comp.usedVolumeL != null ? `${comp.usedVolumeL} L` : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+
+        {vehicle.permittedRoutes && vehicle.permittedRoutes.length > 0 && (
+          <>
+            <h3>Permitted routes</h3>
+            <div>
+              {vehicle.permittedRoutes.map((route) => (
+                <span key={route} className="tag" style={{ marginRight: 4 }}>{route}</span>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       <p className="muted small">

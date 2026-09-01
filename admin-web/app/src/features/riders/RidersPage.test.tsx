@@ -142,7 +142,7 @@ describe('RidersPage', () => {
     expect(within(dialog).queryByRole('button', { name: 'Request changes' })).not.toBeInTheDocument()
   })
 
-  it('shows the pending-endpoint notice after confirming a verification decision', async () => {
+  it('approves a rider via the live endpoint and shows success', async () => {
     seedRiders([{ ...RIDER, id: 'rdr_9', verification: 'changes_requested' }])
     render(<RidersPage />)
 
@@ -154,10 +154,26 @@ describe('RidersPage', () => {
     fireEvent.change(within(prompt).getByLabelText('Reason'), { target: { value: 'Documents verified' } })
     fireEvent.click(within(prompt).getByRole('button', { name: 'Confirm' }))
 
+    expect(await screen.findByText('Rider approved')).toBeInTheDocument()
     expect(screen.queryByRole('dialog', { name: 'Approve rider' })).not.toBeInTheDocument()
-    expect(within(drawer).getByText('PENDING_ENDPOINT')).toBeInTheDocument()
-    expect(within(drawer).getByText(/POST \/admin\/riders\/\{riderId\}\/approval/)).toBeInTheDocument()
-    expect(within(drawer).getByText(/nothing was sent/)).toBeInTheDocument()
+    expect(within(drawer).queryByText('PENDING_ENDPOINT')).not.toBeInTheDocument()
+  })
+
+  it('shows an error when rider approval fails', async () => {
+    seedRiders([{ ...RIDER, id: 'rdr_9', verification: 'pending' }])
+    server.use(http.post('/admin/riders/:riderId/approval', async () => HttpResponse.json({ code: 'RIDER_ALREADY_DECIDED', message: 'already decided', requestId: 'req_dup' }, { status: 409 })))
+    render(<RidersPage />)
+
+    fireEvent.click(await screen.findByText('Asha Mwakalinga'))
+    const drawer = await screen.findByRole('dialog')
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Approve' }))
+
+    const prompt = await screen.findByRole('dialog', { name: 'Approve rider' })
+    fireEvent.change(within(prompt).getByLabelText('Reason'), { target: { value: 'Try again' } })
+    fireEvent.click(within(prompt).getByRole('button', { name: 'Confirm' }))
+
+    expect(await within(prompt).findByText(/already decided/i)).toBeInTheDocument()
+    expect(within(prompt).getByText(/req_dup/)).toBeInTheDocument()
   })
 
   it('shows the per-entity audit trail in the drawer', async () => {

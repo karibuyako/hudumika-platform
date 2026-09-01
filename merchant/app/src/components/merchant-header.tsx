@@ -16,7 +16,7 @@ export function MerchantHeader() {
   return (
     <View style={styles.header}>
       <View style={styles.logo}>
-        <Icon name="flame" size={22} color={Colors.primary} />
+        <Icon name="leaf" size={22} color={Colors.primary} />
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={styles.name} numberOfLines={1}>{store.name}</Text>

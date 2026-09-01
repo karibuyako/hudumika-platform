@@ -18,10 +18,11 @@ import { can } from '../../lib/permissions'
 import { useSession } from '../../lib/session'
 import { toLocal } from '../../lib/time'
 import { useRefetchOnFocus } from '../../lib/use-refetch-on-focus'
+import { getLimits } from '../../lib/limits'
 
 type Bucket = 'all' | 'pending' | 'approved' | 'rejected'
 
-const APPROVAL_THRESHOLD_TZS = 500000
+const APPROVAL_THRESHOLD_TZS = getLimits().maxRefundAmountTzs
 
 const BUCKETS: Array<{ key: Bucket; label: string; match: (r: RefundRequest) => boolean }> = [
   { key: 'all', label: 'All', match: () => true },

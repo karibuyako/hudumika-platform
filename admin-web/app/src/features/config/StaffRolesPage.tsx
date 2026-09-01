@@ -1,9 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { adminCreateTwoPersonApproval, adminListStaffRoles, type AdminRoleDefinition } from '@hudumika/contract'
 import { parseApiError } from '../../lib/api-error'
-import { can } from '../../lib/permissions'
+import { can, loadPermissionCatalog } from '../../lib/permissions'
 import { useSession } from '../../lib/session'
 import { toLocal } from '../../lib/time'
+import { loadStaffRoles } from '../../lib/roles'
 import { DetailDrawer } from '../../components/DetailDrawer'
 import { EmptyState } from '../../components/EmptyState'
 import { ErrorState } from '../../components/ErrorState'
@@ -34,8 +35,13 @@ export function StaffRolesPage() {
   useEffect(() => {
     setError(null)
     adminListStaffRoles().then((res) => {
-      if (res.status === 200) setRoles(res.data)
-      else setError(parseApiError(res, 'Failed to load staff roles').message)
+      if (res.status === 200) {
+        setRoles(res.data)
+        loadStaffRoles().catch(() => undefined)
+        loadPermissionCatalog().catch(() => undefined)
+      } else {
+        setError(parseApiError(res, 'Failed to load staff roles').message)
+      }
     })
   }, [retryKey])
 

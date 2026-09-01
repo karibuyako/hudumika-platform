@@ -1,7 +1,9 @@
 package api
 
 import (
+	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"time"
 
@@ -169,8 +171,25 @@ func (s *Server) ReportRiderLocation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var body gen.ReportRiderLocationJSONRequestBody
-	if err := decodeJSON(r, &body); err != nil {
+	bodyBytes, err := io.ReadAll(io.LimitReader(r.Body, GetSettings().MaxBodyBytes+1))
+	if err != nil {
+		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Invalid request body")
+		return
+	}
+	if int64(len(bodyBytes)) > GetSettings().MaxBodyBytes {
+		writeError(w, http.StatusRequestEntityTooLarge, "VALIDATION_FAILED", "Request body too large")
+		return
+	}
+
+	var body struct {
+		Lat       float32                                  `json:"lat"`
+		Lon       float32                                  `json:"lon"`
+		SpeedKmh  *float32                                 `json:"speedKmh,omitempty"`
+		Heading   *float32                                 `json:"heading,omitempty"`
+		AccuracyM *float32                                 `json:"accuracyM,omitempty"`
+		Activity  *gen.ReportRiderLocationJSONBodyActivity `json:"activity,omitempty"`
+	}
+	if err := json.Unmarshal(bodyBytes, &body); err != nil {
 		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Invalid request body")
 		return
 	}
@@ -201,7 +220,11 @@ func (s *Server) ReportRiderLocation(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
-	if err := reg.Location(r.Context(), rider.ID, float64(body.Lat), float64(body.Lon)); err != nil {
+	var activity string
+	if body.Activity != nil {
+		activity = string(*body.Activity)
+	}
+	if err := reg.Location(r.Context(), rider.ID, float64(body.Lat), float64(body.Lon), body.SpeedKmh, body.Heading, body.AccuracyM, activity); err != nil {
 		s.logger.Error("location store failed", "rider", rider.ID, "error", err)
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return

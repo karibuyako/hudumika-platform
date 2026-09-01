@@ -154,6 +154,34 @@ export function HubDashboardSection({ hubId }: { hubId: string }) {
           <span className="meta-value">{dash.vehiclesPresent ?? '—'}</span>
         </div>
       </div>
+
+      {dash.performance && (
+        <>
+          <h3>Performance</h3>
+          <div className="meta-grid">
+            <div className="meta-item">
+              <span className="meta-label">Inbound throughput</span>
+              <span className="meta-value mono">{dash.performance.inboundThroughput ?? '—'} pkgs/hr</span>
+            </div>
+            <div className="meta-item">
+              <span className="meta-label">Outbound throughput</span>
+              <span className="meta-value mono">{dash.performance.outboundThroughput ?? '—'} pkgs/hr</span>
+            </div>
+            <div className="meta-item">
+              <span className="meta-label">Sortation completion</span>
+              <span className="meta-value mono">{dash.performance.sortationCompletionPct != null ? `${Math.round(dash.performance.sortationCompletionPct)}%` : '—'}</span>
+            </div>
+            <div className="meta-item">
+              <span className="meta-label">Exception rate</span>
+              <span className="meta-value mono">{dash.performance.exceptionRate != null ? `${dash.performance.exceptionRate.toFixed(1)}%` : '—'}</span>
+            </div>
+            <div className="meta-item">
+              <span className="meta-label">Capacity trend</span>
+              <span className="meta-value">{dash.performance.capacityTrend ?? '—'}</span>
+            </div>
+          </div>
+        </>
+      )}
     </>
   )
 }

@@ -4,6 +4,7 @@ import {
   adminCreateTwoPersonApproval,
   adminEscalateShipment,
   adminFreezeShipment,
+  adminLogisticsAnomalyDecision,
   adminReassignShipment,
   getShipmentCustody,
   listShipments,
@@ -22,7 +23,6 @@ import { ReasonPrompt } from '../../components/ReasonPrompt'
 import { StatusPill } from '../../components/StatusPill'
 import { parseApiError, type ApiErrorInfo } from '../../lib/api-error'
 import { formatTZS } from '../../lib/money'
-import { PENDING_ENDPOINT_CODE, pendingEndpointNotice } from '../../lib/pending-endpoints'
 import { can } from '../../lib/permissions'
 import { useSession } from '../../lib/session'
 import { toLocal } from '../../lib/time'
@@ -63,7 +63,6 @@ export function ShipmentsPage() {
   const [prompt, setPrompt] = useState<ActionKind | null>(null)
   const [promptError, setPromptError] = useState<ApiErrorInfo | null>(null)
   const [busy, setBusy] = useState(false)
-  const [anomalyPending, setAnomalyPending] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [retryKey, setRetryKey] = useState(0)
@@ -104,12 +103,6 @@ export function ShipmentsPage() {
     if (!target || !kind) return
     setBusy(true)
     setPromptError(null)
-    if (kind === 'anomaly_dismiss' || kind === 'anomaly_freeze') {
-      setPrompt(null)
-      setAnomalyPending(true)
-      setBusy(false)
-      return
-    }
     if (kind === 'unfreeze') {
       const res = await adminCreateTwoPersonApproval({
         actionType: 'release_hold',
@@ -229,12 +222,10 @@ export function ShipmentsPage() {
           canHold={canHold}
           canReassign={canReassign}
           canResolveAnomaly={canResolveAnomaly}
-          anomalyPending={anomalyPending}
           onClose={() => setSelected(null)}
           onAction={(kind) => {
             setToast(null)
             setPromptError(null)
-            setAnomalyPending(false)
             setPrompt(kind)
           }}
         />
@@ -278,27 +269,6 @@ export function ShipmentsPage() {
           onClose={() => setPrompt(null)}
         />
       )}
-      {prompt === 'anomaly_dismiss' && (
-        <ReasonPrompt
-          title="Dismiss anomaly"
-          description="Marks the machine-fed anomaly as reviewed and dismisses it without action."
-          busy={busy}
-          error={promptError}
-          onSubmit={(reason) => runAction(reason)}
-          onClose={() => setPrompt(null)}
-        />
-      )}
-      {prompt === 'anomaly_freeze' && (
-        <ReasonPrompt
-          title="Freeze with evidence"
-          description="Holds the shipment with the evidence collected from the anomaly feed."
-          tone="danger"
-          busy={busy}
-          error={promptError}
-          onSubmit={(reason) => runAction(reason)}
-          onClose={() => setPrompt(null)}
-        />
-      )}
     </div>
   )
 }
@@ -308,7 +278,6 @@ function ShipmentDrawer({
   canHold,
   canReassign,
   canResolveAnomaly,
-  anomalyPending,
   onClose,
   onAction,
 }: {
@@ -316,7 +285,6 @@ function ShipmentDrawer({
   canHold: boolean
   canReassign: boolean
   canResolveAnomaly: boolean
-  anomalyPending: boolean
   onClose: () => void
   onAction: (kind: ActionKind) => void
 }) {
@@ -337,7 +305,6 @@ function ShipmentDrawer({
           canHold={canHold}
           canReassign={canReassign}
           canResolveAnomaly={canResolveAnomaly}
-          anomalyPending={anomalyPending}
           onAction={onAction}
         />
       ) : (
@@ -354,17 +321,38 @@ function OverviewTab({
   canHold,
   canReassign,
   canResolveAnomaly,
-  anomalyPending,
   onAction,
 }: {
   shipment: Shipment
   canHold: boolean
   canReassign: boolean
   canResolveAnomaly: boolean
-  anomalyPending: boolean
   onAction: (kind: ActionKind) => void
 }) {
   const s = shipment
+  const [anomalyId, setAnomalyId] = useState('')
+  const [anomalyPrompt, setAnomalyPrompt] = useState<'dismiss' | 'freeze' | null>(null)
+  const [anomalyBusy, setAnomalyBusy] = useState(false)
+  const [anomalyError, setAnomalyError] = useState<ApiErrorInfo | null>(null)
+  const [anomalyToast, setAnomalyToast] = useState<string | null>(null)
+
+  async function handleAnomalyDecision(decision: 'dismiss' | 'freeze', reason: string) {
+    if (!anomalyId.trim()) {
+      setAnomalyError({ code: 'VALIDATION_FAILED', message: 'Anomaly ID is required', retriable: false, status: 422 } as ApiErrorInfo)
+      return
+    }
+    setAnomalyBusy(true)
+    setAnomalyError(null)
+    const res = await adminLogisticsAnomalyDecision(anomalyId.trim(), { decision, reason } as never)
+    setAnomalyBusy(false)
+    if (res.status === 200) {
+      setAnomalyToast(`Anomaly ${decision}ed`)
+      setAnomalyPrompt(null)
+    } else {
+      setAnomalyError(parseApiError(res, 'Anomaly decision failed'))
+    }
+  }
+
   return (
     <>
       <div className="meta-grid">
@@ -448,29 +436,60 @@ function OverviewTab({
         <>
           <div className="detail-section">
             <h3>Anomaly decision</h3>
-            <div className="form-actions">
-              <button type="button" className="btn" onClick={() => onAction('anomaly_dismiss')}>
+            {anomalyToast && <Toast message={anomalyToast} />}
+            <label className="field-label" htmlFor="anomaly-id">
+              Anomaly ID
+            </label>
+            <input
+              id="anomaly-id"
+              className="field"
+              value={anomalyId}
+              onChange={(e) => setAnomalyId(e.target.value)}
+              placeholder="ano_..."
+            />
+            <div className="form-actions" style={{ marginTop: 8 }}>
+              <button type="button" className="btn" onClick={() => { setAnomalyError(null); setAnomalyPrompt('dismiss') }}>
                 Dismiss
               </button>
-              <button type="button" className="btn btn-danger" onClick={() => onAction('anomaly_freeze')}>
+              <button type="button" className="btn btn-danger" onClick={() => { setAnomalyError(null); setAnomalyPrompt('freeze') }}>
                 Freeze with evidence
               </button>
             </div>
+            {anomalyError && (
+              <div className="inline-error" role="alert" style={{ marginTop: 8 }}>
+                <div>{anomalyError.message}</div>
+                <div className="muted small">
+                  {anomalyError.code}
+                  {anomalyError.requestId ? ` · request ${anomalyError.requestId}` : ''}
+                </div>
+              </div>
+            )}
           </div>
           <p className="muted small">
             Anomalies are machine-fed; decisions are audited (anomaly.*) and freeze holds custody.
           </p>
+          {anomalyPrompt === 'dismiss' && (
+            <ReasonPrompt
+              title="Dismiss anomaly"
+              description="Marks the machine-fed anomaly as reviewed and dismisses it without action."
+              busy={anomalyBusy}
+              error={anomalyError}
+              onSubmit={(reason) => void handleAnomalyDecision('dismiss', reason)}
+              onClose={() => { if (!anomalyBusy) setAnomalyPrompt(null) }}
+            />
+          )}
+          {anomalyPrompt === 'freeze' && (
+            <ReasonPrompt
+              title="Freeze with evidence"
+              description="Holds the shipment with the evidence collected from the anomaly feed."
+              tone="danger"
+              busy={anomalyBusy}
+              error={anomalyError}
+              onSubmit={(reason) => void handleAnomalyDecision('freeze', reason)}
+              onClose={() => { if (!anomalyBusy) setAnomalyPrompt(null) }}
+            />
+          )}
         </>
-      )}
-
-      {anomalyPending && (
-        <div className="state-card">
-          <div className="state-title">
-            <span className="mono">{PENDING_ENDPOINT_CODE}</span>
-          </div>
-          <div className="state-message">{pendingEndpointNotice('anomaly_resolve')}</div>
-          <p className="muted small">This action is documented for backend implementation — nothing was sent.</p>
-        </div>
       )}
 
       <p className="muted small">

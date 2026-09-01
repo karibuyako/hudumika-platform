@@ -2,24 +2,89 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"net/http"
+	"sync"
 	"time"
-
-	"github.com/go-chi/chi/v5/middleware"
-
-	"github.com/hudumika/api-backend/internal/store"
 )
 
-const (
-	idempotencyTTL      = 24 * time.Hour
-	idempotencyPollWait = 50 * time.Millisecond
-	idempotencyPollMax  = 10
-)
+type idempotencyEntry struct {
+	ResponseCode int
+	ResponseBody []byte
+	CreatedAt    time.Time
+}
 
-// Idempotency gives mutations replay semantics for the Idempotency-Key
-// header: the first request with a given key executes and its response is
-// stored; duplicates replay the stored response without re-executing the
-// handler. Requests without the header pass through untouched.
+// IdempotencyStore provides in-memory idempotency key storage backed by sync.Map.
+type IdempotencyStore struct {
+	entries sync.Map
+	ttl     time.Duration
+}
+
+func NewIdempotencyStore(ttl time.Duration) *IdempotencyStore {
+	return &IdempotencyStore{ttl: ttl}
+}
+
+// Check returns the cached response if the key was already processed.
+func (s *IdempotencyStore) Check(_ context.Context, key string) (code int, body []byte, ok bool) {
+	v, found := s.entries.Load(key)
+	if !found {
+		return 0, nil, false
+	}
+	entry := v.(*idempotencyEntry)
+	if time.Since(entry.CreatedAt) > s.ttl {
+		s.entries.Delete(key)
+		return 0, nil, false
+	}
+	return entry.ResponseCode, entry.ResponseBody, true
+}
+
+// Store saves a response for the given key.
+func (s *IdempotencyStore) Store(_ context.Context, key string, code int, body []byte) {
+	s.entries.Store(key, &idempotencyEntry{
+		ResponseCode: code,
+		ResponseBody: append([]byte(nil), body...),
+		CreatedAt:    time.Now(),
+	})
+}
+
+// Cleanup removes expired entries (call in background goroutine).
+func (s *IdempotencyStore) Cleanup() {
+	now := time.Now()
+	s.entries.Range(func(key, value any) bool {
+		entry := value.(*idempotencyEntry)
+		if now.Sub(entry.CreatedAt) > s.ttl {
+			s.entries.Delete(key)
+		}
+		return true
+	})
+}
+
+// idemRecorder captures the status code and body written by the handler.
+type idemRecorder struct {
+	http.ResponseWriter
+	status int
+	buf    bytes.Buffer
+}
+
+func (r *idemRecorder) WriteHeader(code int) {
+	r.status = code
+	r.ResponseWriter.WriteHeader(code)
+}
+
+func (r *idemRecorder) Write(b []byte) (int, error) {
+	if r.status == 0 {
+		r.status = http.StatusOK
+	}
+	_, _ = r.buf.Write(b)
+	return r.ResponseWriter.Write(b)
+}
+
+// Unwrap returns the underlying ResponseWriter for flush/compress support.
+func (r *idemRecorder) Unwrap() http.ResponseWriter {
+	return r.ResponseWriter
+}
+
+// Idempotency is the middleware that enforces idempotency via the Idempotency-Key header.
 func (s *Server) Idempotency(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key := r.Header.Get("Idempotency-Key")
@@ -28,101 +93,32 @@ func (s *Server) Idempotency(next http.Handler) http.Handler {
 			return
 		}
 
-		scoped := s.idempotencyKey(r, key)
-		ok, err := s.stores.Idem.Begin(r.Context(), scoped, idempotencyTTL)
-		if err != nil {
-			// Platform rule: degrade — log and execute without replay
-			// protection rather than fail the request.
-			s.logger.Warn("idempotency store unavailable — executing without replay protection", "error", err)
-			next.ServeHTTP(w, r)
-			return
-		}
-		if ok {
-			s.executeIdempotent(next, w, r, scoped)
-			return
-		}
-		s.replayIdempotent(next, w, r, scoped)
-	})
-}
-
-// executeIdempotent runs the handler once and records its response so later
-// duplicates can replay it. 5xx responses are not stored: the client may
-// retry.
-func (s *Server) executeIdempotent(next http.Handler, w http.ResponseWriter, r *http.Request, key string) {
-	rec := &idemRecorder{WrapResponseWriter: middleware.NewWrapResponseWriter(w, r.ProtoMajor)}
-	next.ServeHTTP(rec, r)
-
-	if rec.Status() >= 500 {
-		return
-	}
-	resp := store.IdempotentResponse{
-		Status:  rec.Status(),
-		Headers: rec.Header().Clone(),
-		Body:    append([]byte(nil), rec.buf.Bytes()...),
-	}
-	if err := s.stores.Idem.Store(r.Context(), key, resp, idempotencyTTL); err != nil {
-		s.logger.Error("idempotency store failed", "error", err)
-	}
-}
-
-// replayIdempotent replays the stored response for a duplicate key. While the
-// first execution is still in flight the claim reads as pending, so poll
-// briefly before giving up.
-func (s *Server) replayIdempotent(next http.Handler, w http.ResponseWriter, r *http.Request, key string) {
-	for i := 0; i <= idempotencyPollMax; i++ {
-		if i > 0 {
-			time.Sleep(idempotencyPollWait)
-		}
-		resp, err := s.stores.Idem.Get(r.Context(), key)
-		if err != nil {
-			s.logger.Warn("idempotency store unavailable — executing without replay protection", "error", err)
-			next.ServeHTTP(w, r)
-			return
-		}
-		if resp != nil {
-			s.RecordIdempotencyHit(r.URL.Path)
-			replayIdempotentResponse(w, resp)
-			return
-		}
-	}
-	writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
-}
-
-// replayIdempotentResponse replays a stored response exactly: headers,
-// status, and body.
-func replayIdempotentResponse(w http.ResponseWriter, resp *store.IdempotentResponse) {
-	for name, values := range resp.Headers {
-		for _, v := range values {
-			w.Header().Add(name, v)
-		}
-	}
-	w.WriteHeader(resp.Status)
-	_, _ = w.Write(resp.Body)
-}
-
-// idempotencyKey scopes the client nonce to the authenticated subject (or the
-// client IP when unauthenticated), the method, and the URL path, so the same
-// header value cannot be replayed across users or actions.
-func (s *Server) idempotencyKey(r *http.Request, key string) string {
-	subject := r.RemoteAddr
-	if token := bearerToken(r); token != "" {
-		if claims, err := s.parseToken(token); err == nil && claims.Subject != "" {
+		// Scope the key to the authenticated subject, method, and path.
+		subject := r.RemoteAddr
+		if claims, ok := ClaimsFromContext(r.Context()); ok && claims.Subject != "" {
 			subject = claims.Subject
+		} else if token := bearerToken(r); token != "" {
+			if claims, err := s.parseToken(token); err == nil && claims.Subject != "" {
+				subject = claims.Subject
+			}
 		}
-	}
-	return sha256Hex(subject + "|" + r.Method + "|" + r.URL.Path + "|" + key)
-}
+		scopedKey := sha256Hex(subject + "|" + r.Method + "|" + r.URL.Path + "|" + key)
 
-// idemRecorder captures the body written by the handler so it can be stored
-// and replayed byte-for-byte. It delegates everything to the wrapped
-// WrapResponseWriter (status capture, flusher, unwrap) and mirrors the body
-// into a buffer.
-type idemRecorder struct {
-	middleware.WrapResponseWriter
-	buf bytes.Buffer
-}
+		// Check for cached response.
+		if code, body, ok := s.idempotencyStore.Check(r.Context(), scopedKey); ok {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(code)
+			_, _ = w.Write(body)
+			return
+		}
 
-func (r *idemRecorder) Write(b []byte) (int, error) {
-	_, _ = r.buf.Write(b)
-	return r.WrapResponseWriter.Write(b)
+		// Wrap the response writer to capture status and body.
+		rec := &idemRecorder{ResponseWriter: w}
+		next.ServeHTTP(rec, r)
+
+		// Store the response (skip 5xx so retries can re-execute).
+		if rec.status < 500 {
+			s.idempotencyStore.Store(r.Context(), scopedKey, rec.status, rec.buf.Bytes())
+		}
+	})
 }

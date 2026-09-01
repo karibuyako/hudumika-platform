@@ -1,16 +1,19 @@
-import { useState, type FormEvent } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import {
   adminBroadcastNotification,
   adminCreateHelpArticle,
   adminUpdateHelpArticle,
+  adminListScheduledNotifications,
+  adminCancelScheduledNotification,
   type AdminBroadcastNotification202,
   type AdminBroadcastNotificationBody,
   type AdminCreateHelpArticle201,
+  type AdminScheduledNotification,
 } from '@hudumika/contract'
 import { Field, InlineError, Toast } from '../../components/FormBits'
 import { parseApiError } from '../../lib/api-error'
 
-type Tab = 'articles' | 'broadcast'
+type Tab = 'articles' | 'broadcast' | 'scheduled'
 
 export function HelpPage() {
   const [tab, setTab] = useState<Tab>('articles')
@@ -35,8 +38,15 @@ export function HelpPage() {
         >
           Broadcast
         </button>
+        <button
+          type="button"
+          className={`tab${tab === 'scheduled' ? ' active' : ''}`}
+          onClick={() => setTab('scheduled')}
+        >
+          Scheduled
+        </button>
       </div>
-      {tab === 'articles' ? <HelpArticles /> : <BroadcastNotifications />}
+      {tab === 'articles' ? <HelpArticles /> : tab === 'broadcast' ? <BroadcastNotifications /> : <ScheduledNotifications />}
     </div>
   )
 }
@@ -289,4 +299,65 @@ function splitList(value: string): string[] {
 
 function formatCount(n: number): string {
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+}
+
+function ScheduledNotifications() {
+  const [notifications, setNotifications] = useState<AdminScheduledNotification[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+
+  useEffect(() => {
+    adminListScheduledNotifications({}).then((res) => {
+      if (res.status === 200) setNotifications(res.data)
+      else setError('Failed to load scheduled notifications')
+    })
+  }, [])
+
+  async function handleCancel(id: string) {
+    const res = await adminCancelScheduledNotification(id, { reason: 'Cancelled by admin' })
+    if (res.status === 200) {
+      setToast('Notification cancelled')
+      setNotifications((prev) => (prev ?? []).filter((n) => n.id !== id))
+    }
+  }
+
+  return (
+    <div>
+      <h2>Scheduled notifications</h2>
+      {toast && <Toast message={toast} />}
+      {error && <InlineError message={error} />}
+      {!notifications && !error && <p className="muted small">Loading…</p>}
+      {notifications && notifications.length === 0 && <p className="muted small">No scheduled notifications.</p>}
+      {notifications && notifications.length > 0 && (
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Audience</th>
+                <th>Scheduled</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {notifications.map((n) => (
+                <tr key={n.id}>
+                  <td className="strong">{n.title}</td>
+                  <td>{n.audience}</td>
+                  <td className="muted">{n.scheduledAt ? new Date(n.scheduledAt).toLocaleString() : '—'}</td>
+                  <td>{n.status}</td>
+                  <td>
+                    {n.status === 'pending' && (
+                      <button type="button" className="btn btn-ghost" onClick={() => handleCancel(n.id)}>Cancel</button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
 }

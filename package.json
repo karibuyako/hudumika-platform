@@ -6,15 +6,11 @@
   "type": "module",
   "workspaces": [
     "packages/*",
-    "packages/tokens",
     "public-frontend",
     "admin-web/app",
-    "consumer-mobile/app",
-    "merchant/app",
     "merchant/web",
-    "provider/app",
     "provider/web",
-    "rider-mobile/app"
+    "consumer-mobile/app"
   ],
   "scripts": {
     "dev:web": "npm run dev -w @hudumika/public-web",
@@ -31,5 +27,8 @@
   },
   "devDependencies": {
     "orval": "^8.24.0"
+  },
+  "dependencies": {
+    "lightningcss-linux-x64-gnu": "^1.33.0"
   }
 }

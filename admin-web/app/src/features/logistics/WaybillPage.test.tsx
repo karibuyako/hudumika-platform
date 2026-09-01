@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import type { CustodyEntry, WaybillEvent } from '@hudumika/contract'
@@ -224,7 +224,7 @@ describe('WaybillPage', () => {
     expect(screen.queryByRole('button', { name: 'Re-seal' })).not.toBeInTheDocument()
   })
 
-  test('seal-broken actions complete to the seal_broken_resolve pending notice', async () => {
+  test('seal-broken actions complete via live endpoint and show success', async () => {
     const user = userEvent.setup()
     server.use(
       http.get('*/shipments/shp_1/custody', () =>
@@ -240,12 +240,34 @@ describe('WaybillPage', () => {
     await user.click(screen.getByRole('button', { name: 'Damage claim' }))
     const prompt = screen.getByRole('dialog', { name: 'Damage claim' })
     await user.type(prompt.querySelector('textarea')!, 'Package contents damaged')
-    await user.click(screen.getByRole('button', { name: 'Confirm' }))
+    await user.click(within(prompt).getByRole('button', { name: 'Confirm' }))
 
-    expect(await screen.findByText('PENDING_ENDPOINT')).toBeInTheDocument()
-    expect(screen.getByText(/POST \/admin\/handoffs\/\{handoffId\}\/seal/)).toBeInTheDocument()
-    expect(
-      screen.getByText('This action is documented for backend implementation — nothing was sent.'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('Damage claim registered')).toBeInTheDocument()
+    expect(screen.queryByText('PENDING_ENDPOINT')).not.toBeInTheDocument()
+  })
+
+  test('shows an error when seal decision fails', async () => {
+    const user = userEvent.setup()
+    server.use(
+      http.get('*/shipments/shp_1/custody', () =>
+        HttpResponse.json([custodyEntry({ id: 'ce_1', eventType: 'handoff', evidence: 'Seal broken' })]),
+      ),
+      http.post('/admin/handoffs/:handoffId/seal', async () =>
+        HttpResponse.json({ code: 'HANDOFF_ALREADY_DECIDED', message: 'already decided', requestId: 'req_seal' }, { status: 409 }),
+      ),
+    )
+    render(<WaybillPage />)
+    await user.click(screen.getByRole('button', { name: 'Shipment custody' }))
+    await user.type(screen.getByLabelText('Shipment ID'), 'shp_1')
+    await user.click(screen.getByRole('button', { name: 'Load custody' }))
+    await screen.findByRole('button', { name: 'Re-seal' })
+
+    await user.click(screen.getByRole('button', { name: 'Re-seal' }))
+    const prompt = screen.getByRole('dialog', { name: 'Re-seal handoff' })
+    await user.type(prompt.querySelector('textarea')!, 'Try again')
+    await user.click(within(prompt).getByRole('button', { name: 'Confirm' }))
+
+    expect(await within(prompt).findByText(/already decided/i)).toBeInTheDocument()
+    expect(within(prompt).getByText(/req_seal/)).toBeInTheDocument()
   })
 })

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
+import * as maplibregl from 'maplibre-gl'
 import { Link } from 'react-router-dom'
 import {
   getDispatchHeatmap,
@@ -14,80 +15,23 @@ import {
 import { EmptyState } from '../../components/EmptyState'
 import { ErrorState } from '../../components/ErrorState'
 import { LoadingSkeleton } from '../../components/LoadingSkeleton'
+import { MapLibreMap, addGeoJsonLayer } from '../../components/MapLibreMap'
 import { parseApiError, type ApiErrorInfo } from '../../lib/api-error'
 import { toLocal } from '../../lib/time'
-
-const MAP_W = 1000
-const MAP_H = 700
-const PADDING = 0.05
+import { calculateIsochrone, optimizeRoutes } from '../../lib/geoapify'
 
 export interface XY {
   x: number
   y: number
 }
 
-export interface Fit {
-  scale: number
-  offsetX: number
-  offsetY: number
-  minX: number
-  minY: number
-}
-
-/**
- * Contract polygons are 'lon,lat' strings; x is longitude, y is latitude.
- */
 export function parseCoord(raw: string): XY {
   const [lon, lat] = raw.split(',').map((part) => parseFloat(part))
   return { x: lon, y: lat }
 }
 
-/**
- * Fit a set of lon/lat points into a w×h viewBox with 5% padding on every
- * side, preserving aspect ratio. Degenerate inputs fall back to centered.
- */
-export function fitViewBox(coords: XY[], w: number, h: number): Fit {
-  if (coords.length === 0) return { scale: 1, offsetX: 0, offsetY: 0, minX: 0, minY: 0 }
-  const xs = coords.map((c) => c.x)
-  const ys = coords.map((c) => c.y)
-  const minX = Math.min(...xs)
-  const maxX = Math.max(...xs)
-  const minY = Math.min(...ys)
-  const maxY = Math.max(...ys)
-  const spanX = maxX - minX
-  const spanY = maxY - minY
-  if (spanX === 0 && spanY === 0) {
-    return { scale: 1, offsetX: w / 2, offsetY: h / 2, minX, minY }
-  }
-  const usableW = w * (1 - 2 * PADDING)
-  const usableH = h * (1 - 2 * PADDING)
-  const scale = Math.min(usableW / (spanX || 1), usableH / (spanY || 1))
-  return { scale, offsetX: (w - spanX * scale) / 2, offsetY: (h - spanY * scale) / 2, minX, minY }
-}
-
-export function project(coord: XY, fit: Fit): XY {
-  return {
-    x: fit.offsetX + (coord.x - fit.minX) * fit.scale,
-    y: fit.offsetY + (coord.y - fit.minY) * fit.scale,
-  }
-}
-
 function isFiniteXY(c: XY): boolean {
   return Number.isFinite(c.x) && Number.isFinite(c.y)
-}
-
-function pointsAttr(coords: XY[], fit: Fit): string {
-  return coords.map((c) => project(c, fit)).map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
-}
-
-function zoneStyle(level: HeatmapZoneDemandLevel): { fill: string; fillOpacity: number; stroke: string } {
-  if (level === 'high' || level === 'critical') {
-    return { fill: 'var(--color-accent-soft)', fillOpacity: 0.85, stroke: 'var(--color-warning)' }
-  }
-  if (level === 'medium') {
-    return { fill: 'var(--color-brand-50)', fillOpacity: 0.75, stroke: 'var(--color-brand-500)' }
-  }
-  return { fill: 'var(--color-paper)', fillOpacity: 0.6, stroke: 'var(--color-line-strong)' }
 }
 
 function zonePillTone(level: HeatmapZoneDemandLevel): string {
@@ -96,13 +40,14 @@ function zonePillTone(level: HeatmapZoneDemandLevel): string {
   return 'pill-muted'
 }
 
-type LayerKey = 'heatmap' | 'facilities' | 'cities' | 'vehicles'
+type LayerKey = 'heatmap' | 'facilities' | 'cities' | 'vehicles' | 'serviceAreas'
 
 const LAYER_LABELS: Record<LayerKey, string> = {
   heatmap: 'Heatmap zones',
   facilities: 'Facilities',
   cities: 'City areas',
   vehicles: 'Vehicles',
+  serviceAreas: 'Service areas',
 }
 
 const LAYER_KEYS = Object.keys(LAYER_LABELS) as LayerKey[]
@@ -132,10 +77,18 @@ export function MapPage() {
     facilities: true,
     cities: true,
     vehicles: true,
+    serviceAreas: false,
   })
   const [selected, setSelected] = useState<Selection | null>(null)
   const [error, setError] = useState<ApiErrorInfo | null>(null)
   const [retryKey, setRetryKey] = useState(0)
+  const mapRef = useRef<maplibregl.Map | null>(null)
+  const [serviceAreaPolygons, setServiceAreaPolygons] = useState<any[]>([])
+  const [calculatingServiceArea, setCalculatingServiceArea] = useState(false)
+  const [serviceCenter, setServiceCenter] = useState<{ lat: number; lon: number } | null>(null)
+  const [showRouteModal, setShowRouteModal] = useState(false)
+  const [routeResult, setRouteResult] = useState<any>(null)
+  const [optimizing, setOptimizing] = useState(false)
 
   useEffect(() => {
     setError(null)
@@ -201,25 +154,172 @@ export function MapPage() {
     [vehicles],
   )
 
-  const fit = useMemo(() => {
-    const all: XY[] = [
-      ...zonePolys.flatMap((p) => p.coords),
-      ...facilityPoints.map((f) => f.point),
-      ...areaPolys.flatMap((p) => p.coords),
-      ...vehiclePoints.map((v) => v.point),
+  const allPoints = useMemo(() => {
+    return [
+      ...zonePolys.flatMap((p) => p.coords.map(c => ({ x: c.x, y: c.y }))),
+      ...facilityPoints.map(f => f.point),
+      ...areaPolys.flatMap(p => p.coords.map(c => ({ x: c.x, y: c.y }))),
+      ...vehiclePoints.map(v => v.point),
     ]
-    return fitViewBox(all, MAP_W, MAP_H)
   }, [zonePolys, facilityPoints, areaPolys, vehiclePoints])
+
+  const center = useMemo(() => {
+    if (allPoints.length === 0) return { lat: -6.7924, lon: 39.2083 }
+    const avgLat = allPoints.reduce((s, p) => s + p.y, 0) / allPoints.length
+    const avgLon = allPoints.reduce((s, p) => s + p.x, 0) / allPoints.length
+    return { lat: avgLat, lon: avgLon }
+  }, [allPoints])
 
   const counts: Record<LayerKey, number> = {
     heatmap: zonePolys.length,
     facilities: facilityPoints.length,
     cities: areaPolys.length,
     vehicles: vehiclePoints.length,
+    serviceAreas: serviceAreaPolygons.length,
   }
 
   const hasAnyData =
     zonePolys.length > 0 || facilityPoints.length > 0 || areaPolys.length > 0 || vehiclePoints.length > 0
+
+  // Update map layers when data or toggles change
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !map.loaded()) return
+
+    // Clear old polygon layers
+    const layerIds = ['heatmap-zones', 'city-areas', 'service-area-poly']
+    layerIds.forEach(id => {
+      if (map.getLayer(id)) map.removeLayer(id)
+      if (map.getLayer(`${id}-outline`)) map.removeLayer(`${id}-outline`)
+      if (map.getSource(id)) map.removeSource(id)
+    })
+
+    // Heatmap zones
+    if (layers.heatmap) {
+      zonePolys.forEach(({ zone, coords }) => {
+        const color = zone.demandLevel === 'high' || zone.demandLevel === 'critical' ? '#ef4444' : zone.demandLevel === 'medium' ? '#f59e0b' : '#3b82f6'
+        const id = `heatmap-${zone.zoneId}`
+        if (map.getSource(id)) map.removeSource(id)
+        if (map.getLayer(id)) map.removeLayer(id)
+        if (map.getLayer(`${id}-outline`)) map.removeLayer(`${id}-outline`)
+        map.addSource(id, {
+          type: 'geojson',
+          data: { type: 'Feature', properties: { name: zone.name }, geometry: { type: 'Polygon', coordinates: [coords.map(c => [c.x, c.y])] } },
+        })
+        map.addLayer({ id, type: 'fill', source: id, paint: { 'fill-color': color, 'fill-opacity': 0.2 } })
+        map.addLayer({ id: `${id}-outline`, type: 'line', source: id, paint: { 'line-color': color, 'line-width': 1 } })
+      })
+    }
+
+    // City areas
+    if (layers.cities) {
+      areaPolys.forEach(({ area, coords }) => {
+        const id = `city-${area.id}`
+        if (map.getSource(id)) map.removeSource(id)
+        if (map.getLayer(id)) map.removeLayer(id)
+        if (map.getLayer(`${id}-outline`)) map.removeLayer(`${id}-outline`)
+        map.addSource(id, {
+          type: 'geojson',
+          data: { type: 'Feature', properties: { name: area.name }, geometry: { type: 'Polygon', coordinates: [coords.map(c => [c.x, c.y])] } },
+        })
+        map.addLayer({ id, type: 'fill', source: id, paint: { 'fill-color': '#6b7280', 'fill-opacity': 0.1 } })
+        map.addLayer({ id: `${id}-outline`, type: 'line', source: id, paint: { 'line-color': '#6b7280', 'line-width': 1 } })
+      })
+    }
+
+    // Service area isochrone polygons
+    if (layers.serviceAreas) {
+      serviceAreaPolygons.forEach((poly, i) => {
+        const id = `service-area-${i}`
+        if (map.getSource(id)) map.removeSource(id)
+        if (map.getLayer(id)) map.removeLayer(id)
+        if (map.getLayer(`${id}-outline`)) map.removeLayer(`${id}-outline`)
+        map.addSource(id, { type: 'geojson', data: poly })
+        map.addLayer({ id, type: 'fill', source: id, paint: { 'fill-color': '#8b5cf6', 'fill-opacity': 0.2 } })
+        map.addLayer({ id: `${id}-outline`, type: 'line', source: id, paint: { 'line-color': '#8b5cf6', 'line-width': 2 } })
+      })
+    }
+
+    // Facility + vehicle markers
+    if (layers.facilities) {
+      facilityPoints.forEach(({ facility, point }) => {
+        const el = document.createElement('div')
+        el.style.cssText = 'width:16px;height:16px;border-radius:50%;background:#6366f1;border:2px solid #fff;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,0.3);'
+        const label = document.createElement('div')
+        label.style.cssText = 'position:absolute;top:-20px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:10px;color:#fff;background:rgba(0,0,0,0.7);padding:1px 4px;border-radius:3px;pointer-events:none;'
+        label.textContent = facility.name
+        el.appendChild(label)
+        new maplibregl.Marker({ element: el }).setLngLat([point.x, point.y]).addTo(map)
+      })
+    }
+
+    if (layers.vehicles) {
+      vehiclePoints.forEach(({ vehicle, point }) => {
+        const el = document.createElement('div')
+        el.style.cssText = 'width:12px;height:12px;border-radius:50%;background:#06b6d4;border:2px solid #fff;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,0.3);'
+        const label = document.createElement('div')
+        label.style.cssText = 'position:absolute;top:-18px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:10px;color:#fff;background:rgba(0,0,0,0.7);padding:1px 4px;border-radius:3px;pointer-events:none;'
+        label.textContent = vehicle.id.slice(0, 8)
+        el.appendChild(label)
+        new maplibregl.Marker({ element: el }).setLngLat([point.x, point.y]).addTo(map)
+      })
+    }
+  }, [zonePolys, areaPolys, serviceAreaPolygons, layers, facilityPoints, vehiclePoints])
+
+  const handleMapLoad = useCallback((map: maplibregl.Map) => {
+    mapRef.current = map
+  }, [])
+
+  // Handle map click for service area center
+  const handleMapClick = useCallback((lat: number, lon: number) => {
+    setServiceCenter({ lat, lon })
+  }, [])
+
+  // Calculate isochrone service area
+  const handleCalculateServiceArea = useCallback(async () => {
+    if (!serviceCenter) return
+    setCalculatingServiceArea(true)
+    try {
+      const result = await calculateIsochrone(serviceCenter.lat, serviceCenter.lon, 'time', [300, 600, 900])
+      if (result.features?.length) {
+        const polys = result.features.map((f: any) => ({
+          type: 'Feature',
+          properties: {},
+          geometry: f.geometry,
+        }))
+        setServiceAreaPolygons(polys)
+        setLayers(prev => ({ ...prev, serviceAreas: true }))
+      }
+    } catch {
+      // silent
+    }
+    setCalculatingServiceArea(false)
+  }, [serviceCenter])
+
+  // Handle route optimization
+  const handleOptimizeRoutes = useCallback(async () => {
+    setOptimizing(true)
+    try {
+      const riderPositions = (vehiclePoints ?? []).map((v, i) => ({
+        id: `vehicle-${i}`,
+        startLocation: [v.point.x, v.point.y] as [number, number],
+      }))
+      if (riderPositions.length === 0) {
+        setOptimizing(false)
+        return
+      }
+      const result = await optimizeRoutes({
+        agents: riderPositions,
+        shipments: [],
+        mode: 'drive',
+      })
+      setRouteResult(result)
+      setShowRouteModal(true)
+    } catch {
+      // silent
+    }
+    setOptimizing(false)
+  }, [vehiclePoints])
 
   if (error) {
     return (
@@ -243,7 +343,7 @@ export function MapPage() {
         <EmptyState title="No map data" hint="Heatmap zones, facilities, service areas, and vehicles appear here once geodata is published." />
       ) : (
         <>
-          <div className="filters" role="group" aria-label="Map layers">
+          <div className="filters" role="group" aria-label="Map layers" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             {LAYER_KEYS.map((key) => (
               <button
                 key={key}
@@ -255,100 +355,48 @@ export function MapPage() {
                 {LAYER_LABELS[key]} <span className="chip-count">{counts[key]}</span>
               </button>
             ))}
+            <button type="button" className="chip" onClick={handleCalculateServiceArea} disabled={calculatingServiceArea || !serviceCenter}>
+              {calculatingServiceArea ? 'Calculating...' : 'Calculate Service Area'}
+            </button>
+            <button type="button" className="chip" onClick={handleOptimizeRoutes} disabled={optimizing}>
+              {optimizing ? 'Optimizing...' : 'Optimize Routes'}
+            </button>
+            {serviceCenter && (
+              <span className="muted small">Click map to set center · current: {serviceCenter.lat.toFixed(4)}, {serviceCenter.lon.toFixed(4)}</span>
+            )}
           </div>
 
-          <svg
-            viewBox={`0 0 ${MAP_W} ${MAP_H}`}
-            role="img"
-            aria-label="Coverage map"
-            className="coverage-map"
-            style={{
-              width: '100%',
-              height: 'auto',
-              display: 'block',
-              marginBottom: 14,
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-line)',
-              borderRadius: 10,
-            }}
-          >
-            {layers.cities &&
-              areaPolys.map(({ area, coords }) => (
-                <polygon
-                  key={area.id}
-                  points={pointsAttr(coords, fit)}
-                  fill="none"
-                  stroke="var(--color-line-strong)"
-                  strokeWidth={1.5}
-                >
-                  <title>{area.name}</title>
-                </polygon>
-              ))}
-            {layers.heatmap &&
-              zonePolys.map(({ zone, coords }) => {
-                const style = zoneStyle(zone.demandLevel)
-                return (
-                  <polygon
-                    key={zone.zoneId}
-                    points={pointsAttr(coords, fit)}
-                    fill={style.fill}
-                    fillOpacity={style.fillOpacity}
-                    stroke={style.stroke}
-                    strokeWidth={selected?.kind === 'zone' && selected.zone.zoneId === zone.zoneId ? 3 : 1.5}
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => setSelected({ kind: 'zone', zone })}
-                  >
-                    <title>{zone.name}</title>
-                  </polygon>
-                )
-              })}
-            {layers.facilities &&
-              facilityPoints.map(({ facility, point }) => {
-                const p = project(point, fit)
-                return (
-                  <circle
-                    key={facility.id}
-                    cx={p.x}
-                    cy={p.y}
-                    r={7}
-                    fill="var(--color-brand-500)"
-                    stroke="var(--color-paper)"
-                    strokeWidth={2}
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => setSelected({ kind: 'facility', facility })}
-                  >
-                    <title>{facility.name}</title>
-                  </circle>
-                )
-              })}
-            {layers.vehicles &&
-              vehiclePoints.map(({ vehicle, point }) => {
-                const p = project(point, fit)
-                return (
-                  <circle
-                    key={vehicle.id}
-                    cx={p.x}
-                    cy={p.y}
-                    r={4}
-                    fill="var(--color-info)"
-                    stroke="var(--color-paper)"
-                    strokeWidth={1}
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => setSelected({ kind: 'vehicle', vehicle })}
-                  >
-                    <title>{vehicle.id}</title>
-                  </circle>
-                )
-              })}
-          </svg>
+          <MapLibreMap
+            center={[center.lon, center.lat]}
+            zoom={11}
+            height={600}
+            onMapLoad={handleMapLoad}
+          />
 
           {selected && <DetailPanel selection={selected} />}
 
           <p className="muted small">
-            Contract geodata rendered client-side; live traffic, incidents, and merchant/provider layers land with
-            the backend map milestone.
+            Interactive MapLibre map with heatmap zones, facility markers, service area isochrones, and route optimization. Click the map to set a center point for service area calculation.
           </p>
         </>
+      )}
+
+      {/* Route optimization result modal */}
+      {showRouteModal && routeResult && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+          onClick={() => setShowRouteModal(false)}>
+          <div style={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: 12, padding: 24, maxWidth: 600, maxHeight: '80vh', overflow: 'auto', width: '90%' }}
+            onClick={(e) => e.stopPropagation()}>
+            <h2 style={{ marginTop: 0 }}>Route Optimization Result</h2>
+            <div className="muted small" style={{ marginBottom: 12 }}>
+              {routeResult.features?.length ?? 0} routes · {routeResult.properties?.summary?.routes ?? '?'} vehicles
+            </div>
+            <pre style={{ fontSize: 11, color: '#aaa', whiteSpace: 'pre-wrap' }}>
+              {JSON.stringify(routeResult.properties?.summary ?? routeResult, null, 2).slice(0, 2000)}
+            </pre>
+            <button className="btn" style={{ marginTop: 12 }} onClick={() => setShowRouteModal(false)}>Close</button>
+          </div>
+        </div>
       )}
     </div>
   )

@@ -43,9 +43,9 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
-// homeFeedLimit caps each unbounded feed section; the contract arrays carry
+// GetSettings().DefaultHomeFeedLimit caps each unbounded feed section; the contract arrays carry
 // no pagination, so a generous fixed cap keeps the payloads sane.
-const homeFeedLimit = 100
+// Deprecated: use GetSettings().DefaultHomeFeedLimit instead.
 
 // homeFeedResponse mirrors the contract /home response
 // (required: generatedAt; the rest optional).
@@ -106,7 +106,7 @@ func (s *Server) GetConsumerHome(w http.ResponseWriter, r *http.Request, params 
 		v := params.CityId.String()
 		cityID = &v
 	}
-	merchantRows, _, err := s.merchantStore().ListApprovedMerchants(r.Context(), cityID, homeFeedLimit, "")
+	merchantRows, _, err := s.merchantStore().ListApprovedMerchants(r.Context(), cityID, GetSettings().DefaultHomeFeedLimit, "")
 	if err != nil {
 		s.logger.Error("home merchants failed", "error", err)
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
@@ -188,7 +188,7 @@ func (s *Server) homeCityName(r *http.Request, cityID openapi_types.UUID) (strin
 func (s *Server) homeCategories(r *http.Request) ([]gen.ServiceCategoryConfig, error) {
 	rows, err := s.db.Pool().Query(r.Context(),
 		`SELECT id, name FROM service_categories_config
-		 WHERE active = true ORDER BY sort_order, name LIMIT $1`, homeFeedLimit)
+		 WHERE active = true ORDER BY sort_order, name LIMIT $1`, GetSettings().DefaultHomeFeedLimit)
 	if err != nil {
 		return nil, fmt.Errorf("home: list categories: %w", err)
 	}
@@ -225,7 +225,7 @@ func (s *Server) homeProviders(r *http.Request) ([]gen.ProviderPublic, error) {
 		        rating, review_count, payout_cycle_days, service_areas, created_at, updated_at
 		 FROM providers
 		 WHERE verification = 'approved'
-		 ORDER BY created_at DESC, id DESC LIMIT $1`, homeFeedLimit)
+		 ORDER BY created_at DESC, id DESC LIMIT $1`, GetSettings().DefaultHomeFeedLimit)
 	if err != nil {
 		return nil, fmt.Errorf("home: list providers: %w", err)
 	}
@@ -280,7 +280,7 @@ func (s *Server) homePromotions(r *http.Request) ([]gen.Promotion, error) {
 		        created_at, updated_at
 		 FROM promotions
 		 WHERE status = 'live' AND starts_at <= now() AND ends_at > now()
-		 ORDER BY created_at DESC, id DESC LIMIT $1`, homeFeedLimit)
+		 ORDER BY created_at DESC, id DESC LIMIT $1`, GetSettings().DefaultHomeFeedLimit)
 	if err != nil {
 		return nil, fmt.Errorf("home: list promotions: %w", err)
 	}
@@ -322,7 +322,7 @@ func (s *Server) homeGroupBuys(r *http.Request) ([]gen.GroupBuyDeal, error) {
 		        quantity_total, quantity_sold, start_at, end_at, status, created_at, updated_at
 		 FROM group_buy_deals
 		 WHERE status = 'active' AND end_at > now()
-		 ORDER BY created_at DESC, id DESC LIMIT $1`, homeFeedLimit)
+		 ORDER BY created_at DESC, id DESC LIMIT $1`, GetSettings().DefaultHomeFeedLimit)
 	if err != nil {
 		return nil, fmt.Errorf("home: list group buys: %w", err)
 	}

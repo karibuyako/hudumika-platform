@@ -54,6 +54,7 @@ type Config struct {
 	MPESAShortcode      string
 	MPESAPasskey        string
 	MPESAStkCallbackURL string
+	AdminAllowedIPs     string
 }
 
 // Load reads the environment and validates it. Any invalid value is a hard
@@ -79,6 +80,7 @@ func Load() (Config, error) {
 		MPESAShortcode:      os.Getenv("MPESA_SHORTCODE"),
 		MPESAPasskey:        os.Getenv("MPESA_PASSKEY"),
 		MPESAStkCallbackURL: os.Getenv("MPESA_STK_CALLBACK_URL"),
+		AdminAllowedIPs:     os.Getenv("ADMIN_ALLOWED_IPS"),
 	}
 	if err := cfg.Validate(); err != nil {
 		return Config{}, err
@@ -129,6 +131,9 @@ func (c Config) Validate() error {
 		}
 		if c.MPESAEnv == "production" && c.MPESAConsumerKey == "" {
 			problems = append(problems, "MPESA_CONSUMER_KEY is required when MPESA_ENV=production")
+		}
+		if strings.TrimSpace(c.AdminAllowedIPs) == "" {
+			problems = append(problems, "ADMIN_ALLOWED_IPS is required in production (comma-separated IPs/CIDRs for /admin/*)")
 		}
 	}
 

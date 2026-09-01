@@ -59,17 +59,30 @@ func (o *OnlineRegistry) SetOnline(ctx context.Context, riderID uuid.UUID, onlin
 }
 
 // Location stores the latest reported rider position with a short TTL.
-func (o *OnlineRegistry) Location(ctx context.Context, riderID uuid.UUID, lat, lon float64) error {
+func (o *OnlineRegistry) Location(ctx context.Context, riderID uuid.UUID, lat, lon float64, speedKmh, heading, accuracyM *float32, activity string) error {
 	if o.r == nil || o.r.Client() == nil {
 		return errors.New("riders: online registry requires Redis")
 	}
 	key := locationKey(riderID)
 	c := o.r.Client()
-	if err := c.HSet(ctx, key,
-		"lat", strconv.FormatFloat(lat, 'f', -1, 64),
-		"lon", strconv.FormatFloat(lon, 'f', -1, 64),
-		"at", time.Now().UTC().Format(time.RFC3339),
-	).Err(); err != nil {
+	fields := map[string]interface{}{
+		"lat": strconv.FormatFloat(lat, 'f', -1, 64),
+		"lon": strconv.FormatFloat(lon, 'f', -1, 64),
+		"at":  time.Now().UTC().Format(time.RFC3339),
+	}
+	if speedKmh != nil {
+		fields["speed"] = strconv.FormatFloat(float64(*speedKmh), 'f', -1, 32)
+	}
+	if heading != nil {
+		fields["heading"] = strconv.FormatFloat(float64(*heading), 'f', -1, 32)
+	}
+	if accuracyM != nil {
+		fields["accuracy"] = strconv.FormatFloat(float64(*accuracyM), 'f', -1, 32)
+	}
+	if activity != "" {
+		fields["activity"] = activity
+	}
+	if err := c.HSet(ctx, key, fields).Err(); err != nil {
 		return fmt.Errorf("riders: hset location %s: %w", key, err)
 	}
 	if err := c.Expire(ctx, key, locationTTL).Err(); err != nil {

@@ -20,10 +20,12 @@ info:
   contact:
     name: HUDumika Engineering
 servers:
-  - url: https://api.hudumika.co.tz/api/v1
-    description: Production
+  - url: https://hudumika-api-production.up.railway.app/api/v1
+    description: Production (Railway)
   - url: https://staging-api.hudumika.co.tz/api/v1
     description: Staging
+  - url: https://api.hudumika.co.tz/api/v1
+    description: Production (custom domain — future)
 
 tags:
   - name: auth
@@ -13709,6 +13711,781 @@ paths:
                 $ref: "#/components/schemas/DisputeRecord"
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /admin/password-reset:
+    post:
+      tags: [admin-pending]
+      summary: Admin-triggered password reset — sends reset code to user email/SMS
+      operationId: adminResetPassword
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminPasswordResetBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPasswordResetResult"
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/reports/scheduled:
+    get:
+      tags: [admin-pending]
+      summary: List scheduled report jobs
+      operationId: adminListScheduledReports
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [pending, completed, failed] } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AdminScheduledReport" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [admin-pending]
+      summary: Create a scheduled report
+      operationId: adminCreateScheduledReport
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminCreateScheduledReportBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminScheduledReport"
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/quality-scores:
+    get:
+      tags: [admin-pending]
+      summary: Get quality score configuration
+      operationId: adminGetQualityScores
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminQualityScoreConfig"
+        "403": { $ref: "#/components/responses/Forbidden" }
+    put:
+      tags: [admin-pending]
+      summary: Update quality score configuration
+      operationId: adminUpdateQualityScores
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminQualityScoreConfigBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminQualityScoreConfig"
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/settings:
+    get:
+      tags: [admin-pending]
+      summary: Get platform settings (general, booking, notification, order)
+      operationId: adminGetSettings
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: group, in: query, schema: { type: string, enum: [general, booking, notification, order] } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSettings"
+        "403": { $ref: "#/components/responses/Forbidden" }
+    put:
+      tags: [admin-pending]
+      summary: Update platform settings
+      operationId: adminUpdateSettings
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminSettingsBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSettings"
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/gateways:
+    get:
+      tags: [admin-pending]
+      summary: Get payment gateway configurations
+      operationId: adminGetGateways
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AdminGatewayConfig" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    put:
+      tags: [admin-pending]
+      summary: Update payment gateway configuration
+      operationId: adminUpdateGateway
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminGatewayConfigBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminGatewayConfig"
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/content:
+    get:
+      tags: [admin-pending]
+      summary: List CMS content items
+      operationId: adminListContent
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: state, in: query, schema: { type: string, enum: [draft, review, published, archived] } }
+        - { name: type, in: query, schema: { type: string, enum: [article, page, faq, announcement] } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AdminContent" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [admin-pending]
+      summary: Create CMS content draft (editorial workflow)
+      operationId: adminCreateContent
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminCreateContentBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminContent"
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/content/{contentId}/state:
+    patch:
+      tags: [admin-pending]
+      summary: Advance CMS content through editorial workflow (draft→review→publish)
+      operationId: adminUpdateContentState
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: contentId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminContentStateBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminContent"
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: "CONTENT_STATE_CONFLICT — transition not allowed"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/payroll/run:
+    post:
+      tags: [admin-pending]
+      summary: Run payroll batch for a date range
+      operationId: adminRunPayroll
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminRunPayrollBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPayrollBatch"
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/payroll:
+    get:
+      tags: [admin-pending]
+      summary: List payroll batches
+      operationId: adminListPayroll
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [pending, processing, completed, failed] } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AdminPayrollBatch" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /admin/config/{domain}:
+    get:
+      tags: [admin-pending]
+      summary: Get configuration for a domain (regions, cities, fees, tax, cancellation, SLA, matching, risk, notifications)
+      operationId: adminGetConfig
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: domain, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminConfigDomain"
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [admin-pending]
+      summary: Update configuration for a domain
+      operationId: adminUpdateConfig
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: domain, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminConfigDomainBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminConfigDomain"
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/admins:
+    get:
+      tags: [admin-pending]
+      summary: List admin staff accounts
+      operationId: adminListAdmins
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: role, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AdminStaffUser" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [admin-pending]
+      summary: Create an admin staff account
+      operationId: adminCreateAdmin
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminCreateAdminBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStaffUser"
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/admins/{adminId}:
+    patch:
+      tags: [admin-pending]
+      summary: Update an admin staff account (role, team, status)
+      operationId: adminUpdateAdmin
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: adminId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminUpdateAdminBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStaffUser"
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [admin-pending]
+      summary: Suspend an admin staff account
+      operationId: adminSuspendAdmin
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: adminId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, maxLength: 1000 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStaffUser"
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /admin/teams:
+    get:
+      tags: [admin-pending]
+      summary: List admin teams
+      operationId: adminListTeams
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AdminTeam" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [admin-pending]
+      summary: Create an admin team
+      operationId: adminCreateTeam
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminCreateTeamBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminTeam"
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/teams/{teamId}:
+    patch:
+      tags: [admin-pending]
+      summary: Update an admin team
+      operationId: adminUpdateTeam
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: teamId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminUpdateTeamBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminTeam"
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [admin-pending]
+      summary: Delete an admin team
+      operationId: adminDeleteTeam
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: teamId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: OK }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /admin/policies:
+    get:
+      tags: [admin-pending]
+      summary: List ABAC policies
+      operationId: adminListPolicies
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AdminPolicy" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [admin-pending]
+      summary: Create an ABAC policy
+      operationId: adminCreatePolicy
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminCreatePolicyBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPolicy"
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/notifications/scheduled:
+    get:
+      tags: [admin-pending]
+      summary: List scheduled notification broadcasts
+      operationId: adminListScheduledNotifications
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AdminScheduledNotification" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    delete:
+      tags: [admin-pending]
+      summary: Cancel a scheduled notification broadcast
+      operationId: adminCancelScheduledNotification
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: notificationId, in: query, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: OK }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /admin/map/traffic:
+    get:
+      tags: [admin-pending]
+      summary: Get live map traffic and incident overlay data
+      operationId: adminGetMapTraffic
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: hubId, in: query, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMapTrafficOverlay"
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /admin/handoffs:
+    get:
+      tags: [admin-pending]
+      summary: List handoffs (for seal-broken incident monitoring)
+      operationId: adminListHandoffs
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [pending, resolved, seal_broken] } }
+        - { name: hubId, in: query, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AdminHandoff" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /admin/facilities/{facilityId}/entries:
+    get:
+      tags: [admin-pending]
+      summary: List entry logs for a facility
+      operationId: adminListFacilityEntries
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: facilityId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: status, in: query, schema: { type: string, enum: [granted, denied] } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AdminFacilityEntry" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /admin/support/tickets/{ticketId}/reply:
+    post:
+      tags: [admin-pending]
+      summary: Reply to a support ticket
+      operationId: adminReplyTicket
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: ticketId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminTicketReplyBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminTicketReplyResult"
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /admin/support/tickets/{ticketId}/escalate:
+    post:
+      tags: [admin-pending]
+      summary: Escalate a support ticket
+      operationId: adminEscalateTicket
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: ticketId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, maxLength: 1000 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminTicketEscalateResult"
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /admin/support/tickets/{ticketId}/close:
+    post:
+      tags: [admin-pending]
+      summary: Close a support ticket
+      operationId: adminCloseTicket
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: ticketId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, maxLength: 1000 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminTicketCloseResult"
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /admin/support/tickets/{ticketId}/transfer:
+    post:
+      tags: [admin-pending]
+      summary: Transfer a support ticket to another agent
+      operationId: adminTransferTicket
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: ticketId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminTicketTransferBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminTicketTransferResult"
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /admin/geofences:
+    get:
+      tags: [admin-pending]
+      summary: List all geofences
+      operationId: adminListGeofences
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AdminGeofence" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [admin-pending]
+      summary: Create a geofence
+      operationId: adminCreateGeofence
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminCreateGeofenceBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminGeofence"
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/RateLimited" }
+
+  /admin/geofences/{geofenceId}:
+    delete:
+      tags: [admin-pending]
+      summary: Delete a geofence
+      operationId: adminDeleteGeofence
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: geofenceId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  geofenceId: { type: string, format: uuid }
+                  status: { type: string }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /admin/geofences/{geofenceId}/events:
+    get:
+      tags: [admin-pending]
+      summary: List events for a geofence
+      operationId: adminListGeofenceEvents
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: geofenceId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AdminGeofenceEvent" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -16696,6 +17473,15 @@ components:
         staffOnDuty: { type: integer }
         vehiclesPresent: { type: integer }
         updatedAt: { type: string, format: date-time }
+        performance:
+          type: object
+          nullable: true
+          properties:
+            inboundThroughput: { type: integer, description: "Packages processed per hour inbound" }
+            outboundThroughput: { type: integer, description: "Packages processed per hour outbound" }
+            sortationCompletionPct: { type: number, description: "Percentage of sorted packages" }
+            exceptionRate: { type: number, description: "Exception rate as percentage" }
+            capacityTrend: { type: string, enum: [stable, increasing, decreasing], description: "Capacity trend direction" }
 
     OperationsControlTower:
       type: object
@@ -18409,4 +19195,476 @@ components:
             outcome: { type: string }
             at: { type: string, format: date-time }
             note: { type: string, nullable: true }
+
+    AdminPasswordResetBody:
+      type: object
+      required: [userId, method]
+      properties:
+        userId: { type: string, format: uuid }
+        method: { type: string, enum: [sms, email] }
+
+    AdminPasswordResetResult:
+      type: object
+      required: [userId, status, resetId]
+      properties:
+        userId: { type: string, format: uuid }
+        status: { type: string, enum: [sent, failed] }
+        resetId: { type: string, format: uuid }
+
+    AdminScheduledReport:
+      type: object
+      required: [id, name, metrics, schedule, format, status, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        metrics: { type: array, items: { type: string } }
+        schedule: { type: string, enum: [daily, weekly, monthly] }
+        format: { type: string, enum: [csv, xlsx, pdf, json] }
+        status: { type: string, enum: [pending, completed, failed] }
+        nextRunAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    AdminCreateScheduledReportBody:
+      type: object
+      required: [name, metrics, schedule, format]
+      properties:
+        name: { type: string, maxLength: 160 }
+        metrics: { type: array, items: { type: string }, minItems: 1 }
+        schedule: { type: string, enum: [daily, weekly, monthly] }
+        format: { type: string, enum: [csv, xlsx, pdf, json] }
+
+    AdminQualityScoreConfig:
+      type: object
+      required: [weights, minPassingScore, enabled]
+      properties:
+        weights:
+          type: object
+          required: [deliveryTimeBps, cancellationBps, customerRatingBps, completionBps]
+          properties:
+            deliveryTimeBps: { type: integer, minimum: 0, maximum: 10000 }
+            cancellationBps: { type: integer, minimum: 0, maximum: 10000 }
+            customerRatingBps: { type: integer, minimum: 0, maximum: 10000 }
+            completionBps: { type: integer, minimum: 0, maximum: 10000 }
+        minPassingScore: { type: integer, minimum: 0, maximum: 1000 }
+        enabled: { type: boolean }
+
+    AdminQualityScoreConfigBody:
+      type: object
+      required: [weights, minPassingScore, enabled]
+      properties:
+        weights:
+          type: object
+          required: [deliveryTimeBps, cancellationBps, customerRatingBps, completionBps]
+          properties:
+            deliveryTimeBps: { type: integer, minimum: 0, maximum: 10000 }
+            cancellationBps: { type: integer, minimum: 0, maximum: 10000 }
+            customerRatingBps: { type: integer, minimum: 0, maximum: 10000 }
+            completionBps: { type: integer, minimum: 0, maximum: 10000 }
+        minPassingScore: { type: integer, minimum: 0, maximum: 1000 }
+        enabled: { type: boolean }
+        reason: { type: string, maxLength: 1000 }
+
+    AdminSettings:
+      type: object
+      required: [general, booking, notification, order]
+      properties:
+        general:
+          type: object
+          properties:
+            currency: { type: string }
+            timezone: { type: string }
+            language: { type: string }
+        booking:
+          type: object
+          properties:
+            maxLeadTimeHours: { type: integer }
+            minCancellationHours: { type: integer }
+            noShowFeeTZS: { type: integer }
+        notification:
+          type: object
+          properties:
+            pushEnabled: { type: boolean }
+            smsEnabled: { type: boolean }
+            emailEnabled: { type: boolean }
+        order:
+          type: object
+          properties:
+            minOrderTZS: { type: integer }
+            maxDeliveryFeeTZS: { type: integer }
+            autoCancelMinutes: { type: integer }
+
+    AdminSettingsBody:
+      type: object
+      properties:
+        general:
+          type: object
+          properties:
+            currency: { type: string }
+            timezone: { type: string }
+            language: { type: string }
+        booking:
+          type: object
+          properties:
+            maxLeadTimeHours: { type: integer }
+            minCancellationHours: { type: integer }
+            noShowFeeTZS: { type: integer }
+        notification:
+          type: object
+          properties:
+            pushEnabled: { type: boolean }
+            smsEnabled: { type: boolean }
+            emailEnabled: { type: boolean }
+        order:
+          type: object
+          properties:
+            minOrderTZS: { type: integer }
+            maxDeliveryFeeTZS: { type: integer }
+            autoCancelMinutes: { type: integer }
+        reason: { type: string, maxLength: 1000 }
+
+    AdminGatewayConfig:
+      type: object
+      required: [id, provider, category, enabled, config]
+      properties:
+        id: { type: string, format: uuid }
+        provider: { type: string }
+        category: { type: string, enum: [payment, sms, email, push, logistics] }
+        enabled: { type: boolean }
+        config:
+          type: object
+          additionalProperties: true
+        lastTestedAt: { type: string, format: date-time, nullable: true }
+
+    AdminGatewayConfigBody:
+      type: object
+      required: [id, enabled]
+      properties:
+        id: { type: string, format: uuid }
+        enabled: { type: boolean }
+        config:
+          type: object
+          additionalProperties: true
+        reason: { type: string, maxLength: 1000 }
+
+    AdminContent:
+      type: object
+      required: [id, title, body, type, state, createdBy, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        body: { type: string }
+        type: { type: string, enum: [article, page, faq, announcement] }
+        state: { type: string, enum: [draft, review, published, archived] }
+        authorId: { type: string, format: uuid }
+        publishedAt: { type: string, format: date-time, nullable: true }
+        createdBy: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    AdminCreateContentBody:
+      type: object
+      required: [title, body, type]
+      properties:
+        title: { type: string, maxLength: 200 }
+        body: { type: string }
+        type: { type: string, enum: [article, page, faq, announcement] }
+
+    AdminContentStateBody:
+      type: object
+      required: [state, reason]
+      properties:
+        state: { type: string, enum: [draft, review, published, archived] }
+        reason: { type: string, maxLength: 1000 }
+        scheduledAt: { type: string, format: date-time, nullable: true }
+
+    AdminRunPayrollBody:
+      type: object
+      required: [periodStart, periodEnd]
+      properties:
+        periodStart: { type: string, format: date }
+        periodEnd: { type: string, format: date }
+        role: { type: string, description: "Filter by rider role (optional)" }
+        dryRun: { type: boolean, description: "Preview without processing" }
+
+    AdminPayrollBatch:
+      type: object
+      required: [id, periodStart, periodEnd, totalTZS, count, status, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        periodStart: { type: string, format: date }
+        periodEnd: { type: string, format: date }
+        totalTZS: { type: integer }
+        count: { type: integer }
+        status: { type: string, enum: [pending, processing, completed, failed] }
+        dryRun: { type: boolean }
+        createdAt: { type: string, format: date-time }
+
+    AdminConfigDomain:
+      type: object
+      required: [domain, config, updatedAt]
+      properties:
+        domain: { type: string }
+        config:
+          type: object
+          additionalProperties: true
+        updatedAt: { type: string, format: date-time }
+
+    AdminConfigDomainBody:
+      type: object
+      required: [config, reason]
+      properties:
+        config:
+          type: object
+          additionalProperties: true
+        reason: { type: string, maxLength: 1000 }
+
+    AdminStaffUser:
+      type: object
+      required: [id, displayName, role, email, status, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        displayName: { type: string }
+        role: { type: string }
+        email: { type: string }
+        phone: { type: string, nullable: true }
+        status: { type: string, enum: [active, suspended] }
+        teamId: { type: string, format: uuid, nullable: true }
+        teamName: { type: string, nullable: true }
+        lastLoginAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    AdminCreateAdminBody:
+      type: object
+      required: [displayName, role, email]
+      properties:
+        displayName: { type: string, maxLength: 100 }
+        role: { type: string }
+        email: { type: string, format: email }
+        phone: { type: string }
+        teamId: { type: string, format: uuid, nullable: true }
+
+    AdminUpdateAdminBody:
+      type: object
+      properties:
+        displayName: { type: string, maxLength: 100 }
+        role: { type: string }
+        email: { type: string, format: email }
+        teamId: { type: string, format: uuid, nullable: true }
+
+    AdminTeam:
+      type: object
+      required: [id, name, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        memberCount: { type: integer }
+        createdAt: { type: string, format: date-time }
+
+    AdminCreateTeamBody:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 100 }
+        description: { type: string, maxLength: 500, nullable: true }
+
+    AdminUpdateTeamBody:
+      type: object
+      properties:
+        name: { type: string, maxLength: 100 }
+        description: { type: string, maxLength: 500, nullable: true }
+
+    AdminPolicy:
+      type: object
+      required: [id, name, type, resource, action, effect, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        type: { type: string, enum: [allow, deny] }
+        resource: { type: string, description: "Resource pattern (e.g. order:*, shipment:region/dar)" }
+        action: { type: string, description: "Action pattern (e.g. refund.*, order.read)" }
+        effect: { type: string, enum: [allow, deny] }
+        conditions:
+          type: object
+          nullable: true
+          additionalProperties: true
+        reason: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    AdminCreatePolicyBody:
+      type: object
+      required: [name, resource, action, effect]
+      properties:
+        name: { type: string, maxLength: 100 }
+        resource: { type: string }
+        action: { type: string }
+        effect: { type: string, enum: [allow, deny] }
+        conditions:
+          type: object
+          nullable: true
+          additionalProperties: true
+        reason: { type: string, maxLength: 1000 }
+
+    AdminScheduledNotification:
+      type: object
+      required: [id, title, message, audience, status, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        message: { type: string }
+        audience:
+          type: object
+          properties:
+            roles: { type: array, items: { type: string } }
+            regions: { type: array, items: { type: string } }
+        status: { type: string, enum: [scheduled, sent, cancelled] }
+        scheduledAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+
+    AdminMapTrafficOverlay:
+      type: object
+      required: [generatedAt, incidents, trafficZones, livePositions]
+      properties:
+        generatedAt: { type: string, format: date-time }
+        incidents:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid }
+              type: { type: string, enum: [accident, road_closure, severe_weather, security_incident, sos] }
+              severity: { type: string, enum: [low, medium, high, critical] }
+              lat: { type: number }
+              lon: { type: number }
+              description: { type: string }
+              createdAt: { type: string, format: date-time }
+        trafficZones:
+          type: array
+          items:
+            type: object
+            properties:
+              zoneId: { type: string }
+              severity: { type: string, enum: [normal, moderate, heavy, gridlock] }
+              avgSpeedKmh: { type: number }
+        livePositions:
+          type: array
+          items:
+            type: object
+            properties:
+              entityType: { type: string, enum: [rider, vehicle] }
+              entityId: { type: string, format: uuid }
+              lat: { type: number }
+              lon: { type: number }
+              speedKmh: { type: number }
+              heading: { type: number }
+              accuracyM: { type: number }
+              updatedAt: { type: string, format: date-time }
+
+    AdminHandoff:
+      type: object
+      required: [id, fromHubId, toHubId, status, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        fromHubId: { type: string, format: uuid }
+        toHubId: { type: string, format: uuid }
+        consignmentId: { type: string, format: uuid, nullable: true }
+        carrierId: { type: string, nullable: true }
+        status: { type: string, enum: [pending, resolved, seal_broken] }
+        sealIntact: { type: boolean }
+        sealBrokenAt: { type: string, format: date-time, nullable: true }
+        resolvedAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    AdminFacilityEntry:
+      type: object
+      required: [id, facilityId, riderId, status, scannedAt]
+      properties:
+        id: { type: string, format: uuid }
+        facilityId: { type: string, format: uuid }
+        riderId: { type: string, format: uuid }
+        riderName: { type: string }
+        status: { type: string, enum: [granted, denied] }
+        reason: { type: string, nullable: true }
+        scannedAt: { type: string, format: date-time }
+        lat: { type: number, nullable: true }
+        lon: { type: number, nullable: true }
+
+    AdminTicketReplyBody:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string, maxLength: 5000 }
+
+    AdminTicketReplyResult:
+      type: object
+      required: [ticketId, status]
+      properties:
+        ticketId: { type: string, format: uuid }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    AdminTicketEscalateResult:
+      type: object
+      required: [ticketId, status]
+      properties:
+        ticketId: { type: string, format: uuid }
+        status: { type: string, enum: [escalated] }
+
+    AdminTicketCloseResult:
+      type: object
+      required: [ticketId, status]
+      properties:
+        ticketId: { type: string, format: uuid }
+        status: { type: string, enum: [closed] }
+
+    AdminTicketTransferBody:
+      type: object
+      required: [agentUserId, reason]
+      properties:
+        agentUserId: { type: string, format: uuid }
+        reason: { type: string, maxLength: 1000 }
+
+    AdminTicketTransferResult:
+      type: object
+      required: [ticketId, status]
+      properties:
+        ticketId: { type: string, format: uuid }
+        status: { type: string }
+        transferredTo: { type: string, format: uuid }
+
+    AdminGeofence:
+      type: object
+      required: [id, name, type, boundary, active, metadata, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        type: { type: string, enum: [hub_zone, delivery_zone, restricted_zone, surge_zone] }
+        boundary: { type: object, description: "GeoJSON polygon or circle" }
+        active: { type: boolean }
+        metadata: { type: object }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    AdminCreateGeofenceBody:
+      type: object
+      required: [name, type, boundary]
+      properties:
+        name: { type: string }
+        type: { type: string, enum: [hub_zone, delivery_zone, restricted_zone, surge_zone] }
+        boundary: { type: object, description: "GeoJSON polygon or circle" }
+        active: { type: boolean, default: true }
+        metadata: { type: object }
+
+    AdminGeofenceEvent:
+      type: object
+      required: [id, geofenceId, entityType, entityId, eventType, lat, lon, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        geofenceId: { type: string, format: uuid }
+        entityType: { type: string, enum: [rider, vehicle] }
+        entityId: { type: string, format: uuid }
+        eventType: { type: string, enum: [entry, exit] }
+        lat: { type: number }
+        lon: { type: number }
+        createdAt: { type: string, format: date-time }
 

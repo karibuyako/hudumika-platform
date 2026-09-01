@@ -25,11 +25,10 @@ import (
 const (
 	// withdrawalMinimumTZS is the smallest cash-out amount (422
 	// WITHDRAWAL_BELOW_MINIMUM below it).
-	withdrawalMinimumTZS int64 = 5000
+	// Deprecated: use GetSettings().WithdrawalMinimumTZS instead.
 	// withdrawalDailyLimit and withdrawalRateWindow bound cash-outs per
 	// earner to 3 per rolling 24h (429 WITHDRAWAL_RATE_LIMITED).
-	withdrawalDailyLimit    = 3
-	withdrawalRateWindow    = 24 * time.Hour
+	// Deprecated: use GetSettings().WithdrawalDailyLimit and GetSettings().WithdrawalRateWindowHours instead.
 	withdrawalDefaultMethod = "bank" // contract sends no method; payout_account resolves it later
 	defaultCustomerTxLimit  = 50     // contract default for /wallet/me/transactions
 	defaultMerchantTxLimit  = 20     // contract default for /wallet/transactions
@@ -332,7 +331,7 @@ func (s *Server) listWalletTransactions(w http.ResponseWriter, r *http.Request, 
 // VALIDATION_FAILED below it). The contract only documents minimum 1; the
 // 1000 TZS floor matches the QR wallet-intent floor and keeps top-ups
 // above the smallest provider tariff.
-const walletTopUpMinimumTZS int64 = 1000
+// Deprecated: use GetSettings().WalletTopupMinimumTZS instead.
 
 // TopUpMyWallet starts a wallet top-up (POST /wallet/me/top-up): it creates
 // an order-less payment intent (order_id NULL — payments.Store now supports
@@ -384,9 +383,9 @@ func (s *Server) TopUpMyWallet(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Idempotency-Key header is required")
 		return
 	}
-	if int64(body.AmountTZS) < walletTopUpMinimumTZS {
+	if int64(body.AmountTZS) < GetSettings().WalletTopupMinimumTZS {
 		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED",
-			fmt.Sprintf("Minimum top-up is %d TZS", walletTopUpMinimumTZS))
+			fmt.Sprintf("Minimum top-up is %d TZS", GetSettings().WalletTopupMinimumTZS))
 		return
 	}
 
@@ -562,6 +561,8 @@ func (s *Server) RequestWithdrawal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	withdrawalDailyLimit := int64(GetSettings().WithdrawalDailyLimit)
+	withdrawalRateWindow := time.Duration(GetSettings().WithdrawalRateWindowHours) * time.Hour
 	decision, err := s.stores.Rate.Allow(r.Context(), "withdraw:"+claims.Subject, withdrawalDailyLimit, withdrawalRateWindow, time.Now())
 	if err != nil {
 		s.logger.Error("withdrawal rate limit check failed", "user", user.ID, "error", err)
@@ -576,9 +577,10 @@ func (s *Server) RequestWithdrawal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeRateLimitHeaders(w, withdrawalDailyLimit, rateLimitRemaining(decision, withdrawalDailyLimit), withdrawalRateWindow)
-	if amountTZS < withdrawalMinimumTZS {
+	withdrawalMinimum := GetSettings().WithdrawalMinimumTZS
+	if amountTZS < withdrawalMinimum {
 		writeError(w, http.StatusUnprocessableEntity, "WITHDRAWAL_BELOW_MINIMUM",
-			fmt.Sprintf("Minimum withdrawal is %d TZS", withdrawalMinimumTZS))
+			fmt.Sprintf("Minimum withdrawal is %d TZS", withdrawalMinimum))
 		return
 	}
 

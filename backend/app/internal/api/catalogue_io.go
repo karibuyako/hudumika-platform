@@ -55,10 +55,7 @@ import (
 )
 
 const (
-	// maxImportRows bounds a single import request; the contract allows 5000
-	// but the synchronous transaction stays bounded at 500 (see package
-	// comment).
-	maxImportRows = 500
+	// Deprecated: maxImportRows is now served from GetSettings().MaxImportRows.
 	// exportExpiresInSeconds is the contract's expiresInSeconds default.
 	exportExpiresInSeconds = 900
 	// exportInlineMaxBytes is the largest export payload still embedded
@@ -193,9 +190,9 @@ func (s *Server) ImportCatalogue(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Invalid request body")
 		return
 	}
-	if len(body.Rows) == 0 || len(body.Rows) > maxImportRows {
+	if len(body.Rows) == 0 || len(body.Rows) > GetSettings().MaxImportRows {
 		writeError(w, http.StatusUnprocessableEntity, "BULK_OPERATION_INVALID",
-			fmt.Sprintf("rows must contain between 1 and %d items", maxImportRows))
+			fmt.Sprintf("rows must contain between 1 and %d items", GetSettings().MaxImportRows))
 		return
 	}
 	if errs := validateCatalogueImportRows(body.Rows); len(errs) > 0 {
@@ -427,7 +424,7 @@ func (s *Server) ExportCatalogue(w http.ResponseWriter, r *http.Request) {
 			`INSERT INTO data_exports (user_id, scope, format, status, expires_at)
 			 VALUES ($1, $2, $3, 'queued', $4)
 			 RETURNING `+exportJobColumns,
-			userID, "catalogue", format, time.Now().Add(exportTTL)).
+			userID, "catalogue", format, time.Now().Add(time.Duration(GetSettings().ExportTTLHours)*time.Hour)).
 			Scan(&job.id, &job.scope, &job.format, &job.status, &job.fileURL, &job.rows,
 				&job.errorMsg, &job.expiresAt, &job.createdAt, &job.completedAt)
 		if err != nil {

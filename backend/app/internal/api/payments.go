@@ -283,7 +283,7 @@ func (s *Server) PaymentWebhook(w http.ResponseWriter, r *http.Request, provider
 		writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "provider must be one of mpesa, tigo, airtel, card, cardtonic")
 		return
 	}
-	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxBodyBytes))
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, GetSettings().MaxBodyBytes))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "VALIDATION_FAILED", "Request body too large or unreadable")
 		return

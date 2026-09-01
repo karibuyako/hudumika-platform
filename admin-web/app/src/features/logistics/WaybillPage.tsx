@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import {
+  adminHandoffSealDecision,
   getOrderWaybill,
   getShipmentCustody,
   type CustodyEntry,
@@ -7,10 +8,10 @@ import {
 } from '@hudumika/contract'
 import { EmptyState } from '../../components/EmptyState'
 import { ErrorState } from '../../components/ErrorState'
-import { InlineError } from '../../components/FormBits'
+import { InlineError, Toast } from '../../components/FormBits'
 import { LoadingSkeleton } from '../../components/LoadingSkeleton'
 import { ReasonPrompt } from '../../components/ReasonPrompt'
-import { PENDING_ENDPOINT_CODE, pendingEndpointNotice } from '../../lib/pending-endpoints'
+import { parseApiError, type ApiErrorInfo } from '../../lib/api-error'
 import { toLocal } from '../../lib/time'
 
 type Tab = 'waybill' | 'custody'
@@ -247,7 +248,28 @@ type SealAction = 'reseal' | 'damage_claim'
 
 function SealBrokenCallout({ shipmentId }: { shipmentId: string }) {
   const [prompt, setPrompt] = useState<SealAction | null>(null)
-  const [pending, setPending] = useState<SealAction | null>(null)
+  const [handoffId, setHandoffId] = useState(shipmentId)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<ApiErrorInfo | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+
+  async function handleSealDecision(action: SealAction, reason: string) {
+    const outcome = action === 'reseal' ? 'resealed' : 'damage_claim'
+    if (!handoffId.trim()) {
+      setError({ code: 'VALIDATION_FAILED', message: 'Handoff ID is required', retriable: false } as ApiErrorInfo)
+      return
+    }
+    setBusy(true)
+    setError(null)
+    const res = await adminHandoffSealDecision(handoffId.trim(), { outcome, reason } as never)
+    setBusy(false)
+    if (res.status === 200) {
+      setToast(action === 'reseal' ? 'Handoff re-sealed' : 'Damage claim registered')
+      setPrompt(null)
+    } else {
+      setError(parseApiError(res, 'Seal decision failed'))
+    }
+  }
 
   return (
     <>
@@ -257,12 +279,23 @@ function SealBrokenCallout({ shipmentId }: { shipmentId: string }) {
           A handoff evidence record for {shipmentId} references a broken seal — resolve before further
           movement (handoff.*).
         </div>
-        <div className="form-actions">
+        {toast && <Toast message={toast} />}
+        <label className="field-label" htmlFor="seal-handoff-id">
+          Handoff ID
+        </label>
+        <input
+          id="seal-handoff-id"
+          className="field"
+          value={handoffId}
+          onChange={(e) => setHandoffId(e.target.value)}
+          placeholder="handoff_..."
+        />
+        <div className="form-actions" style={{ marginTop: 8 }}>
           <button
             type="button"
             className="btn"
             onClick={() => {
-              setPending(null)
+              setError(null)
               setPrompt('reseal')
             }}
           >
@@ -272,47 +305,48 @@ function SealBrokenCallout({ shipmentId }: { shipmentId: string }) {
             type="button"
             className="btn btn-danger"
             onClick={() => {
-              setPending(null)
+              setError(null)
               setPrompt('damage_claim')
             }}
           >
             Damage claim
           </button>
         </div>
-      </div>
-
-      {pending && (
-        <div className="state-card">
-          <div className="state-title">
-            <span className="mono">{PENDING_ENDPOINT_CODE}</span>
+        {error && (
+          <div className="inline-error" role="alert" style={{ marginTop: 8 }}>
+            <div>{error.message}</div>
+            <div className="muted small">
+              {error.code}
+              {error.requestId ? ` · request ${error.requestId}` : ''}
+            </div>
           </div>
-          <div className="state-message">{pendingEndpointNotice('seal_broken_resolve')}</div>
-          <p className="muted small">This action is documented for backend implementation — nothing was sent.</p>
-        </div>
-      )}
+        )}
+      </div>
 
       {prompt === 'reseal' && (
         <ReasonPrompt
           title="Re-seal handoff"
-          description={`Records that the package was re-sealed after the broken-seal handoff on ${shipmentId}.`}
+          description={`Records that the package was re-sealed after the broken-seal handoff on ${handoffId}.`}
           tone="danger"
-          onSubmit={() => {
-            setPending('reseal')
-            setPrompt(null)
+          busy={busy}
+          error={error}
+          onSubmit={(reason) => void handleSealDecision('reseal', reason)}
+          onClose={() => {
+            if (!busy) setPrompt(null)
           }}
-          onClose={() => setPrompt(null)}
         />
       )}
       {prompt === 'damage_claim' && (
         <ReasonPrompt
           title="Damage claim"
-          description={`Registers a damage claim anchored to the broken-seal handoff on ${shipmentId}.`}
+          description={`Registers a damage claim anchored to the broken-seal handoff on ${handoffId}.`}
           tone="danger"
-          onSubmit={() => {
-            setPending('damage_claim')
-            setPrompt(null)
+          busy={busy}
+          error={error}
+          onSubmit={(reason) => void handleSealDecision('damage_claim', reason)}
+          onClose={() => {
+            if (!busy) setPrompt(null)
           }}
-          onClose={() => setPrompt(null)}
         />
       )}
     </>

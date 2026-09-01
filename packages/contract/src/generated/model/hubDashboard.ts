@@ -9,6 +9,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { HubDashboardLoad } from './hubDashboardLoad';
+import type { HubDashboardPerformance } from './hubDashboardPerformance';
 import type { HubDashboardSortationQueuesItem } from './hubDashboardSortationQueuesItem';
 
 export interface HubDashboard {
@@ -19,4 +20,5 @@ export interface HubDashboard {
   staffOnDuty?: number;
   vehiclesPresent?: number;
   updatedAt?: string;
+  performance?: HubDashboardPerformance;
 }

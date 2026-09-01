@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
   adminCreateReport,
+  adminDataExportDecision,
+  adminDataExportRerun,
   adminListDataExports,
   type AdminCreateReportBody,
   type DataExportJob,
@@ -13,8 +15,7 @@ import { Field, InlineError, Toast } from '../../components/FormBits'
 import { LoadingSkeleton } from '../../components/LoadingSkeleton'
 import { ReasonPrompt } from '../../components/ReasonPrompt'
 import { StatusPill } from '../../components/StatusPill'
-import { parseApiError } from '../../lib/api-error'
-import { PENDING_ENDPOINT_CODE, pendingEndpointNotice } from '../../lib/pending-endpoints'
+import { parseApiError, type ApiErrorInfo } from '../../lib/api-error'
 import { can } from '../../lib/permissions'
 import { useSession } from '../../lib/session'
 import { toLocal } from '../../lib/time'
@@ -69,11 +70,36 @@ export function DataExportsPage() {
 
   const load = useCallback(() => {
     setError(null)
-    adminListDataExports().then((res) => {
-      if (res.status === 200) setJobs(res.data)
-      else setError(parseApiError(res, 'Failed to load data exports').message)
-    })
+    adminListDataExports()
+      .then((res) => {
+        if (res.status === 200) setJobs(res.data)
+        else setError(parseApiError(res, 'Failed to load data exports').message)
+      })
+      .catch(() => setError(parseApiError({ status: 0, data: undefined }, 'Failed to load data exports').message))
   }, [])
+
+  async function handleExportDecision(jobId: string, decision: 'approve' | 'reject', reason: string): Promise<ApiErrorInfo | null> {
+    const res = await adminDataExportDecision(jobId, { decision, reason })
+    if (res.status === 200) {
+      const targetStatus = decision === 'approve' ? 'processing' : 'failed'
+      setJobs((prev) => (prev ?? []).map((j) => (j.id === jobId ? { ...j, status: targetStatus as DataExportJobStatus } : j)))
+      setSelected((prev) => (prev && prev.id === jobId ? { ...prev, status: targetStatus as DataExportJobStatus } : prev))
+      setToast(decision === 'approve' ? 'Export approved' : 'Export rejected')
+      return null
+    }
+    return parseApiError(res, 'Export decision failed')
+  }
+
+  async function handleExportRerun(jobId: string, reason: string): Promise<ApiErrorInfo | null> {
+    const res = await adminDataExportRerun(jobId, { reason })
+    if (res.status === 200) {
+      setJobs((prev) => (prev ?? []).map((j) => (j.id === jobId ? { ...j, status: 'queued' as DataExportJobStatus } : j)))
+      setSelected((prev) => (prev && prev.id === jobId ? { ...prev, status: 'queued' as DataExportJobStatus } : prev))
+      setToast('Export re-queued')
+      return null
+    }
+    return parseApiError(res, 'Export rerun failed')
+  }
 
   useEffect(() => {
     load()
@@ -138,7 +164,7 @@ export function DataExportsPage() {
         ariaLabel="Data export jobs"
       />
 
-      {selected && <ExportDrawer job={selected} onClose={() => setSelected(null)} />}
+      {selected && <ExportDrawer job={selected} onClose={() => setSelected(null)} onDecision={handleExportDecision} onRerun={handleExportRerun} />}
       {modalOpen && (
         <ReportModal
           onClose={() => setModalOpen(false)}
@@ -153,11 +179,22 @@ export function DataExportsPage() {
   )
 }
 
-function ExportDrawer({ job, onClose }: { job: DataExportJob; onClose: () => void }) {
+function ExportDrawer({
+  job,
+  onClose,
+  onDecision,
+  onRerun,
+}: {
+  job: DataExportJob
+  onClose: () => void
+  onDecision: (jobId: string, decision: 'approve' | 'reject', reason: string) => Promise<ApiErrorInfo | null>
+  onRerun: (jobId: string, reason: string) => Promise<ApiErrorInfo | null>
+}) {
   const session = useSession()
   const canApprove = can(session, 'export.approve')
   const [prompt, setPrompt] = useState<'approve' | 'reject' | 'rerun' | null>(null)
-  const [pending, setPending] = useState<'approve' | 'reject' | 'rerun' | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [promptError, setPromptError] = useState<ApiErrorInfo | null>(null)
 
   const awaitingDecision = job.status === 'queued' || job.status === 'processing'
 
@@ -214,7 +251,7 @@ function ExportDrawer({ job, onClose }: { job: DataExportJob; onClose: () => voi
                   type="button"
                   className="btn"
                   onClick={() => {
-                    setPending(null)
+                    setPromptError(null)
                     setPrompt('approve')
                   }}
                 >
@@ -224,7 +261,7 @@ function ExportDrawer({ job, onClose }: { job: DataExportJob; onClose: () => voi
                   type="button"
                   className="btn btn-danger"
                   onClick={() => {
-                    setPending(null)
+                    setPromptError(null)
                     setPrompt('reject')
                   }}
                 >
@@ -237,7 +274,7 @@ function ExportDrawer({ job, onClose }: { job: DataExportJob; onClose: () => voi
                 type="button"
                 className="btn"
                 onClick={() => {
-                  setPending(null)
+                  setPromptError(null)
                   setPrompt('rerun')
                 }}
               >
@@ -245,18 +282,6 @@ function ExportDrawer({ job, onClose }: { job: DataExportJob; onClose: () => voi
               </button>
             )}
           </div>
-        </div>
-      )}
-
-      {pending && (
-        <div className="state-card">
-          <div className="state-title">
-            <span className="mono">{PENDING_ENDPOINT_CODE}</span>
-          </div>
-          <div className="state-message">
-            {pendingEndpointNotice(pending === 'rerun' ? 'export_rerun' : 'export_approve')}
-          </div>
-          <p className="muted small">This action is documented for backend implementation — nothing was sent.</p>
         </div>
       )}
 
@@ -269,11 +294,19 @@ function ExportDrawer({ job, onClose }: { job: DataExportJob; onClose: () => voi
         <ReasonPrompt
           title="Approve export"
           description={`${job.id} — releases the queued data export for delivery.`}
-          onSubmit={() => {
-            setPending('approve')
-            setPrompt(null)
+          busy={busy}
+          error={promptError}
+          onSubmit={async (reason) => {
+            setBusy(true)
+            setPromptError(null)
+            const err = await onDecision(job.id, 'approve', reason)
+            setBusy(false)
+            if (err) setPromptError(err)
+            else setPrompt(null)
           }}
-          onClose={() => setPrompt(null)}
+          onClose={() => {
+            if (!busy) setPrompt(null)
+          }}
         />
       )}
       {prompt === 'reject' && (
@@ -281,22 +314,38 @@ function ExportDrawer({ job, onClose }: { job: DataExportJob; onClose: () => voi
           title="Reject export"
           description={`${job.id} — cancels the queued data export and notifies the requester.`}
           tone="danger"
-          onSubmit={() => {
-            setPending('reject')
-            setPrompt(null)
+          busy={busy}
+          error={promptError}
+          onSubmit={async (reason) => {
+            setBusy(true)
+            setPromptError(null)
+            const err = await onDecision(job.id, 'reject', reason)
+            setBusy(false)
+            if (err) setPromptError(err)
+            else setPrompt(null)
           }}
-          onClose={() => setPrompt(null)}
+          onClose={() => {
+            if (!busy) setPrompt(null)
+          }}
         />
       )}
       {prompt === 'rerun' && (
         <ReasonPrompt
           title="Re-run export"
           description={`${job.id} — retries the failed data export job.`}
-          onSubmit={() => {
-            setPending('rerun')
-            setPrompt(null)
+          busy={busy}
+          error={promptError}
+          onSubmit={async (reason) => {
+            setBusy(true)
+            setPromptError(null)
+            const err = await onRerun(job.id, reason)
+            setBusy(false)
+            if (err) setPromptError(err)
+            else setPrompt(null)
           }}
-          onClose={() => setPrompt(null)}
+          onClose={() => {
+            if (!busy) setPrompt(null)
+          }}
         />
       )}
     </DetailDrawer>

@@ -46,9 +46,8 @@ import (
 // the per-user export request budget (3 per hour).
 const (
 	reportListPageSize = 25
-	exportTTL          = 24 * time.Hour
-	exportRateLimit    = 3
 	exportRateWindow   = time.Hour
+	// Deprecated: exportTTL and exportRateLimit are now served from GetSettings().
 )
 
 // exportStatusBridge maps the DB status column onto the contract enum: a
@@ -610,7 +609,7 @@ func (s *Server) RequestDataExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	now := time.Now()
-	decision, err := s.stores.Rate.Allow(r.Context(), "export:"+claims.Subject, exportRateLimit, exportRateWindow, now)
+	decision, err := s.stores.Rate.Allow(r.Context(), "export:"+claims.Subject, int64(GetSettings().ExportRateLimit), exportRateWindow, now)
 	if err != nil {
 		s.logger.Error("export rate limit check failed", "user", claims.Subject, "error", err)
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
@@ -649,7 +648,7 @@ func (s *Server) RequestDataExport(w http.ResponseWriter, r *http.Request) {
 		`INSERT INTO data_exports (user_id, scope, format, status, expires_at)
 		 VALUES ($1, $2, $3, 'queued', $4)
 		 RETURNING `+exportJobColumns,
-		user.ID, string(body.Scope), string(body.Format), now.Add(exportTTL)).
+		user.ID, string(body.Scope), string(body.Format), now.Add(time.Duration(GetSettings().ExportTTLHours)*time.Hour)).
 		Scan(&job.id, &job.scope, &job.format, &job.status, &job.fileURL, &job.rows,
 			&job.errorMsg, &job.expiresAt, &job.createdAt, &job.completedAt)
 	if err != nil {

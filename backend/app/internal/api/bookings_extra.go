@@ -26,7 +26,7 @@ import (
 // assumes: the contract carries no duration input, so a one-hour baseline
 // is used and the estimate is the hourly rate times the whole hours
 // (deviation, documented in GetBookingEstimate).
-const defaultEstimateDurationMinutes = 60
+// Deprecated: use GetSettings().DefaultEstimateDurationMinutes instead.
 
 // bookingExtraStaffRole reports whether the claims belong to a staff
 // session allowed to act on behalf of the customer in the quote decision.
@@ -57,7 +57,7 @@ func (s *Server) GetBookingEstimate(w http.ResponseWriter, r *http.Request, para
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
-	amount, err := bookings.NewStore(s.db.Pool()).Estimate(r.Context(), params.ServiceId, defaultEstimateDurationMinutes)
+	amount, err := bookings.NewStore(s.db.Pool()).Estimate(r.Context(), params.ServiceId, GetSettings().DefaultEstimateDurationMinutes)
 	if errors.Is(err, bookings.ErrNotFound) {
 		writeError(w, http.StatusUnprocessableEntity, "ESTIMATE_UNAVAILABLE", "No estimate is available for this service")
 		return
@@ -67,7 +67,7 @@ func (s *Server) GetBookingEstimate(w http.ResponseWriter, r *http.Request, para
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
-	duration := defaultEstimateDurationMinutes
+	duration := GetSettings().DefaultEstimateDurationMinutes
 	disclaimer := "Final quote may vary after on-site inspection"
 	writeJSON(w, http.StatusOK, gen.BookingEstimate{
 		ServiceId:                newUUID(params.ServiceId.String()),

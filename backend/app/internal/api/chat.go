@@ -31,13 +31,12 @@ import (
 // — chat state is meaningless without durable identity — unlike users.go's
 // currentUser which degrades a missing database to 404.
 
+// Deprecated: chatDefaultListLimit, chatMaxListLimit, chatMaxMessageLength, chatMessageRateLimit
+// are now served from GetSettings(). The constants below are retained only as
+// compile-time documentation and fallback defaults.
 const (
-	chatDefaultListLimit  = 20
-	chatMaxListLimit      = 50
 	chatDefaultMsgLimit   = 30
 	chatMaxMsgLimit       = 100
-	chatMaxMessageLength  = 2000
-	chatMessageRateLimit  = 20
 	chatMessageRateWindow = time.Minute
 
 	chatConversationSelect = `SELECT c.id, c.customer_user_id, c.merchant_id, c.subject, c.status,
@@ -187,11 +186,11 @@ func (s *Server) ListConversations(w http.ResponseWriter, r *http.Request, param
 		return
 	}
 
-	limit := chatDefaultListLimit
+	limit := GetSettings().DefaultChatListLimit
 	if params.Limit != nil && *params.Limit > 0 {
 		limit = *params.Limit
-		if limit > chatMaxListLimit {
-			limit = chatMaxListLimit
+		if limit > GetSettings().MaxChatListLimit {
+			limit = GetSettings().MaxChatListLimit
 		}
 	}
 	var (
@@ -291,9 +290,9 @@ func (s *Server) CreateConversation(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Invalid request body")
 		return
 	}
-	if len(body.InitialMessage) > chatMaxMessageLength {
-		writeError(w, http.StatusUnprocessableEntity, "MESSAGE_TOO_LONG",
-			fmt.Sprintf("Message must be at most %d characters", chatMaxMessageLength))
+	if len(body.InitialMessage) > GetSettings().ChatMaxMessageLength {
+		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED",
+			fmt.Sprintf("Message must be at most %d characters", GetSettings().ChatMaxMessageLength))
 		return
 	}
 
@@ -616,13 +615,13 @@ func (s *Server) SendConversationMessage(w http.ResponseWriter, r *http.Request,
 		writeError(w, http.StatusUnprocessableEntity, "MESSAGE_EMPTY", "Message body is required")
 		return
 	}
-	if len(body.Body) > chatMaxMessageLength {
-		writeError(w, http.StatusUnprocessableEntity, "MESSAGE_TOO_LONG",
-			fmt.Sprintf("Message must be at most %d characters", chatMaxMessageLength))
+	if len(body.Body) > GetSettings().ChatMaxMessageLength {
+		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED",
+			fmt.Sprintf("Message must be at most %d characters", GetSettings().ChatMaxMessageLength))
 		return
 	}
 
-	decision, err := s.stores.Rate.Allow(r.Context(), "chat:msg:"+userID.String(), chatMessageRateLimit, chatMessageRateWindow, time.Now())
+	decision, err := s.stores.Rate.Allow(r.Context(), "chat:msg:"+userID.String(), int64(GetSettings().ChatMessageRateLimit), chatMessageRateWindow, time.Now())
 	if err != nil {
 		s.logger.Error("message rate limit check failed", "user", userID, "error", err)
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")

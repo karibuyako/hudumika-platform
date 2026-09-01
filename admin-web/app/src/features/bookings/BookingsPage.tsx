@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { adminAssignBookingProvider, adminListBookings, type BookingDetail, type BookingStatus } from '@hudumika/contract'
+import { adminAssignBookingProvider, adminListBookings, cancelBooking, type BookingDetail, type BookingStatus } from '@hudumika/contract'
 import { DataTable, type DataTableColumn } from '../../components/DataTable'
 import { DetailDrawer } from '../../components/DetailDrawer'
 import { ErrorState } from '../../components/ErrorState'
 import { InlineError, Toast } from '../../components/FormBits'
 import { LoadingSkeleton } from '../../components/LoadingSkeleton'
+import { ReasonPrompt } from '../../components/ReasonPrompt'
 import { StatusPill } from '../../components/StatusPill'
 import { parseApiError, type ApiErrorInfo } from '../../lib/api-error'
 import { formatTZS } from '../../lib/money'
@@ -159,7 +160,26 @@ function BookingDrawer({
   onClose: () => void
   onAssigned: () => void
 }) {
+  const session = useSession()
+  const canCancel = can(session, 'booking.cancel')
   const [assigning, setAssigning] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [cancelError, setCancelError] = useState<string | null>(null)
+  const [showCancelPrompt, setShowCancelPrompt] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
+
+  async function handleCancel(reason: string) {
+    setBusy(true)
+    setCancelError(null)
+    const res = await cancelBooking(booking.id, { reason })
+    setBusy(false)
+    if (res.status === 200) {
+      setToast('Booking cancelled')
+      onClose()
+    } else {
+      setCancelError(parseApiError(res, 'Cancel failed').message)
+    }
+  }
   return (
     <>
       <DetailDrawer title={<span className="mono-strong">{booking.id}</span>} onClose={onClose}>
@@ -263,6 +283,38 @@ function BookingDrawer({
           </div>
         </div>
       </DetailDrawer>
+      {toast && <Toast message={toast} />}
+      {canCancel && (
+        <div className="detail-section">
+          <h3>Actions</h3>
+          <button
+            type="button"
+            className="btn btn-danger"
+            onClick={() => {
+              setCancelError(null)
+              setShowCancelPrompt(true)
+            }}
+          >
+            Cancel booking
+          </button>
+        </div>
+      )}
+      {showCancelPrompt && (
+        <ReasonPrompt
+          title="Cancel booking"
+          description={`Cancel booking ${booking.id} — current status: ${booking.status}.`}
+          tone="danger"
+          busy={busy}
+          error={cancelError}
+          onSubmit={async (reason) => {
+            await handleCancel(reason)
+            if (!cancelError) setShowCancelPrompt(false)
+          }}
+          onClose={() => {
+            if (!busy) setShowCancelPrompt(false)
+          }}
+        />
+      )}
       {assigning && <AssignProviderModal booking={booking} onClose={() => setAssigning(false)} onAssigned={onAssigned} />}
     </>
   )

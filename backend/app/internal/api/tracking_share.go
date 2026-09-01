@@ -99,7 +99,7 @@ func (s *Server) MthCreateTrackingShare(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	expiresAt := time.Now().Add(2 * time.Hour)
+	expiresAt := time.Now().Add(time.Duration(GetSettings().TrackingShareExpiryHours) * time.Hour)
 	// Generate unguessable token ts_* ; include order for traceability per migration comment
 	// Use ts_<uuid> form; ensure uniqueness with retry on PK collision.
 	var token string

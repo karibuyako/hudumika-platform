@@ -84,7 +84,7 @@ export default function LoginScreen() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.hero}>
           <View style={styles.logo}>
-            <Icon name="flame" size={40} color={Colors.primary} />
+            <Icon name="leaf" size={40} color={Colors.primary} />
           </View>
           <Text style={styles.title}>{t('login.title')}</Text>
           <Text style={styles.sub}>{t('login.sub')}</Text>

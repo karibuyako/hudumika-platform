@@ -408,7 +408,7 @@ func TestCatalogueImportOverCap(t *testing.T) {
 	s, pool := catalogueIOSetup(t)
 	_, token := catalogueIOMerchant(t, pool, s, "cap")
 
-	names := make([]string, maxImportRows+1)
+	names := make([]string, GetSettings().MaxImportRows+1)
 	for i := range names {
 		names[i] = fmt.Sprintf("Row %d", i)
 	}

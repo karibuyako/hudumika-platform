@@ -10,25 +10,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-
-	"github.com/hudumika/api-backend/internal/store"
 )
-
-// failingIdempotencyStore is a stub whose every call fails, used to verify
-// the middleware degrades instead of failing the request.
-type failingIdempotencyStore struct{}
-
-func (failingIdempotencyStore) Begin(context.Context, string, time.Duration) (bool, error) {
-	return false, store.ErrIdempotencyStoreDown
-}
-
-func (failingIdempotencyStore) Store(context.Context, string, store.IdempotentResponse, time.Duration) error {
-	return store.ErrIdempotencyStoreDown
-}
-
-func (failingIdempotencyStore) Get(context.Context, string) (*store.IdempotentResponse, error) {
-	return nil, store.ErrIdempotencyStoreDown
-}
 
 // newIdemRouter builds a fresh chi router protected by the idempotency
 // middleware with a handler that counts its executions.
@@ -99,20 +81,6 @@ func TestIdempotencyDistinctSubjectsScoped(t *testing.T) {
 	}
 }
 
-func TestIdempotencyDegradesOnStoreFailure(t *testing.T) {
-	s, h, counter := newIdemRouter()
-	s.stores.Idem = failingIdempotencyStore{}
-
-	rec := doIdem(t, h, "+255700000001", "pay-1")
-
-	if got := atomic.LoadInt32(counter); got != 1 {
-		t.Fatalf("handler executed %d times, want 1", got)
-	}
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200", rec.Code)
-	}
-}
-
 func TestIdempotencyReplayAfterFirstCompletes(t *testing.T) {
 	_, h, counter := newIdemRouter()
 
@@ -127,5 +95,19 @@ func TestIdempotencyReplayAfterFirstCompletes(t *testing.T) {
 	}
 	if !bytes.Equal(second.Body.Bytes(), first.Body.Bytes()) {
 		t.Fatalf("replayed body %q != original %q", second.Body, first.Body)
+	}
+}
+
+func TestIdempotencyCleanup(t *testing.T) {
+	s := NewIdempotencyStore(50 * time.Millisecond)
+	s.Store(context.Background(), "key1", 200, []byte(`{"ok":true}`))
+	code, body, ok := s.Check(context.Background(), "key1")
+	if !ok || code != 200 || string(body) != `{"ok":true}` {
+		t.Fatalf("expected stored entry, got ok=%v code=%d body=%s", ok, code, body)
+	}
+	time.Sleep(100 * time.Millisecond)
+	_, _, ok = s.Check(context.Background(), "key1")
+	if ok {
+		t.Fatal("expected expired entry to be gone")
 	}
 }

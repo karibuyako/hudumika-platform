@@ -181,7 +181,7 @@ describe('ChainsPage', () => {
     expect(within(dialog).queryByRole('button', { name: 'Suspend' })).not.toBeInTheDocument()
   })
 
-  it('onboarding completes the reason prompt and shows the chain_onboard pending notice', async () => {
+  it('onboarding completes via the live endpoint and shows success', async () => {
     seedChains([{ ...CHAIN, merchantGroupId: 'grp_2', name: 'Kilimanjaro Foods', status: 'suspended' }])
     render(<ChainsPage />)
     fireEvent.click(await screen.findByText('Kilimanjaro Foods'))
@@ -193,16 +193,28 @@ describe('ChainsPage', () => {
     fireEvent.change(within(prompt).getByLabelText('Tier'), { target: { value: 'enterprise' } })
     fireEvent.click(within(prompt).getByRole('button', { name: 'Confirm' }))
 
-    expect(await screen.findByText('PENDING_ENDPOINT')).toBeInTheDocument()
-    expect(
-      screen.getByText(/POST \/admin\/chains\/\{merchantGroupId\}\/onboard/),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText('This action is documented for backend implementation — nothing was sent.'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('Chain onboarded')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Onboard chain' })).not.toBeInTheDocument()
+    expect(screen.queryByText('PENDING_ENDPOINT')).not.toBeInTheDocument()
   })
 
-  it('suspending an active chain shows the chain_suspend pending notice', async () => {
+  it('suspending an active chain via the live endpoint and handling two-person', async () => {
+    seedChains([CHAIN])
+    server.use(http.post('/admin/chains/:merchantGroupId/suspend', async () => HttpResponse.json({ code: 'TWO_PERSON_REQUIRED', message: 'requires two-person', requestId: 'req_2p' }, { status: 409 })))
+    render(<ChainsPage />)
+    fireEvent.click(await screen.findByText('Chapa Express'))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Suspend' }))
+
+    const prompt = screen.getByRole('dialog', { name: 'Suspend chain' })
+    fireEvent.change(prompt.querySelector('textarea')!, { target: { value: 'SLA violations' } })
+    fireEvent.click(within(prompt).getByRole('button', { name: 'Confirm' }))
+
+    expect(await within(prompt).findByText(/requires two-person/i)).toBeInTheDocument()
+    expect(within(prompt).getByText(/req_2p/)).toBeInTheDocument()
+  })
+
+  it('shows success after suspending when second approver', async () => {
     seedChains([CHAIN])
     render(<ChainsPage />)
     fireEvent.click(await screen.findByText('Chapa Express'))
@@ -213,10 +225,8 @@ describe('ChainsPage', () => {
     fireEvent.change(prompt.querySelector('textarea')!, { target: { value: 'SLA violations' } })
     fireEvent.click(within(prompt).getByRole('button', { name: 'Confirm' }))
 
-    expect(await screen.findByText('PENDING_ENDPOINT')).toBeInTheDocument()
-    expect(
-      screen.getByText(/POST \/admin\/chains\/\{merchantGroupId\}\/suspend/),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('Chain suspended')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Suspend chain' })).not.toBeInTheDocument()
   })
 })
 

@@ -9,39 +9,91 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
+  AdminCancelScheduledNotificationParams,
   AdminChainOnboardBody,
   AdminChainOnboardResult,
   AdminChainSuspendBody,
   AdminChainSuspendResult,
+  AdminCloseTicketBody,
   AdminCodShiftDecisionBody,
   AdminCodShiftDecisionResult,
+  AdminConfigDomain,
+  AdminConfigDomainBody,
   AdminConsignmentMissingBody,
   AdminConsignmentMissingResult,
+  AdminContent,
+  AdminContentStateBody,
   AdminCrashRespondBody,
   AdminCrashRespondResult,
+  AdminCreateAdminBody,
+  AdminCreateContentBody,
+  AdminCreatePolicyBody,
+  AdminCreateScheduledReportBody,
+  AdminCreateTeamBody,
+  AdminCreateGeofenceBody,
   AdminDataExportDecisionBody,
   AdminDataExportDecisionResult,
+  AdminGeofence,
   AdminDataExportRerunBody,
   AdminDataExportRerunResult,
   AdminDisputeDecisionBody,
   AdminDisputeDecisionResult,
+  AdminEscalateTicketBody,
+  AdminFacilityEntry,
+  AdminGatewayConfig,
+  AdminGatewayConfigBody,
+  AdminGetMapTrafficParams,
+  AdminGetSettingsParams,
+  AdminHandoff,
   AdminHandoffSealBody,
   AdminHandoffSealResult,
+  AdminListAdminsParams,
+  AdminListContentParams,
+  AdminListFacilityEntriesParams,
+  AdminListHandoffsParams,
+  AdminListPayrollParams,
+  AdminListScheduledReportsParams,
   AdminLogisticsAnomalyDecisionBody,
   AdminLogisticsAnomalyDecisionResult,
   AdminLoyaltyConfigBody,
   AdminLoyaltyConfigResult,
+  AdminMapTrafficOverlay,
   AdminOrderCancelBody,
   AdminOrderCancelResult,
+  AdminPasswordResetBody,
+  AdminPasswordResetResult,
   AdminPayoutReconcileBody,
   AdminPayoutReconcileResult,
+  AdminPayrollBatch,
+  AdminPolicy,
   AdminProviderApprovalBody,
   AdminProviderApprovalResult,
+  AdminQualityScoreConfig,
+  AdminQualityScoreConfigBody,
   AdminRestOverrideBody,
   AdminRestOverrideResult,
   AdminRiderApprovalBody,
   AdminRiderApprovalResult,
-  ErrorResponse
+  AdminRunPayrollBody,
+  AdminScheduledNotification,
+  AdminScheduledReport,
+  AdminSettings,
+  AdminSettingsBody,
+  AdminStaffUser,
+  AdminSuspendAdminBody,
+  AdminTeam,
+  AdminTicketCloseResult,
+  AdminTicketEscalateResult,
+  AdminTicketReplyBody,
+  AdminTicketReplyResult,
+  AdminTicketTransferBody,
+  AdminTicketTransferResult,
+  AdminUpdateAdminBody,
+  AdminUpdateTeamBody,
+  ErrorResponse,
+  ForbiddenResponse,
+  NotFoundResponse,
+  ValidationErrorResponse
 } from '../../model';
 
 
@@ -1080,4 +1132,2113 @@ export const adminConsignmentMissingDecision = async (consignmentId: string,
   return { data, status: res.status, headers: res.headers } as adminConsignmentMissingDecisionResponse
 }
 
+
+export type adminResetPasswordResponse200 = {
+  data: AdminPasswordResetResult
+  status: 200
+}
+
+export type adminResetPasswordResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminResetPasswordResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type adminResetPasswordResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type adminResetPasswordResponseSuccess = (adminResetPasswordResponse200) & {
+  headers: Headers;
+};
+export type adminResetPasswordResponseError = (adminResetPasswordResponse403 | adminResetPasswordResponse404 | adminResetPasswordResponse422) & {
+  headers: Headers;
+};
+
+export type adminResetPasswordResponse = (adminResetPasswordResponseSuccess | adminResetPasswordResponseError)
+
+export const getAdminResetPasswordUrl = () => {
+
+
+
+
+  return `/admin/password-reset`
+}
+
+/**
+ * @summary Admin-triggered password reset — sends reset code to user email/SMS
+ */
+export const adminResetPassword = async (adminPasswordResetBody: AdminPasswordResetBody, options?: RequestInit): Promise<adminResetPasswordResponse> => {
+
+  const res = await fetch(getAdminResetPasswordUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminPasswordResetBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminResetPasswordResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminResetPasswordResponse
+}
+
+
+export type adminListScheduledReportsResponse200 = {
+  data: AdminScheduledReport[]
+  status: 200
+}
+
+export type adminListScheduledReportsResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminListScheduledReportsResponseSuccess = (adminListScheduledReportsResponse200) & {
+  headers: Headers;
+};
+export type adminListScheduledReportsResponseError = (adminListScheduledReportsResponse403) & {
+  headers: Headers;
+};
+
+export type adminListScheduledReportsResponse = (adminListScheduledReportsResponseSuccess | adminListScheduledReportsResponseError)
+
+export const getAdminListScheduledReportsUrl = (params?: AdminListScheduledReportsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/admin/reports/scheduled?${stringifiedParams}` : `/admin/reports/scheduled`
+}
+
+/**
+ * @summary List scheduled report jobs
+ */
+export const adminListScheduledReports = async (params?: AdminListScheduledReportsParams, options?: RequestInit): Promise<adminListScheduledReportsResponse> => {
+
+  const res = await fetch(getAdminListScheduledReportsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminListScheduledReportsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminListScheduledReportsResponse
+}
+
+
+export type adminCreateScheduledReportResponse201 = {
+  data: AdminScheduledReport
+  status: 201
+}
+
+export type adminCreateScheduledReportResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminCreateScheduledReportResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type adminCreateScheduledReportResponseSuccess = (adminCreateScheduledReportResponse201) & {
+  headers: Headers;
+};
+export type adminCreateScheduledReportResponseError = (adminCreateScheduledReportResponse403 | adminCreateScheduledReportResponse422) & {
+  headers: Headers;
+};
+
+export type adminCreateScheduledReportResponse = (adminCreateScheduledReportResponseSuccess | adminCreateScheduledReportResponseError)
+
+export const getAdminCreateScheduledReportUrl = () => {
+
+
+
+
+  return `/admin/reports/scheduled`
+}
+
+/**
+ * @summary Create a scheduled report
+ */
+export const adminCreateScheduledReport = async (adminCreateScheduledReportBody: AdminCreateScheduledReportBody, options?: RequestInit): Promise<adminCreateScheduledReportResponse> => {
+
+  const res = await fetch(getAdminCreateScheduledReportUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminCreateScheduledReportBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminCreateScheduledReportResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminCreateScheduledReportResponse
+}
+
+
+export type adminGetQualityScoresResponse200 = {
+  data: AdminQualityScoreConfig
+  status: 200
+}
+
+export type adminGetQualityScoresResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminGetQualityScoresResponseSuccess = (adminGetQualityScoresResponse200) & {
+  headers: Headers;
+};
+export type adminGetQualityScoresResponseError = (adminGetQualityScoresResponse403) & {
+  headers: Headers;
+};
+
+export type adminGetQualityScoresResponse = (adminGetQualityScoresResponseSuccess | adminGetQualityScoresResponseError)
+
+export const getAdminGetQualityScoresUrl = () => {
+
+
+
+
+  return `/admin/quality-scores`
+}
+
+/**
+ * @summary Get quality score configuration
+ */
+export const adminGetQualityScores = async ( options?: RequestInit): Promise<adminGetQualityScoresResponse> => {
+
+  const res = await fetch(getAdminGetQualityScoresUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminGetQualityScoresResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminGetQualityScoresResponse
+}
+
+
+export type adminUpdateQualityScoresResponse200 = {
+  data: AdminQualityScoreConfig
+  status: 200
+}
+
+export type adminUpdateQualityScoresResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminUpdateQualityScoresResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type adminUpdateQualityScoresResponseSuccess = (adminUpdateQualityScoresResponse200) & {
+  headers: Headers;
+};
+export type adminUpdateQualityScoresResponseError = (adminUpdateQualityScoresResponse403 | adminUpdateQualityScoresResponse422) & {
+  headers: Headers;
+};
+
+export type adminUpdateQualityScoresResponse = (adminUpdateQualityScoresResponseSuccess | adminUpdateQualityScoresResponseError)
+
+export const getAdminUpdateQualityScoresUrl = () => {
+
+
+
+
+  return `/admin/quality-scores`
+}
+
+/**
+ * @summary Update quality score configuration
+ */
+export const adminUpdateQualityScores = async (adminQualityScoreConfigBody: AdminQualityScoreConfigBody, options?: RequestInit): Promise<adminUpdateQualityScoresResponse> => {
+
+  const res = await fetch(getAdminUpdateQualityScoresUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminQualityScoreConfigBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminUpdateQualityScoresResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminUpdateQualityScoresResponse
+}
+
+
+export type adminGetSettingsResponse200 = {
+  data: AdminSettings
+  status: 200
+}
+
+export type adminGetSettingsResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminGetSettingsResponseSuccess = (adminGetSettingsResponse200) & {
+  headers: Headers;
+};
+export type adminGetSettingsResponseError = (adminGetSettingsResponse403) & {
+  headers: Headers;
+};
+
+export type adminGetSettingsResponse = (adminGetSettingsResponseSuccess | adminGetSettingsResponseError)
+
+export const getAdminGetSettingsUrl = (params?: AdminGetSettingsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/admin/settings?${stringifiedParams}` : `/admin/settings`
+}
+
+/**
+ * @summary Get platform settings (general, booking, notification, order)
+ */
+export const adminGetSettings = async (params?: AdminGetSettingsParams, options?: RequestInit): Promise<adminGetSettingsResponse> => {
+
+  const res = await fetch(getAdminGetSettingsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminGetSettingsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminGetSettingsResponse
+}
+
+
+export type adminUpdateSettingsResponse200 = {
+  data: AdminSettings
+  status: 200
+}
+
+export type adminUpdateSettingsResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminUpdateSettingsResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type adminUpdateSettingsResponseSuccess = (adminUpdateSettingsResponse200) & {
+  headers: Headers;
+};
+export type adminUpdateSettingsResponseError = (adminUpdateSettingsResponse403 | adminUpdateSettingsResponse422) & {
+  headers: Headers;
+};
+
+export type adminUpdateSettingsResponse = (adminUpdateSettingsResponseSuccess | adminUpdateSettingsResponseError)
+
+export const getAdminUpdateSettingsUrl = () => {
+
+
+
+
+  return `/admin/settings`
+}
+
+/**
+ * @summary Update platform settings
+ */
+export const adminUpdateSettings = async (adminSettingsBody: AdminSettingsBody, options?: RequestInit): Promise<adminUpdateSettingsResponse> => {
+
+  const res = await fetch(getAdminUpdateSettingsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminSettingsBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminUpdateSettingsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminUpdateSettingsResponse
+}
+
+
+export type adminGetGatewaysResponse200 = {
+  data: AdminGatewayConfig[]
+  status: 200
+}
+
+export type adminGetGatewaysResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminGetGatewaysResponseSuccess = (adminGetGatewaysResponse200) & {
+  headers: Headers;
+};
+export type adminGetGatewaysResponseError = (adminGetGatewaysResponse403) & {
+  headers: Headers;
+};
+
+export type adminGetGatewaysResponse = (adminGetGatewaysResponseSuccess | adminGetGatewaysResponseError)
+
+export const getAdminGetGatewaysUrl = () => {
+
+
+
+
+  return `/admin/gateways`
+}
+
+/**
+ * @summary Get payment gateway configurations
+ */
+export const adminGetGateways = async ( options?: RequestInit): Promise<adminGetGatewaysResponse> => {
+
+  const res = await fetch(getAdminGetGatewaysUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminGetGatewaysResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminGetGatewaysResponse
+}
+
+
+export type adminUpdateGatewayResponse200 = {
+  data: AdminGatewayConfig
+  status: 200
+}
+
+export type adminUpdateGatewayResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminUpdateGatewayResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type adminUpdateGatewayResponseSuccess = (adminUpdateGatewayResponse200) & {
+  headers: Headers;
+};
+export type adminUpdateGatewayResponseError = (adminUpdateGatewayResponse403 | adminUpdateGatewayResponse422) & {
+  headers: Headers;
+};
+
+export type adminUpdateGatewayResponse = (adminUpdateGatewayResponseSuccess | adminUpdateGatewayResponseError)
+
+export const getAdminUpdateGatewayUrl = () => {
+
+
+
+
+  return `/admin/gateways`
+}
+
+/**
+ * @summary Update payment gateway configuration
+ */
+export const adminUpdateGateway = async (adminGatewayConfigBody: AdminGatewayConfigBody, options?: RequestInit): Promise<adminUpdateGatewayResponse> => {
+
+  const res = await fetch(getAdminUpdateGatewayUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminGatewayConfigBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminUpdateGatewayResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminUpdateGatewayResponse
+}
+
+
+export type adminListContentResponse200 = {
+  data: AdminContent[]
+  status: 200
+}
+
+export type adminListContentResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminListContentResponseSuccess = (adminListContentResponse200) & {
+  headers: Headers;
+};
+export type adminListContentResponseError = (adminListContentResponse403) & {
+  headers: Headers;
+};
+
+export type adminListContentResponse = (adminListContentResponseSuccess | adminListContentResponseError)
+
+export const getAdminListContentUrl = (params?: AdminListContentParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/admin/content?${stringifiedParams}` : `/admin/content`
+}
+
+/**
+ * @summary List CMS content items
+ */
+export const adminListContent = async (params?: AdminListContentParams, options?: RequestInit): Promise<adminListContentResponse> => {
+
+  const res = await fetch(getAdminListContentUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminListContentResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminListContentResponse
+}
+
+
+export type adminCreateContentResponse201 = {
+  data: AdminContent
+  status: 201
+}
+
+export type adminCreateContentResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminCreateContentResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type adminCreateContentResponseSuccess = (adminCreateContentResponse201) & {
+  headers: Headers;
+};
+export type adminCreateContentResponseError = (adminCreateContentResponse403 | adminCreateContentResponse422) & {
+  headers: Headers;
+};
+
+export type adminCreateContentResponse = (adminCreateContentResponseSuccess | adminCreateContentResponseError)
+
+export const getAdminCreateContentUrl = () => {
+
+
+
+
+  return `/admin/content`
+}
+
+/**
+ * @summary Create CMS content draft (editorial workflow)
+ */
+export const adminCreateContent = async (adminCreateContentBody: AdminCreateContentBody, options?: RequestInit): Promise<adminCreateContentResponse> => {
+
+  const res = await fetch(getAdminCreateContentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminCreateContentBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminCreateContentResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminCreateContentResponse
+}
+
+
+export type adminUpdateContentStateResponse200 = {
+  data: AdminContent
+  status: 200
+}
+
+export type adminUpdateContentStateResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminUpdateContentStateResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type adminUpdateContentStateResponse409 = {
+  data: ErrorResponse
+  status: 409
+}
+
+export type adminUpdateContentStateResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type adminUpdateContentStateResponseSuccess = (adminUpdateContentStateResponse200) & {
+  headers: Headers;
+};
+export type adminUpdateContentStateResponseError = (adminUpdateContentStateResponse403 | adminUpdateContentStateResponse404 | adminUpdateContentStateResponse409 | adminUpdateContentStateResponse422) & {
+  headers: Headers;
+};
+
+export type adminUpdateContentStateResponse = (adminUpdateContentStateResponseSuccess | adminUpdateContentStateResponseError)
+
+export const getAdminUpdateContentStateUrl = (contentId: string,) => {
+
+
+
+
+  return `/admin/content/${contentId}/state`
+}
+
+/**
+ * @summary Advance CMS content through editorial workflow (draft→review→publish)
+ */
+export const adminUpdateContentState = async (contentId: string,
+    adminContentStateBody: AdminContentStateBody, options?: RequestInit): Promise<adminUpdateContentStateResponse> => {
+
+  const res = await fetch(getAdminUpdateContentStateUrl(contentId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminContentStateBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminUpdateContentStateResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminUpdateContentStateResponse
+}
+
+
+export type adminRunPayrollResponse201 = {
+  data: AdminPayrollBatch
+  status: 201
+}
+
+export type adminRunPayrollResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminRunPayrollResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type adminRunPayrollResponseSuccess = (adminRunPayrollResponse201) & {
+  headers: Headers;
+};
+export type adminRunPayrollResponseError = (adminRunPayrollResponse403 | adminRunPayrollResponse422) & {
+  headers: Headers;
+};
+
+export type adminRunPayrollResponse = (adminRunPayrollResponseSuccess | adminRunPayrollResponseError)
+
+export const getAdminRunPayrollUrl = () => {
+
+
+
+
+  return `/admin/payroll/run`
+}
+
+/**
+ * @summary Run payroll batch for a date range
+ */
+export const adminRunPayroll = async (adminRunPayrollBody: AdminRunPayrollBody, options?: RequestInit): Promise<adminRunPayrollResponse> => {
+
+  const res = await fetch(getAdminRunPayrollUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminRunPayrollBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminRunPayrollResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminRunPayrollResponse
+}
+
+
+export type adminListPayrollResponse200 = {
+  data: AdminPayrollBatch[]
+  status: 200
+}
+
+export type adminListPayrollResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminListPayrollResponseSuccess = (adminListPayrollResponse200) & {
+  headers: Headers;
+};
+export type adminListPayrollResponseError = (adminListPayrollResponse403) & {
+  headers: Headers;
+};
+
+export type adminListPayrollResponse = (adminListPayrollResponseSuccess | adminListPayrollResponseError)
+
+export const getAdminListPayrollUrl = (params?: AdminListPayrollParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/admin/payroll?${stringifiedParams}` : `/admin/payroll`
+}
+
+/**
+ * @summary List payroll batches
+ */
+export const adminListPayroll = async (params?: AdminListPayrollParams, options?: RequestInit): Promise<adminListPayrollResponse> => {
+
+  const res = await fetch(getAdminListPayrollUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminListPayrollResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminListPayrollResponse
+}
+
+
+export type adminGetConfigResponse200 = {
+  data: AdminConfigDomain
+  status: 200
+}
+
+export type adminGetConfigResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminGetConfigResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type adminGetConfigResponseSuccess = (adminGetConfigResponse200) & {
+  headers: Headers;
+};
+export type adminGetConfigResponseError = (adminGetConfigResponse403 | adminGetConfigResponse404) & {
+  headers: Headers;
+};
+
+export type adminGetConfigResponse = (adminGetConfigResponseSuccess | adminGetConfigResponseError)
+
+export const getAdminGetConfigUrl = (domain: string,) => {
+
+
+
+
+  return `/admin/config/${domain}`
+}
+
+/**
+ * @summary Get configuration for a domain (regions, cities, fees, tax, cancellation, SLA, matching, risk, notifications)
+ */
+export const adminGetConfig = async (domain: string, options?: RequestInit): Promise<adminGetConfigResponse> => {
+
+  const res = await fetch(getAdminGetConfigUrl(domain),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminGetConfigResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminGetConfigResponse
+}
+
+
+export type adminUpdateConfigResponse200 = {
+  data: AdminConfigDomain
+  status: 200
+}
+
+export type adminUpdateConfigResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminUpdateConfigResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type adminUpdateConfigResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type adminUpdateConfigResponseSuccess = (adminUpdateConfigResponse200) & {
+  headers: Headers;
+};
+export type adminUpdateConfigResponseError = (adminUpdateConfigResponse403 | adminUpdateConfigResponse404 | adminUpdateConfigResponse422) & {
+  headers: Headers;
+};
+
+export type adminUpdateConfigResponse = (adminUpdateConfigResponseSuccess | adminUpdateConfigResponseError)
+
+export const getAdminUpdateConfigUrl = (domain: string,) => {
+
+
+
+
+  return `/admin/config/${domain}`
+}
+
+/**
+ * @summary Update configuration for a domain
+ */
+export const adminUpdateConfig = async (domain: string,
+    adminConfigDomainBody: AdminConfigDomainBody, options?: RequestInit): Promise<adminUpdateConfigResponse> => {
+
+  const res = await fetch(getAdminUpdateConfigUrl(domain),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminConfigDomainBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminUpdateConfigResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminUpdateConfigResponse
+}
+
+
+export type adminListAdminsResponse200 = {
+  data: AdminStaffUser[]
+  status: 200
+}
+
+export type adminListAdminsResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminListAdminsResponseSuccess = (adminListAdminsResponse200) & {
+  headers: Headers;
+};
+export type adminListAdminsResponseError = (adminListAdminsResponse403) & {
+  headers: Headers;
+};
+
+export type adminListAdminsResponse = (adminListAdminsResponseSuccess | adminListAdminsResponseError)
+
+export const getAdminListAdminsUrl = (params?: AdminListAdminsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/admin/admins?${stringifiedParams}` : `/admin/admins`
+}
+
+/**
+ * @summary List admin staff accounts
+ */
+export const adminListAdmins = async (params?: AdminListAdminsParams, options?: RequestInit): Promise<adminListAdminsResponse> => {
+
+  const res = await fetch(getAdminListAdminsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminListAdminsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminListAdminsResponse
+}
+
+
+export type adminCreateAdminResponse201 = {
+  data: AdminStaffUser
+  status: 201
+}
+
+export type adminCreateAdminResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminCreateAdminResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type adminCreateAdminResponseSuccess = (adminCreateAdminResponse201) & {
+  headers: Headers;
+};
+export type adminCreateAdminResponseError = (adminCreateAdminResponse403 | adminCreateAdminResponse422) & {
+  headers: Headers;
+};
+
+export type adminCreateAdminResponse = (adminCreateAdminResponseSuccess | adminCreateAdminResponseError)
+
+export const getAdminCreateAdminUrl = () => {
+
+
+
+
+  return `/admin/admins`
+}
+
+/**
+ * @summary Create an admin staff account
+ */
+export const adminCreateAdmin = async (adminCreateAdminBody: AdminCreateAdminBody, options?: RequestInit): Promise<adminCreateAdminResponse> => {
+
+  const res = await fetch(getAdminCreateAdminUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminCreateAdminBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminCreateAdminResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminCreateAdminResponse
+}
+
+
+export type adminUpdateAdminResponse200 = {
+  data: AdminStaffUser
+  status: 200
+}
+
+export type adminUpdateAdminResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminUpdateAdminResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type adminUpdateAdminResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type adminUpdateAdminResponseSuccess = (adminUpdateAdminResponse200) & {
+  headers: Headers;
+};
+export type adminUpdateAdminResponseError = (adminUpdateAdminResponse403 | adminUpdateAdminResponse404 | adminUpdateAdminResponse422) & {
+  headers: Headers;
+};
+
+export type adminUpdateAdminResponse = (adminUpdateAdminResponseSuccess | adminUpdateAdminResponseError)
+
+export const getAdminUpdateAdminUrl = (adminId: string,) => {
+
+
+
+
+  return `/admin/admins/${adminId}`
+}
+
+/**
+ * @summary Update an admin staff account (role, team, status)
+ */
+export const adminUpdateAdmin = async (adminId: string,
+    adminUpdateAdminBody: AdminUpdateAdminBody, options?: RequestInit): Promise<adminUpdateAdminResponse> => {
+
+  const res = await fetch(getAdminUpdateAdminUrl(adminId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminUpdateAdminBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminUpdateAdminResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminUpdateAdminResponse
+}
+
+
+export type adminSuspendAdminResponse200 = {
+  data: AdminStaffUser
+  status: 200
+}
+
+export type adminSuspendAdminResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminSuspendAdminResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type adminSuspendAdminResponseSuccess = (adminSuspendAdminResponse200) & {
+  headers: Headers;
+};
+export type adminSuspendAdminResponseError = (adminSuspendAdminResponse403 | adminSuspendAdminResponse404) & {
+  headers: Headers;
+};
+
+export type adminSuspendAdminResponse = (adminSuspendAdminResponseSuccess | adminSuspendAdminResponseError)
+
+export const getAdminSuspendAdminUrl = (adminId: string,) => {
+
+
+
+
+  return `/admin/admins/${adminId}`
+}
+
+/**
+ * @summary Suspend an admin staff account
+ */
+export const adminSuspendAdmin = async (adminId: string,
+    adminSuspendAdminBody: AdminSuspendAdminBody, options?: RequestInit): Promise<adminSuspendAdminResponse> => {
+
+  const res = await fetch(getAdminSuspendAdminUrl(adminId),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminSuspendAdminBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminSuspendAdminResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminSuspendAdminResponse
+}
+
+
+export type adminListTeamsResponse200 = {
+  data: AdminTeam[]
+  status: 200
+}
+
+export type adminListTeamsResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminListTeamsResponseSuccess = (adminListTeamsResponse200) & {
+  headers: Headers;
+};
+export type adminListTeamsResponseError = (adminListTeamsResponse403) & {
+  headers: Headers;
+};
+
+export type adminListTeamsResponse = (adminListTeamsResponseSuccess | adminListTeamsResponseError)
+
+export const getAdminListTeamsUrl = () => {
+
+
+
+
+  return `/admin/teams`
+}
+
+/**
+ * @summary List admin teams
+ */
+export const adminListTeams = async ( options?: RequestInit): Promise<adminListTeamsResponse> => {
+
+  const res = await fetch(getAdminListTeamsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminListTeamsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminListTeamsResponse
+}
+
+
+export type adminCreateTeamResponse201 = {
+  data: AdminTeam
+  status: 201
+}
+
+export type adminCreateTeamResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminCreateTeamResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type adminCreateTeamResponseSuccess = (adminCreateTeamResponse201) & {
+  headers: Headers;
+};
+export type adminCreateTeamResponseError = (adminCreateTeamResponse403 | adminCreateTeamResponse422) & {
+  headers: Headers;
+};
+
+export type adminCreateTeamResponse = (adminCreateTeamResponseSuccess | adminCreateTeamResponseError)
+
+export const getAdminCreateTeamUrl = () => {
+
+
+
+
+  return `/admin/teams`
+}
+
+/**
+ * @summary Create an admin team
+ */
+export const adminCreateTeam = async (adminCreateTeamBody: AdminCreateTeamBody, options?: RequestInit): Promise<adminCreateTeamResponse> => {
+
+  const res = await fetch(getAdminCreateTeamUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminCreateTeamBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminCreateTeamResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminCreateTeamResponse
+}
+
+
+export type adminUpdateTeamResponse200 = {
+  data: AdminTeam
+  status: 200
+}
+
+export type adminUpdateTeamResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminUpdateTeamResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type adminUpdateTeamResponseSuccess = (adminUpdateTeamResponse200) & {
+  headers: Headers;
+};
+export type adminUpdateTeamResponseError = (adminUpdateTeamResponse403 | adminUpdateTeamResponse404) & {
+  headers: Headers;
+};
+
+export type adminUpdateTeamResponse = (adminUpdateTeamResponseSuccess | adminUpdateTeamResponseError)
+
+export const getAdminUpdateTeamUrl = (teamId: string,) => {
+
+
+
+
+  return `/admin/teams/${teamId}`
+}
+
+/**
+ * @summary Update an admin team
+ */
+export const adminUpdateTeam = async (teamId: string,
+    adminUpdateTeamBody: AdminUpdateTeamBody, options?: RequestInit): Promise<adminUpdateTeamResponse> => {
+
+  const res = await fetch(getAdminUpdateTeamUrl(teamId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminUpdateTeamBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminUpdateTeamResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminUpdateTeamResponse
+}
+
+
+export type adminDeleteTeamResponse200 = {
+  data: void
+  status: 200
+}
+
+export type adminDeleteTeamResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminDeleteTeamResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type adminDeleteTeamResponseSuccess = (adminDeleteTeamResponse200) & {
+  headers: Headers;
+};
+export type adminDeleteTeamResponseError = (adminDeleteTeamResponse403 | adminDeleteTeamResponse404) & {
+  headers: Headers;
+};
+
+export type adminDeleteTeamResponse = (adminDeleteTeamResponseSuccess | adminDeleteTeamResponseError)
+
+export const getAdminDeleteTeamUrl = (teamId: string,) => {
+
+
+
+
+  return `/admin/teams/${teamId}`
+}
+
+/**
+ * @summary Delete an admin team
+ */
+export const adminDeleteTeam = async (teamId: string, options?: RequestInit): Promise<adminDeleteTeamResponse> => {
+
+  const res = await fetch(getAdminDeleteTeamUrl(teamId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminDeleteTeamResponse['data'] = body ? JSON.parse(body) : undefined
+  return { data, status: res.status, headers: res.headers } as adminDeleteTeamResponse
+}
+
+
+export type adminListPoliciesResponse200 = {
+  data: AdminPolicy[]
+  status: 200
+}
+
+export type adminListPoliciesResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminListPoliciesResponseSuccess = (adminListPoliciesResponse200) & {
+  headers: Headers;
+};
+export type adminListPoliciesResponseError = (adminListPoliciesResponse403) & {
+  headers: Headers;
+};
+
+export type adminListPoliciesResponse = (adminListPoliciesResponseSuccess | adminListPoliciesResponseError)
+
+export const getAdminListPoliciesUrl = () => {
+
+
+
+
+  return `/admin/policies`
+}
+
+/**
+ * @summary List ABAC policies
+ */
+export const adminListPolicies = async ( options?: RequestInit): Promise<adminListPoliciesResponse> => {
+
+  const res = await fetch(getAdminListPoliciesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminListPoliciesResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminListPoliciesResponse
+}
+
+
+export type adminCreatePolicyResponse201 = {
+  data: AdminPolicy
+  status: 201
+}
+
+export type adminCreatePolicyResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminCreatePolicyResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type adminCreatePolicyResponseSuccess = (adminCreatePolicyResponse201) & {
+  headers: Headers;
+};
+export type adminCreatePolicyResponseError = (adminCreatePolicyResponse403 | adminCreatePolicyResponse422) & {
+  headers: Headers;
+};
+
+export type adminCreatePolicyResponse = (adminCreatePolicyResponseSuccess | adminCreatePolicyResponseError)
+
+export const getAdminCreatePolicyUrl = () => {
+
+
+
+
+  return `/admin/policies`
+}
+
+/**
+ * @summary Create an ABAC policy
+ */
+export const adminCreatePolicy = async (adminCreatePolicyBody: AdminCreatePolicyBody, options?: RequestInit): Promise<adminCreatePolicyResponse> => {
+
+  const res = await fetch(getAdminCreatePolicyUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminCreatePolicyBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminCreatePolicyResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminCreatePolicyResponse
+}
+
+
+export type adminListScheduledNotificationsResponse200 = {
+  data: AdminScheduledNotification[]
+  status: 200
+}
+
+export type adminListScheduledNotificationsResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminListScheduledNotificationsResponseSuccess = (adminListScheduledNotificationsResponse200) & {
+  headers: Headers;
+};
+export type adminListScheduledNotificationsResponseError = (adminListScheduledNotificationsResponse403) & {
+  headers: Headers;
+};
+
+export type adminListScheduledNotificationsResponse = (adminListScheduledNotificationsResponseSuccess | adminListScheduledNotificationsResponseError)
+
+export const getAdminListScheduledNotificationsUrl = () => {
+
+
+
+
+  return `/admin/notifications/scheduled`
+}
+
+/**
+ * @summary List scheduled notification broadcasts
+ */
+export const adminListScheduledNotifications = async ( options?: RequestInit): Promise<adminListScheduledNotificationsResponse> => {
+
+  const res = await fetch(getAdminListScheduledNotificationsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminListScheduledNotificationsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminListScheduledNotificationsResponse
+}
+
+
+export type adminCancelScheduledNotificationResponse200 = {
+  data: void
+  status: 200
+}
+
+export type adminCancelScheduledNotificationResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminCancelScheduledNotificationResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type adminCancelScheduledNotificationResponseSuccess = (adminCancelScheduledNotificationResponse200) & {
+  headers: Headers;
+};
+export type adminCancelScheduledNotificationResponseError = (adminCancelScheduledNotificationResponse403 | adminCancelScheduledNotificationResponse404) & {
+  headers: Headers;
+};
+
+export type adminCancelScheduledNotificationResponse = (adminCancelScheduledNotificationResponseSuccess | adminCancelScheduledNotificationResponseError)
+
+export const getAdminCancelScheduledNotificationUrl = (params: AdminCancelScheduledNotificationParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/admin/notifications/scheduled?${stringifiedParams}` : `/admin/notifications/scheduled`
+}
+
+/**
+ * @summary Cancel a scheduled notification broadcast
+ */
+export const adminCancelScheduledNotification = async (params: AdminCancelScheduledNotificationParams, options?: RequestInit): Promise<adminCancelScheduledNotificationResponse> => {
+
+  const res = await fetch(getAdminCancelScheduledNotificationUrl(params),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminCancelScheduledNotificationResponse['data'] = body ? JSON.parse(body) : undefined
+  return { data, status: res.status, headers: res.headers } as adminCancelScheduledNotificationResponse
+}
+
+
+export type adminGetMapTrafficResponse200 = {
+  data: AdminMapTrafficOverlay
+  status: 200
+}
+
+export type adminGetMapTrafficResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminGetMapTrafficResponseSuccess = (adminGetMapTrafficResponse200) & {
+  headers: Headers;
+};
+export type adminGetMapTrafficResponseError = (adminGetMapTrafficResponse403) & {
+  headers: Headers;
+};
+
+export type adminGetMapTrafficResponse = (adminGetMapTrafficResponseSuccess | adminGetMapTrafficResponseError)
+
+export const getAdminGetMapTrafficUrl = (params?: AdminGetMapTrafficParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/admin/map/traffic?${stringifiedParams}` : `/admin/map/traffic`
+}
+
+/**
+ * @summary Get live map traffic and incident overlay data
+ */
+export const adminGetMapTraffic = async (params?: AdminGetMapTrafficParams, options?: RequestInit): Promise<adminGetMapTrafficResponse> => {
+
+  const res = await fetch(getAdminGetMapTrafficUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminGetMapTrafficResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminGetMapTrafficResponse
+}
+
+
+export type adminListHandoffsResponse200 = {
+  data: AdminHandoff[]
+  status: 200
+}
+
+export type adminListHandoffsResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminListHandoffsResponseSuccess = (adminListHandoffsResponse200) & {
+  headers: Headers;
+};
+export type adminListHandoffsResponseError = (adminListHandoffsResponse403) & {
+  headers: Headers;
+};
+
+export type adminListHandoffsResponse = (adminListHandoffsResponseSuccess | adminListHandoffsResponseError)
+
+export const getAdminListHandoffsUrl = (params?: AdminListHandoffsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/admin/handoffs?${stringifiedParams}` : `/admin/handoffs`
+}
+
+/**
+ * @summary List handoffs (for seal-broken incident monitoring)
+ */
+export const adminListHandoffs = async (params?: AdminListHandoffsParams, options?: RequestInit): Promise<adminListHandoffsResponse> => {
+
+  const res = await fetch(getAdminListHandoffsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminListHandoffsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminListHandoffsResponse
+}
+
+
+export type adminListFacilityEntriesResponse200 = {
+  data: AdminFacilityEntry[]
+  status: 200
+}
+
+export type adminListFacilityEntriesResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminListFacilityEntriesResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type adminListFacilityEntriesResponseSuccess = (adminListFacilityEntriesResponse200) & {
+  headers: Headers;
+};
+export type adminListFacilityEntriesResponseError = (adminListFacilityEntriesResponse403 | adminListFacilityEntriesResponse404) & {
+  headers: Headers;
+};
+
+export type adminListFacilityEntriesResponse = (adminListFacilityEntriesResponseSuccess | adminListFacilityEntriesResponseError)
+
+export const getAdminListFacilityEntriesUrl = (facilityId: string,
+    params?: AdminListFacilityEntriesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/admin/facilities/${facilityId}/entries?${stringifiedParams}` : `/admin/facilities/${facilityId}/entries`
+}
+
+/**
+ * @summary List entry logs for a facility
+ */
+export const adminListFacilityEntries = async (facilityId: string,
+    params?: AdminListFacilityEntriesParams, options?: RequestInit): Promise<adminListFacilityEntriesResponse> => {
+
+  const res = await fetch(getAdminListFacilityEntriesUrl(facilityId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminListFacilityEntriesResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminListFacilityEntriesResponse
+}
+
+
+export type adminReplyTicketResponse200 = {
+  data: AdminTicketReplyResult
+  status: 200
+}
+
+export type adminReplyTicketResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminReplyTicketResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type adminReplyTicketResponseSuccess = (adminReplyTicketResponse200) & {
+  headers: Headers;
+};
+export type adminReplyTicketResponseError = (adminReplyTicketResponse403 | adminReplyTicketResponse404) & {
+  headers: Headers;
+};
+
+export type adminReplyTicketResponse = (adminReplyTicketResponseSuccess | adminReplyTicketResponseError)
+
+export const getAdminReplyTicketUrl = (ticketId: string,) => {
+
+
+
+
+  return `/admin/support/tickets/${ticketId}/reply`
+}
+
+/**
+ * @summary Reply to a support ticket
+ */
+export const adminReplyTicket = async (ticketId: string,
+    adminTicketReplyBody: AdminTicketReplyBody, options?: RequestInit): Promise<adminReplyTicketResponse> => {
+
+  const res = await fetch(getAdminReplyTicketUrl(ticketId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminTicketReplyBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminReplyTicketResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminReplyTicketResponse
+}
+
+
+export type adminEscalateTicketResponse200 = {
+  data: AdminTicketEscalateResult
+  status: 200
+}
+
+export type adminEscalateTicketResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminEscalateTicketResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type adminEscalateTicketResponseSuccess = (adminEscalateTicketResponse200) & {
+  headers: Headers;
+};
+export type adminEscalateTicketResponseError = (adminEscalateTicketResponse403 | adminEscalateTicketResponse404) & {
+  headers: Headers;
+};
+
+export type adminEscalateTicketResponse = (adminEscalateTicketResponseSuccess | adminEscalateTicketResponseError)
+
+export const getAdminEscalateTicketUrl = (ticketId: string,) => {
+
+
+
+
+  return `/admin/support/tickets/${ticketId}/escalate`
+}
+
+/**
+ * @summary Escalate a support ticket
+ */
+export const adminEscalateTicket = async (ticketId: string,
+    adminEscalateTicketBody: AdminEscalateTicketBody, options?: RequestInit): Promise<adminEscalateTicketResponse> => {
+
+  const res = await fetch(getAdminEscalateTicketUrl(ticketId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminEscalateTicketBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminEscalateTicketResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminEscalateTicketResponse
+}
+
+
+export type adminCloseTicketResponse200 = {
+  data: AdminTicketCloseResult
+  status: 200
+}
+
+export type adminCloseTicketResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminCloseTicketResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type adminCloseTicketResponseSuccess = (adminCloseTicketResponse200) & {
+  headers: Headers;
+};
+export type adminCloseTicketResponseError = (adminCloseTicketResponse403 | adminCloseTicketResponse404) & {
+  headers: Headers;
+};
+
+export type adminCloseTicketResponse = (adminCloseTicketResponseSuccess | adminCloseTicketResponseError)
+
+export const getAdminCloseTicketUrl = (ticketId: string,) => {
+
+
+
+
+  return `/admin/support/tickets/${ticketId}/close`
+}
+
+/**
+ * @summary Close a support ticket
+ */
+export const adminCloseTicket = async (ticketId: string,
+    adminCloseTicketBody: AdminCloseTicketBody, options?: RequestInit): Promise<adminCloseTicketResponse> => {
+
+  const res = await fetch(getAdminCloseTicketUrl(ticketId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminCloseTicketBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminCloseTicketResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminCloseTicketResponse
+}
+
+
+export type adminTransferTicketResponse200 = {
+  data: AdminTicketTransferResult
+  status: 200
+}
+
+export type adminTransferTicketResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminTransferTicketResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type adminTransferTicketResponseSuccess = (adminTransferTicketResponse200) & {
+  headers: Headers;
+};
+export type adminTransferTicketResponseError = (adminTransferTicketResponse403 | adminTransferTicketResponse404) & {
+  headers: Headers;
+};
+
+export type adminTransferTicketResponse = (adminTransferTicketResponseSuccess | adminTransferTicketResponseError)
+
+export const getAdminTransferTicketUrl = (ticketId: string,) => {
+
+
+
+
+  return `/admin/support/tickets/${ticketId}/transfer`
+}
+
+/**
+ * @summary Transfer a support ticket to another agent
+ */
+export const adminTransferTicket = async (ticketId: string,
+    adminTicketTransferBody: AdminTicketTransferBody, options?: RequestInit): Promise<adminTransferTicketResponse> => {
+
+  const res = await fetch(getAdminTransferTicketUrl(ticketId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminTicketTransferBody)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: adminTransferTicketResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminTransferTicketResponse
+}
+
+
+export type adminListGeofencesResponse200 = {
+  data: AdminGeofence[]
+  status: 200
+}
+
+export type adminListGeofencesResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminListGeofencesResponseSuccess = (adminListGeofencesResponse200) & {
+  headers: Headers;
+};
+export type adminListGeofencesResponseError = (adminListGeofencesResponse403) & {
+  headers: Headers;
+};
+
+export type adminListGeofencesResponse = (adminListGeofencesResponseSuccess | adminListGeofencesResponseError)
+
+export const getAdminListGeofencesUrl = () => {
+  return `/admin/geofences`
+}
+
+/**
+ * @summary List geofences
+ */
+export const adminListGeofences = async ( options?: RequestInit): Promise<adminListGeofencesResponse> => {
+  const res = await fetch(getAdminListGeofencesUrl(),
+  {
+    ...options,
+    method: 'GET'
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  const data: adminListGeofencesResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminListGeofencesResponse
+}
+
+
+export type adminCreateGeofenceResponse201 = {
+  data: AdminGeofence
+  status: 201
+}
+
+export type adminCreateGeofenceResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminCreateGeofenceResponse422 = {
+  data: ValidationErrorResponse
+  status: 422
+}
+
+export type adminCreateGeofenceResponseSuccess = (adminCreateGeofenceResponse201) & {
+  headers: Headers;
+};
+export type adminCreateGeofenceResponseError = (adminCreateGeofenceResponse403 | adminCreateGeofenceResponse422) & {
+  headers: Headers;
+};
+
+export type adminCreateGeofenceResponse = (adminCreateGeofenceResponseSuccess | adminCreateGeofenceResponseError)
+
+export const getAdminCreateGeofenceUrl = () => {
+  return `/admin/geofences`
+}
+
+/**
+ * @summary Create a geofence
+ */
+export const adminCreateGeofence = async (adminCreateGeofenceBody: AdminCreateGeofenceBody, options?: RequestInit): Promise<adminCreateGeofenceResponse> => {
+  const res = await fetch(getAdminCreateGeofenceUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminCreateGeofenceBody)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  const data: adminCreateGeofenceResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as adminCreateGeofenceResponse
+}
+
+
+export type adminDeleteGeofenceResponse200 = {
+  data: void
+  status: 200
+}
+
+export type adminDeleteGeofenceResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminDeleteGeofenceResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type adminDeleteGeofenceResponseSuccess = (adminDeleteGeofenceResponse200) & {
+  headers: Headers;
+};
+export type adminDeleteGeofenceResponseError = (adminDeleteGeofenceResponse403 | adminDeleteGeofenceResponse404) & {
+  headers: Headers;
+};
+
+export type adminDeleteGeofenceResponse = (adminDeleteGeofenceResponseSuccess | adminDeleteGeofenceResponseError)
+
+export const getAdminDeleteGeofenceUrl = (geofenceId: string,) => {
+  return `/admin/geofences/${geofenceId}`
+}
+
+/**
+ * @summary Delete a geofence
+ */
+export const adminDeleteGeofence = async (geofenceId: string, options?: RequestInit): Promise<adminDeleteGeofenceResponse> => {
+  const res = await fetch(getAdminDeleteGeofenceUrl(geofenceId),
+  {
+    ...options,
+    method: 'DELETE'
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  const data: adminDeleteGeofenceResponse['data'] = body ? JSON.parse(body) : undefined
+  return { data, status: res.status, headers: res.headers } as adminDeleteGeofenceResponse
+}
+
+
+export interface PlatformLimits {
+  twoPersonThresholdTzs: number;
+  maxRefundAmountTzs: number;
+  maxExportRows: number;
+  sessionTimeoutMinutes: number;
+  maxLoginAttempts: number;
+  rateLimitPerMinute: number;
+}
+
+export type adminGetLimitsResponse200 = {
+  data: PlatformLimits
+  status: 200
+}
+
+export type adminGetLimitsResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type adminGetLimitsResponseSuccess = (adminGetLimitsResponse200) & {
+  headers: Headers;
+};
+export type adminGetLimitsResponseError = (adminGetLimitsResponse403) & {
+  headers: Headers;
+};
+
+export type adminGetLimitsResponse = (adminGetLimitsResponseSuccess | adminGetLimitsResponseError)
+
+export const getAdminGetLimitsUrl = () => {
+  return `/admin/limits`
+}
+
+/**
+ * @summary Get platform limits and thresholds
+ */
+export const adminGetLimits = async (options?: RequestInit): Promise<adminGetLimitsResponse> => {
+  const res = await fetch(getAdminGetLimitsUrl(),
+  {
+    ...options,
+    method: 'GET'
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+  const data: adminGetLimitsResponse['data'] = body ? JSON.parse(body) : {} as PlatformLimits
+  return { data, status: res.status, headers: res.headers } as adminGetLimitsResponse
+}
 

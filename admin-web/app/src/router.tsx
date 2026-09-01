@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react'
 import { Shell } from './Shell'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { LoadingSkeleton } from './components/LoadingSkeleton'
+import { NotFoundPage } from './components/NotFoundPage'
 
 function lazyPage(load: () => Promise<{ default: React.ComponentType }>) {
   const Component = lazy(load)
@@ -75,6 +76,20 @@ export const router = createBrowserRouter([
       { path: 'audit/approvals', element: lazyPage(() => import('./features/approvals/TwoPersonApprovalsPage').then((m) => ({ default: m.TwoPersonApprovalsPage }))) },
       { path: 'audit/logs', element: lazyPage(() => import('./features/audit/AuditLogsPage').then((m) => ({ default: m.AuditLogsPage }))) },
       { path: 'compliance', element: lazyPage(() => import('./features/compliance/CompliancePage').then((m) => ({ default: m.CompliancePage }))) },
+      { path: 'configuration/general-settings', element: lazyPage(() => import('./features/config/GeneralSettingsPage').then((m) => ({ default: m.GeneralSettingsPage }))) },
+      { path: 'configuration/quality-scores', element: lazyPage(() => import('./features/config/QualityScorePage').then((m) => ({ default: m.QualityScorePage }))) },
+      { path: 'configuration/gateways', element: lazyPage(() => import('./features/config/GatewaysPage').then((m) => ({ default: m.GatewaysPage }))) },
+      { path: 'configuration/center', element: lazyPage(() => import('./features/config/ConfigCenterPage').then((m) => ({ default: m.ConfigCenterPage }))) },
+      { path: 'exports/scheduled', element: lazyPage(() => import('./features/exports/ScheduledReportsPage').then((m) => ({ default: m.ScheduledReportsPage }))) },
+      { path: 'exports/payroll', element: lazyPage(() => import('./features/finance/PayrollPage').then((m) => ({ default: m.PayrollPage }))) },
+      { path: 'content/editorial', element: lazyPage(() => import('./features/content/ContentEditorialPage').then((m) => ({ default: m.ContentEditorialPage }))) },
+      { path: 'auth/password-reset', element: lazyPage(() => import('./features/auth/PasswordResetPage').then((m) => ({ default: m.PasswordResetPage }))) },
+      { path: 'iam/teams', element: lazyPage(() => import('./features/iam/TeamsPage').then((m) => ({ default: m.TeamsPage }))) },
+      { path: 'iam/policies', element: lazyPage(() => import('./features/config/PoliciesPage').then((m) => ({ default: m.PoliciesPage }))) },
+      { path: 'iam/admin-users', element: lazyPage(() => import('./features/config/AdminUsersPage').then((m) => ({ default: m.AdminUsersPage }))) },
+      { path: 'configuration/geofences', element: lazyPage(() => import('./features/geofences/GeofencesPage').then((m) => ({ default: m.GeofencesPage }))) },
+      { path: 'admin/map/traffic', element: lazyPage(() => import('./features/map/MapTrafficPage').then((m) => ({ default: m.MapTrafficPage }))) },
+      { path: '*', element: <NotFoundPage /> },
     ],
   },
 ])

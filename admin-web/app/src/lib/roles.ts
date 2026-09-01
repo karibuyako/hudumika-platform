@@ -1,3 +1,5 @@
+import { adminListStaffRoles } from '@hudumika/contract'
+
 export interface StaffRoleDef {
   id: string
   name: string
@@ -101,6 +103,7 @@ export const STAFF_ROLES: StaffRoleDef[] = [
       'dispatch.assign',
       'dispatch.reassign',
       'provider.read',
+      'provider.verify',
       'provider.suspend',
       'merchant.read',
       'merchant.suspend',
@@ -247,7 +250,7 @@ export const STAFF_ROLES: StaffRoleDef[] = [
   {
     id: 'provider-operations',
     name: 'Provider Operations',
-    permissions: ['order.read', 'provider.read', 'provider.verify', 'provider.suspend'],
+    permissions: ['order.read', 'provider.read', 'provider.verify', 'provider.suspend', 'finance.read'],
   },
   {
     id: 'rider-operations',
@@ -275,6 +278,7 @@ export const STAFF_ROLES: StaffRoleDef[] = [
       'order.cancel',
       'order.refund',
       'dispatch.read',
+      'dispatch.reassign',
       'merchant.read',
       'refund.approve',
       'review.moderate',
@@ -313,7 +317,7 @@ export const STAFF_ROLES: StaffRoleDef[] = [
   {
     id: 'payments',
     name: 'Payments',
-    permissions: ['order.read', 'order.refund', 'finance.read', 'finance.refund', 'refund.approve'],
+    permissions: ['order.read', 'order.refund', 'provider.read', 'merchant.read', 'finance.read', 'finance.refund', 'refund.approve', 'audit.read'],
   },
   {
     id: 'risk-and-fraud',
@@ -338,6 +342,8 @@ export const STAFF_ROLES: StaffRoleDef[] = [
       'dispatch.read',
       'provider.read',
       'risk.investigate',
+      'risk.block',
+      'provider.suspend',
       'review.moderate',
       'conversation.read',
       'conversation.block',
@@ -375,7 +381,7 @@ export const STAFF_ROLES: StaffRoleDef[] = [
   {
     id: 'marketing',
     name: 'Marketing',
-    permissions: ['finance.read', 'promotion.moderate', 'group_buy.moderate'],
+    permissions: ['finance.read', 'merchant.read', 'promotion.moderate', 'group_buy.moderate'],
   },
   {
     id: 'analytics',
@@ -392,7 +398,7 @@ export const STAFF_ROLES: StaffRoleDef[] = [
   {
     id: 'content-manager',
     name: 'Content Manager',
-    permissions: ['merchant.read', 'configuration.edit', 'promotion.moderate', 'group_buy.moderate'],
+    permissions: ['merchant.read', 'audit.read', 'configuration.edit', 'promotion.moderate', 'group_buy.moderate'],
   },
   {
     id: 'technical-operations',
@@ -418,14 +424,43 @@ export const STAFF_ROLES: StaffRoleDef[] = [
   },
 ]
 
+let loadedRoles: StaffRoleDef[] | null = null
+
+export function getLoadedRoles(): StaffRoleDef[] | null {
+  return loadedRoles
+}
+
+export async function loadStaffRoles(): Promise<StaffRoleDef[]> {
+  try {
+    const res = await adminListStaffRoles()
+    if (res.status === 200) {
+      const roles: StaffRoleDef[] = res.data.map((r) => ({
+        id: r.id ?? r.name,
+        name: r.name,
+        permissions: r.permissions,
+      }))
+      loadedRoles = roles
+      return roles
+    }
+  } catch {
+    // fall through to static
+  }
+  return STAFF_ROLES
+}
+
+export function effectiveRoles(): StaffRoleDef[] {
+  return loadedRoles ?? STAFF_ROLES
+}
+
 export function rolePermissions(roleId: string): string[] {
-  const def = STAFF_ROLES.find((r) => r.id === roleId)
+  const all = effectiveRoles()
+  const def = all.find((r) => r.id === roleId)
   return def ? [...def.permissions] : []
 }
 
 export function allPermissionKeys(): string[] {
   const keys = new Set<string>()
-  for (const role of STAFF_ROLES) {
+  for (const role of effectiveRoles()) {
     if (role.permissions.includes('*')) continue
     for (const permission of role.permissions) keys.add(permission)
   }

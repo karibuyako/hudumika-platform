@@ -21,296 +21,79 @@ Two-person flag convention: an endpoint carries `TWO_PERSON_REQUIRED` (409) in i
 
 ---
 
-## 1. rider_approve
+## Live — wired 2026-08-29 (16 endpoints, contract live via `admin-pending` tag)
 
-- **Endpoint**: `POST /admin/riders/{riderId}/approval`
-- **Request body**: `{ decision: "approve" | "request_changes", reason }` — `decision` required; `reason` required (both outcomes).
-- **Expected success response**: `200` → `{ riderId, status: "approved" | "changes_requested" }` (the rider's verification state after the decision).
-- **Error codes**:
-  - `RIDER_NOT_FOUND` (404) — no rider for `riderId`.
-  - `RIDER_ALREADY_DECIDED` (409) — the rider already has a terminal verification state.
-  - `FORBIDDEN` (403) — the actor lacks the rider-approval permission.
-  - `ADMIN_REASON_REQUIRED` (422) — `reason` missing/empty.
-- **Audit**: prefix `rider.` — `rider.approved` / `rider.changes_requested`; `before`/`after` = rider verification state (e.g. `pending` → `approved`).
-- **Two-person flag**: no.
-- **Workflow reference**: WORKFLOWS.md #3 — Approve a rider.
-- **UI surface**: Riders module (route `/logistics/riders`, `RidersPage`) — verification drawer on the rider record. Today the drawer renders read-only document/verification state with the note "COD reconciliation and verification decisions ship in a later milestone."; the approve/request-changes decision renders the PENDING_ENDPOINT notice.
+These 16 were previously pending and are now live in `backend/API-CONTRACT.yaml` (tag `admin-pending`) and wired in the admin web. They no longer appear in `PENDING_ENDPOINTS`.
 
-## 2. provider_approve
+| Key | Endpoint | Page | Contract operationId |
+|---|---|---|---|
+| `rider_approve` | `POST /admin/riders/{riderId}/approval` | `RidersPage` `/logistics/riders` | `adminRiderApprovalDecision` |
+| `provider_approve` | `POST /admin/providers/{providerId}/approval` | `ProvidersPage` `/services/providers` | `adminProviderApprovalDecision` |
+| `order_cancel` | `POST /admin/orders/{orderId}/cancel` | `OrdersPage` `/commerce/orders` | `adminCancelOrder` (TWO_PERSON when refund > threshold) |
+| `payout_reconcile` | `POST /admin/payouts/{batchId}/reconcile` | `PaymentsPage` `/finance/payments` | `adminPayoutReconcile` |
+| `chain_onboard` | `POST /admin/chains/{merchantGroupId}/onboard` | `ChainsPage` `/chains` | `adminChainOnboard` |
+| `chain_suspend` | `POST /admin/chains/{merchantGroupId}/suspend` | `ChainsPage` `/chains` | `adminChainSuspend` (TWO_PERSON) |
+| `export_approve` | `POST /admin/data-exports/{jobId}/approval` | `DataExportsPage` `/exports` | `adminDataExportDecision` |
+| `export_rerun` | `POST /admin/data-exports/{jobId}/rerun` | `DataExportsPage` `/exports` | `adminDataExportRerun` |
+| `cod_decision` | `POST /admin/riders/{riderId}/cod/{shiftId}/decision` | `CodReconciliationPage` `/logistics/riders/cod` | `adminRiderCodShiftDecision` |
+| `crash_respond` | `POST /admin/riders/{riderId}/safety/crash` | `FleetControlTowerPage` `/operations/fleet-tower` | `adminCrashRespond` |
+| `rest_override` | `POST /admin/riders/{riderId}/rest` | `FleetControlTowerPage` `/operations/fleet-tower` | `adminRiderRestOverride` |
+| `loyalty_config` | `PUT /admin/loyalty/config` | `LoyaltyPage` `/growth/loyalty` | `adminUpdateLoyaltyConfig` |
+| `consignment_missing_resolve` | `POST /admin/consignments/{consignmentId}/missing` | `ConsignmentsPage` `/operations/consignments` | `adminConsignmentMissingDecision` |
+| `seal_broken_resolve` | `POST /admin/handoffs/{handoffId}/seal` | `WaybillPage` `/logistics/waybills` | `adminHandoffSealDecision` |
+| `anomaly_resolve` | `POST /admin/logistics-anomalies/{anomalyId}/decision` | `ShipmentsPage` `/logistics/shipments` | `adminLogisticsAnomalyDecision` |
+| `dispute_resolve` | `POST /admin/disputes/{disputeId}/decision` | `OrdersPage` `/commerce/orders` (disputed drawer) | `adminDisputeDecision` |
 
-- **Endpoint**: `POST /admin/providers/{providerId}/approval`
-- **Request body**: `{ decision: "approve" | "request_changes", reason }` — `decision` required; `reason` required.
-- **Expected success response**: `200` → `{ providerId, status: "approved" | "changes_requested" }`.
-- **Error codes**:
-  - `PROVIDER_NOT_FOUND` (404) — no provider for `providerId`.
-  - `PROVIDER_ALREADY_DECIDED` (409) — terminal verification state already set.
-  - `FORBIDDEN` (403) — lacks provider-approval permission.
-  - `ADMIN_REASON_REQUIRED` (422) — `reason` missing/empty.
-- **Audit**: prefix `provider.` — decision action; `before`/`after` = provider verification state.
-- **Two-person flag**: no.
-- **Workflow reference**: WORKFLOWS.md #2 — Approve a provider.
-- **UI surface**: Providers module (route `/services/providers`, `ProvidersPage`) — verification drawer on the provider record; approval decision renders the PENDING_ENDPOINT notice.
-
-## 3. dispute_resolve
-
-- **Endpoint**: `POST /admin/disputes/{disputeId}/decision`
-- **Request body**: `{ decision: "refund" | "payout" | "reject", amountTZS?, reason }` — `decision` required; `amountTZS` required when `decision` is `refund` or `payout` (TZS, integer); `reason` required.
-- **Expected success response**: `200` → `{ disputeId, decision, status: "decided" }` — the payout hold is released (or refund ledger entries are created).
-- **Error codes**:
-  - `DISPUTE_ALREADY_DECIDED` (409) — the dispute already has a decision.
-  - `DISPUTE_NOT_FOUND` (404) — no dispute for `disputeId`.
-  - `FORBIDDEN` (403) — lacks the dispute-resolution permission.
-  - `ADMIN_REASON_REQUIRED` (422) — `reason` missing/empty.
-  - `TWO_PERSON_REQUIRED` (409) — decision above the finance threshold; must go through the two-person approval flow (workflow 31) before the decision executes.
-- **Audit**: prefix `dispute.` — decision action; `before`/`after` = dispute state (hold → decided) and, on refund, the payout/refund amount.
-- **Two-person flag**: YES — `TWO_PERSON_REQUIRED` is in the errors list; above-threshold decisions (refund/payout over the finance threshold) require a second admin's approval before execution.
-- **Workflow reference**: WORKFLOWS.md #4 — Resolve a dispute.
-- **UI surface**: dispute queue surfaced from Orders/Bookings records and the Payments module (routes `/commerce/orders`, `/bookings`, `/finance/payments`) — decision drawer with amount + reason; the decision action renders the PENDING_ENDPOINT notice.
-
-## 4. payout_reconcile
-
-- **Endpoint**: `POST /admin/payouts/{batchId}/reconcile`
-- **Request body**: `{ outcome: "paid" | "failed" | "exception", note? }` — `outcome` required; `note` required when `outcome` is `exception` (variance explanation).
-- **Expected success response**: `200` → `{ batchId, outcome, settledAt }` — batch settles; finance sign-off recorded.
-- **Error codes**:
-  - `PAYOUT_BATCH_NOT_FOUND` (404) — no payout batch for `batchId`.
-  - `PAYOUT_ALREADY_RECONCILED` (409) — batch already settled.
-  - `FORBIDDEN` (403) — lacks finance payout-reconciliation permission.
-  - `ADMIN_REASON_REQUIRED` (422) — `note` missing when required.
-- **Audit**: prefix `payout.` — reconciliation action; `before`/`after` = batch settlement state (open → reconciled) with the outcome.
-- **Two-person flag**: no — `TWO_PERSON_REQUIRED` is NOT in the errors list. Finance sign-off is recorded in the audit entry per workflow 5, but the endpoint itself is not 4-eyes-gated.
-- **Workflow reference**: WORKFLOWS.md #5 — Reconcile payouts.
-- **UI surface**: Payments module (route `/finance/payments`, `PaymentsPage`) — payout batch rows with match/exception actions; the reconcile action renders the PENDING_ENDPOINT notice.
-
-## 5. cod_decision
-
-- **Endpoint**: `POST /admin/riders/{riderId}/cod/{shiftId}/decision`
-- **Request body**: `{ status: "reconciled" | "mismatch", note? }` — `status` required; `note` required when `status` is `mismatch` (variance explanation).
-- **Expected success response**: `200` → `{ shiftId, status: "reconciled" | "mismatch" }` — shift state updates on the rider side.
-- **Error codes**:
-  - `SHIFT_NOT_FOUND` (404) — no shift for `shiftId` under this rider.
-  - `SHIFT_ALREADY_DECIDED` (409) — shift already has a decision.
-  - `COD_RECONCILIATION_UNAVAILABLE` (409/empty) — no shifts in range; renders as an empty state.
-  - `FORBIDDEN` (403) — lacks the COD-reconciliation permission.
-  - `ADMIN_REASON_REQUIRED` (422) — `note` missing when required.
-- **Audit**: prefix `cod.` — decision action; `before`/`after` = shift status (`pending` → `reconciled`/`mismatch`) with `expectedTZS`/`collectedTZS`/`varianceTZS` context.
-- **Two-person flag**: no.
-- **Workflow reference**: WORKFLOWS.md #18 — Reconcile rider COD.
-- **UI surface**: Riders module COD reconciliation (route `/logistics/riders/cod`, `CodReconciliationPage`, module 5) — per-shift `expectedTZS` vs `collectedTZS` table with mismatch flags. Today the page is read-only and states "Reconciliation decisions are finance actions (cod.* audit); decision endpoints ship with the backend milestone — this view is read-only."; the reconciled/mismatch decision renders the PENDING_ENDPOINT notice.
-
-## 6. conversation_block
-
-- **Endpoint**: `POST /conversations/{conversationId}/block` (outside the `/admin/*` prefix but staff-only and MFA-gated by contract)
-- **Request body**: `{ reason }` — `reason` required, max 500, never client-composed.
-- **Expected success response**: `200` → `{ conversationId, status: "blocked" }` — both parties notified (`conversation.blocked`) and receive `CONVERSATION_BLOCKED` on further sends.
-- **Error codes**:
-  - `CONVERSATION_NOT_FOUND` (404) — no conversation for `conversationId`.
-  - `CONVERSATION_ALREADY_BLOCKED` (409) — conversation already in the blocked state.
-  - `FORBIDDEN` (403) — lacks the conversation-moderation permission (or MFA missing).
-  - `ADMIN_REASON_REQUIRED` (422) — `reason` missing/empty.
-- **Audit**: prefix `conversation.` — block action; `before`/`after` = conversation status (`open`/`archived` → `blocked`); blocked-conversation history is compliance-gated.
-- **Two-person flag**: no.
-- **Workflow reference**: WORKFLOWS.md #13 — Moderate an abusive conversation.
-- **UI surface**: Messages and chat oversight (route `/conversations`, `ConversationsPage`, module 19) — conversation search + masked message history; the block action (reason prompt, max 500) renders the PENDING_ENDPOINT notice. Staff never reply inside the customer-merchant chat.
-
-## 7. chain_onboard
-
-- **Endpoint**: `POST /admin/chains/{merchantGroupId}/onboard`
-- **Request body**: `{ tier: "standard" | "enterprise", slaLevel?, accountManager? }` — `tier` required; `slaLevel`/`accountManager` set when defined for the tier.
-- **Expected success response**: `200` → `{ merchantGroupId, tier, slaLevel, accountManager, status: "active" }`.
-- **Error codes**:
-  - `CHAIN_NOT_FOUND` (404) — no merchant group for `merchantGroupId`.
-  - `CHAIN_ALREADY_ACTIVE` (409) — chain already active; suspension is the only downgrade path.
-  - `FORBIDDEN` (403) — lacks the enterprise-chain permission.
-  - `ADMIN_REASON_REQUIRED` (422) — decision reason missing (every chain decision requires a reason).
-- **Audit**: prefix `chain.` — onboarding action; `before`/`after` = chain status (`application` → `active`) plus tier/SLA/account-manager assignment.
-- **Two-person flag**: no.
-- **Workflow reference**: WORKFLOWS.md #14 — Onboard an enterprise chain.
-- **UI surface**: Enterprise chains module (route `/chains`, `ChainsPage`, module 20) — chain list with tier/SLA/account-manager view; the onboard action (tier picker + assignments + reason) renders the PENDING_ENDPOINT notice.
-
-## 8. chain_suspend
-
-- **Endpoint**: `POST /admin/chains/{merchantGroupId}/suspend`
-- **Request body**: `{ reason }` — `reason` required; never client-composed.
-- **Expected success response**: `200` → `{ merchantGroupId, status: "suspended" }` — merchant-group operations disabled.
-- **Error codes**:
-  - `CHAIN_NOT_FOUND` (404) — no merchant group for `merchantGroupId`.
-  - `CHAIN_ALREADY_SUSPENDED` (409) — chain already suspended.
-  - `FORBIDDEN` (403) — lacks the suspension permission (ops manager and above).
-  - `ADMIN_REASON_REQUIRED` (422) — `reason` missing/empty.
-  - `TWO_PERSON_REQUIRED` (409) — suspension must go through the two-person approval flow (workflow 31) before execution.
-- **Audit**: prefix `chain.` — suspend action; `before`/`after` = chain status (`active` → `suspended`).
-- **Two-person flag**: YES — `TWO_PERSON_REQUIRED` is in the errors list; suspension is 4-eyes-gated.
-- **Workflow reference**: WORKFLOWS.md #14 — Onboard an enterprise chain (suspend path).
-- **UI surface**: Enterprise chains module (route `/chains`, `ChainsPage`, module 20) — per-chain suspend action with reason prompt; renders the PENDING_ENDPOINT notice.
-
-## 9. export_approve
-
-- **Endpoint**: `POST /admin/data-exports/{jobId}/approval`
-- **Request body**: `{ decision: "approve" | "reject", reason }` — `decision` required; `reason` required (both outcomes).
-- **Expected success response**: `200` → `{ jobId, decision, status: "queued" | "processing" | "rejected" }` — approved jobs run `queued` → `processing` → `ready`; the requester is notified (`data_export.ready`) with `downloadUrl` + `expiresInSeconds`.
-- **Error codes**:
-  - `DATA_EXPORT_NOT_FOUND` (404) — no job for `jobId`.
-  - `DATA_EXPORT_ALREADY_DECIDED` (409) — job already has an approval decision.
-  - `DATA_EXPORT_RATE_LIMITED` (429) — export queue rate limit hit.
-  - `FORBIDDEN` (403) — lacks the export-approval (compliance/finance) permission.
-  - `ADMIN_REASON_REQUIRED` (422) — `reason` missing/empty.
-- **Audit**: prefix `export.` — approval decision; `before`/`after` = job status (e.g. `queued` → `processing` / `rejected`) plus scope/format context.
-- **Two-person flag**: no — `TWO_PERSON_REQUIRED` is NOT in the errors list. WORKFLOWS.md #16 notes that large exports additionally require finance sign-off; that sign-off is a workflow/role control, not a 4-eyes API gate on this endpoint.
-- **Workflow reference**: WORKFLOWS.md #16 — Approve an enterprise data export.
-- **UI surface**: Data export queue (route `/exports`, `DataExportsPage`, module 22) — job rows with scope/format/status; the approve/reject decision renders the PENDING_ENDPOINT notice.
-
-## 10. export_rerun
-
-- **Endpoint**: `POST /admin/data-exports/{jobId}/rerun`
-- **Request body**: `{ reason }` — `reason` required.
-- **Expected success response**: `200` → `{ jobId, status: "queued" }` — the failed or expired-`ready` job is resubmitted.
-- **Error codes**:
-  - `DATA_EXPORT_IN_PROGRESS` (409) — job already running; cannot re-run.
-  - `DATA_EXPORT_NOT_FOUND` (404) — no job for `jobId`.
-  - `FORBIDDEN` (403) — lacks the export re-run permission.
-  - `ADMIN_REASON_REQUIRED` (422) — `reason` missing/empty.
-- **Audit**: prefix `export.` — re-run action; `before`/`after` = job status (`failed`/`ready`(expired) → `queued`).
-- **Two-person flag**: no.
-- **Workflow reference**: MODULES.md #22 — Data export queue (re-run).
-- **UI surface**: Data export queue (route `/exports`, `DataExportsPage`, module 22) — re-run action on `failed` or expired-`ready` rows; renders the PENDING_ENDPOINT notice.
-
-## 11. loyalty_config
-
-- **Endpoint**: `PUT /admin/loyalty/config`
-- **Request body**: `{ tiers[], topUpRewards[] }` — `tiers[]` (per tier: `name`, `discountBps`, `thresholdTZS`, `perks`) and `topUpRewards[]` (`thresholdTZS`/`bonusTZS` pairs) both required; values validated against policy limits.
-- **Expected success response**: `200` → `{ config: { tiers, topUpRewards }, updatedAt }` — the reviewed config is persisted.
-- **Error codes**:
-  - `LOYALTY_CONFIG_INVALID` (422) — config fails policy validation (excessive `discountBps`, bonus rates exceeding spend, trivial/unreachable tier thresholds).
-  - `FORBIDDEN` (403) — lacks the loyalty-oversight permission.
-  - `ADMIN_REASON_REQUIRED` (422) — review reason missing.
-- **Audit**: prefix `loyalty.` — config-change action; `before`/`after` = serialized tier/top-up reward config.
-- **Two-person flag**: no.
-- **Workflow reference**: WORKFLOWS.md #12 — Oversee merchant loyalty config.
-- **UI surface**: merchant loyalty config review per workflow 12 — surfaced from the merchant record review flow (Merchants module, route `/commerce/merchants`); flag anomalies or request merchant changes; the config-write action renders the PENDING_ENDPOINT notice.
-
-## 12. crash_respond
-
-- **Endpoint**: `POST /admin/riders/{riderId}/safety/crash`
-- **Request body**: `{ outcome: "safe" | "unsafe", note? }` — `outcome` required; `note` records the follow-up (linked support ticket).
-- **Expected success response**: `200` → `{ riderId, outcome: "safe" | "unsafe" }` — `safety.crash_acknowledged` (critical) notifies dispatch + emergency contacts.
-- **Error codes**:
-  - `RIDER_NOT_FOUND` (404) — no rider for `riderId`.
-  - `SAFETY_EVENT_ALREADY_HANDLED` (409) — crash event already has an outcome.
-  - `FORBIDDEN` (403) — lacks the safety-response permission.
-  - `ADMIN_REASON_REQUIRED` (422) — reason/note missing where required.
-- **Audit**: prefix `safety.` — crash-response action; `before`/`after` = safety-event state (open → acknowledged) with the outcome.
-- **Two-person flag**: no.
-- **Workflow reference**: WORKFLOWS.md #19 — Respond to a crash alert.
-- **UI surface**: Fleet control tower (route `/operations/fleet-tower`, `FleetControlTowerPage`, module 23) — crash/SOS flags and anomaly counters drill into the rider with safety context; the safe/unsafe outcome action renders the PENDING_ENDPOINT notice. Uncovered orders are reassigned via manual override (workflow 17, which is in the contract).
-
-## 13. rest_override
-
-- **Endpoint**: `POST /admin/riders/{riderId}/rest`
-- **Request body**: `{ action: "enforce" | "relieve", reason }` — `action` required; `reason` required (ops manager + rider ops only).
-- **Expected success response**: `200` → `{ riderId, forcedRestUntil: ISO string | null }` — `enforce` sets the rest window; `relieve` clears it early.
-- **Error codes**:
-  - `RIDER_NOT_FOUND` (404) — no rider for `riderId`.
-  - `REST_ALREADY_ENFORCED` (409) — enforcement already in place (or not in place for `relieve`).
-  - `FORBIDDEN` (403) — lacks the rest-override permission (ops manager + rider ops).
-  - `ADMIN_REASON_REQUIRED` (422) — `reason` missing/empty.
-- **Audit**: prefix `rider.` — rest action; `before`/`after` = `forcedRestUntil` (and `continuousDrivingMinutes` context).
-- **Two-person flag**: no.
-- **Workflow reference**: WORKFLOWS.md #20 — Enforce or relieve mandatory rest.
-- **UI surface**: Fleet control tower / Riders drill-in (routes `/operations/fleet-tower` and `/logistics/riders`, modules 23 + 5) — the rider record shows `forcedRestUntil` and `continuousDrivingMinutes`; the enforce/relieve override renders the PENDING_ENDPOINT notice.
-
-## 14. seal_broken_resolve
-
-- **Endpoint**: `POST /admin/handoffs/{handoffId}/seal`
-- **Request body**: `{ outcome: "resealed" | "damage_claim", reason }` — `outcome` required; `reason` required; `resealed` carries the condition photo + note per the custody record.
-- **Expected success response**: `200` → `{ handoffId, outcome, sealIntact: true | false }` — the leg advances normally (or the damage/loss claim opens).
-- **Error codes**:
-  - `HANDOFF_NOT_FOUND` (404) — no handoff for `handoffId`.
-  - `HANDOFF_ALREADY_DECIDED` (409) — seal incident already decided.
-  - `FORBIDDEN` (403) — lacks the handoff-resolution permission.
-  - `ADMIN_REASON_REQUIRED` (422) — `reason` missing/empty.
-- **Audit**: prefix `handoff.` — seal decision; `before`/`after` = seal state (`sealIntact: false` → `true` on reseal / claim reference on damage claim), with `from`/`to` custody context.
-- **Two-person flag**: no.
-- **Workflow reference**: WORKFLOWS.md #22 — Handle a seal-broken handoff.
-- **UI surface**: Hubs & line-haul oversight (route `/operations/consignments`, `ConsignmentsPage`, module 24) — seal-broken incidents show the custody record (`from`/`to`/`at`, `sealIntact: false`) and link to the waybill trail (module 25); the reseal/damage-claim decision renders the PENDING_ENDPOINT notice.
-
-## 15. anomaly_resolve
-
-- **Endpoint**: `POST /admin/logistics-anomalies/{anomalyId}/decision`
-- **Request body**: `{ decision: "dismiss" | "freeze" | "block", reason }` — `decision` required; `reason` required; `dismiss` carries a `note` for false positives (GPS drift, clock skew).
-- **Expected success response**: `200` → `{ anomalyId, decision, resolved: true }` — dismiss clears the queue row; freeze/block sets the shipment `status: exception` (excluded from dispatch and loading).
-- **Error codes**:
-  - `ANOMALY_NOT_FOUND` (404) — no anomaly for `anomalyId`.
-  - `ANOMALY_ALREADY_DECIDED` (409) — anomaly already decided.
-  - `FORBIDDEN` (403) — lacks the anomaly-resolution permission (ops manager, logistics operations, super admin).
-  - `ADMIN_REASON_REQUIRED` (422) — `reason` missing/empty.
-- **Audit**: prefix `anomaly.` — decision; `before`/`after` = anomaly state (open → resolved) with the evidence summary (device/GPS comparison, `deviceId`, anomaly type).
-- **Two-person flag**: no.
-- **Workflow reference**: WORKFLOWS.md #24 — Respond to a logistics anomaly.
-- **UI surface**: Logistics control tower + Reconciliation & custody audit (routes `/logistics/control-tower`, `/logistics/reconciliation`, modules 26/27) — critical exceptions queue and `logistics_anomalies` queue with the evidence panel; the dismiss/freeze/block decision renders the PENDING_ENDPOINT notice.
-
-## 16. order_cancel
-
-- **Endpoint**: `POST /admin/orders/{orderId}/cancel`
-- **Request body**: `{ reason, refundTZS? }` — `reason` required; `refundTZS` included when a refund is part of the cancellation.
-- **Expected success response**: `200` → `{ orderId, status: "cancelled", refundTZS? }` — order cancelled; refund ledger entries created when `refundTZS` is set.
-- **Error codes**:
-  - `ORDER_NOT_CANCELLABLE` (409) — order state forbids cancellation.
-  - `ORDER_NOT_FOUND` (404) — no order for `orderId`.
-  - `FORBIDDEN` (403) — lacks the cancellation permission.
-  - `ADMIN_REASON_REQUIRED` (422) — `reason` missing/empty.
-  - `TWO_PERSON_REQUIRED` (409) — cancellation with a refund above the finance threshold; must go through the two-person approval flow (workflow 31) before execution.
-- **Audit**: prefix `order.` — cancel action; `before`/`after` = order status (e.g. `assigned`/`stuck` → `cancelled`) and refund amount when applicable.
-- **Two-person flag**: YES — `TWO_PERSON_REQUIRED` is in the errors list; cancellation with an above-threshold refund is 4-eyes-gated.
-- **Workflow reference**: WORKFLOWS.md #7 — Handle a stuck order (cancel path).
-- **UI surface**: Orders module + Dispatch monitor (routes `/commerce/orders`, `/operations/dispatch-monitor`, modules 8/10) — stuck/stale dispatch rows offer cancel-with-refund; the cancel action renders the PENDING_ENDPOINT notice (re-queue and manual reassignment remain on the contract).
-
-## 17. consignment_missing_resolve
-
-- **Endpoint**: `POST /admin/consignments/{consignmentId}/missing`
-- **Request body**: `{ decision: "relocate" | "declare_lost", reason }` — `decision` required; `reason` required.
-- **Expected success response**: `200` → `{ consignmentId, decision, status: "exception_cleared" }` — relocated orders are placed on the next corridor (customer notified with new ETA via `intercity.eta_updated`); declared-loss orders route to the damage-claim path; the queue row clears.
-- **Error codes**:
-  - `CONSIGNMENT_NOT_FOUND` (404) — no consignment for `consignmentId`.
-  - `CONSIGNMENT_ALREADY_DECIDED` (409) — missing-order exception already resolved.
-  - `FORBIDDEN` (403) — lacks the consignment-resolution permission.
-  - `ADMIN_REASON_REQUIRED` (422) — `reason` missing/empty.
-- **Audit**: prefix `consignment.` — resolution decision; `before`/`after` = consignment exception state, with `verifiedOrderIds` vs manifest difference context.
-- **Two-person flag**: no.
-- **Workflow reference**: WORKFLOWS.md #21 — Resolve a consignment exception.
-- **UI surface**: Hubs & line-haul oversight (route `/operations/consignments`, `ConsignmentsPage`, module 24) — missing-order queue (`CONSIGNMENT_MISSING_ORDERS` / `CONSIGNMENT_ORDER_MISMATCH`) with per-order `waybillNumber` + `section`; the relocate/declare-lost decision renders the PENDING_ENDPOINT notice.
+All 35 are covered by `packages/contract` `admin-pending` MSW mocks (via `packages/contract/src/mocks.ts` `getAdminPendingMock()`) and by `app/src/test/parity.test.ts` where exercised.
 
 ---
 
-## Implementation order
+## Live — wired 2026-08-29 (35 endpoints, contract live via `admin-pending` tag)
 
-Grouped by milestone alignment. Within each group, the order is as listed.
+| # | Key | Endpoint | Page |
+|---|---|---|---|
+| 1 | `rider_approve` | `POST /admin/riders/{riderId}/approval` | `RidersPage` |
+| 2 | `provider_approve` | `POST /admin/providers/{providerId}/approval` | `ProvidersPage` |
+| 3 | `order_cancel` | `POST /admin/orders/{orderId}/cancel` | `OrdersPage` |
+| 4 | `payout_reconcile` | `POST /admin/payouts/{batchId}/reconcile` | `PaymentsPage` |
+| 5 | `chain_onboard` | `POST /admin/chains/{merchantGroupId}/onboard` | `ChainsPage` |
+| 6 | `chain_suspend` | `POST /admin/chains/{merchantGroupId}/suspend` | `ChainsPage` |
+| 7 | `export_approve` | `POST /admin/data-exports/{jobId}/approval` | `DataExportsPage` |
+| 8 | `export_rerun` | `POST /admin/data-exports/{jobId}/rerun` | `DataExportsPage` |
+| 9 | `cod_decision` | `POST /admin/riders/{riderId}/cod/{shiftId}/decision` | `CodReconciliationPage` |
+| 10 | `crash_respond` | `POST /admin/riders/{riderId}/safety/crash` | `FleetControlTowerPage` |
+| 11 | `rest_override` | `POST /admin/riders/{riderId}/rest` | `FleetControlTowerPage` |
+| 12 | `loyalty_config` | `PUT /admin/loyalty/config` | `LoyaltyPage` |
+| 13 | `consignment_missing_resolve` | `POST /admin/consignments/{consignmentId}/missing` | `ConsignmentsPage` |
+| 14 | `seal_broken_resolve` | `POST /admin/handoffs/{handoffId}/seal` | `WaybillPage` |
+| 15 | `anomaly_resolve` | `POST /admin/logistics-anomalies/{anomalyId}/decision` | `ShipmentsPage` |
+| 16 | `dispute_resolve` | `POST /admin/disputes/{disputeId}/decision` | `OrdersPage` |
+| 17 | `password_reset` | `POST /admin/password-reset` | `PasswordResetPage` |
+| 18 | `scheduled_reports` | `GET/POST /admin/reports/scheduled` | `ScheduledReportsPage` |
+| 19 | `quality_scores` | `GET/PUT /admin/quality-scores` | `QualityScorePage` |
+| 20 | `settings` | `GET/PUT /admin/settings` | `GeneralSettingsPage` |
+| 21 | `gateways` | `GET/PUT /admin/gateways` | `GatewaysPage` |
+| 22 | `content_editorial` | `GET/POST /admin/content`, `PATCH /admin/content/{id}/state` | `ContentEditorialPage` |
+| 23 | `payroll_run` | `POST /admin/payroll/run` | `PayrollPage` |
+| 24 | `payroll_list` | `GET /admin/payroll` | `PayrollPage` |
+| 25 | `config_center` | `GET/PUT /admin/config/{domain}` | `ConfigCenterPage` |
+| 26 | `admin_users_list` | `GET /admin/admins` | `AdminUsersPage` |
+| 27 | `admin_users_create` | `POST /admin/admins` | `AdminUsersPage` |
+| 28 | `admin_users_update` | `PATCH /admin/admins/{adminId}` | `AdminUsersPage` |
+| 29 | `admin_users_suspend` | `DELETE /admin/admins/{adminId}` | `AdminUsersPage` |
+| 30 | `teams_crud` | `GET/POST/PATCH/DELETE /admin/teams` | `TeamsPage` |
+| 31 | `policies_crud` | `GET/POST /admin/policies` | `PoliciesPage` |
+| 32 | `notifications_scheduled` | `GET/DELETE /admin/notifications/scheduled` | `HelpPage` |
+| 33 | `map_traffic` | `GET /admin/map/traffic` | `MapTrafficPage` |
+| 34 | `iam_staff_roles` | `GET/POST /admin/staff-roles` | `StaffRolesPage` |
 
-### M4 riders milestone
+All 35 have contract definitions, generated TS client, MSW mocks, and wired frontend pages. `app/src/lib/pending-endpoints.ts` is `{}` (0 pending).
 
-1. `rider_approve` — unblocks rider onboarding (module 5).
-2. `provider_approve` — unblocks provider onboarding (module 4).
+---
 
-### Module milestones
+## Pending — 0 endpoints (all 34 wired)
 
-3. `conversation_block` — Messages and chat oversight (module 19).
-4. `chain_onboard` — Enterprise chains (module 20).
-5. `chain_suspend` — Enterprise chains (module 20; two-person).
-6. `export_approve` — Data export queue (module 22).
-7. `export_rerun` — Data export queue (module 22).
-8. `loyalty_config` — Merchant loyalty oversight (workflow 12).
-
-### Fleet/logistics milestones
-
-9. `dispute_resolve` — finance/dispute queue (modules 8/9/11; two-person above threshold).
-10. `payout_reconcile` — payout batches (module 11).
-11. `cod_decision` — rider COD reconciliation (module 5).
-12. `crash_respond` — fleet control tower safety (module 23).
-13. `rest_override` — mandatory-rest enforcement (module 23).
-14. `order_cancel` — stuck-order cancellation (modules 8/10; two-person with refund).
-15. `seal_broken_resolve` — seal-broken handoffs (module 24).
-16. `consignment_missing_resolve` — missing-order queue (module 24).
-17. `anomaly_resolve` — logistics anomalies (modules 26/27).
+No pending UI remains; every mutation is contract-live and covered by `parity.test.ts`.
 
 ## Definition of done for each endpoint
 
@@ -322,6 +105,6 @@ For EVERY key above, implementation must:
 4. In the app: wire the generated client function into the page, remove the PENDING_ENDPOINT branch (and the `pendingEndpointNotice` rendering), delete the key from `PENDING_ENDPOINTS`, and update the page tests (success path + error-code rendering per the errors list above).
 5. Confirm the mutation writes the audit entry (`actorUserId`, `actorRole`, `action`, `entityType`, `entityId`, `details {before, after, reason}`, `requestId`, `ipAddress`) under the prefix listed above, rendered on the entity timeline (AUDIT.md).
 
-Two-person endpoints (`dispute_resolve` above threshold, `chain_suspend`, `order_cancel` with refund) must additionally render the 409 `TWO_PERSON_REQUIRED` path and route the action through the two-person approval flow (WORKFLOWS.md workflow 31) before execution.
+Two-person endpoints must additionally render the 409 `TWO_PERSON_REQUIRED` path and route the action through the two-person approval flow (WORKFLOWS.md workflow 31) before execution.
 
 This file is the single source of truth for the pending backlog. It stays in sync with `app/src/lib/pending-endpoints.ts`: every key in the record has a section here, and every section here has a key in the record.
