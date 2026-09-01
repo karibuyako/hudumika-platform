@@ -519,7 +519,7 @@ function OrderDrawer({
       )}
 
       {toast && (
-        <Toast message={toast} onClose={() => setToast(null)} />
+        <Toast message={toast} />
       )}
     </div>
   )

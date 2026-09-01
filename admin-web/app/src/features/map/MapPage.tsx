@@ -30,13 +30,14 @@ export function parseCoord(raw: string): XY {
   return { x: lon, y: lat }
 }
 
-export function project(lon: number, lat: number, width: number, height: number, bounds: { minLon: number; maxLon: number; minLat: number; maxLat: number }): XY {
-  const x = ((lon - bounds.minLon) / (bounds.maxLon - bounds.minLon)) * width
-  const y = ((bounds.maxLat - lat) / (bounds.maxLat - bounds.minLat)) * height
+export function project(c: XY, bounds: { minLon: number; maxLon: number; minLat: number; maxLat: number }, width = 1000, height = 700): XY {
+  const pad = 50
+  const x = pad + ((c.x - bounds.minLon) / (bounds.maxLon - bounds.minLon)) * (width - 2 * pad)
+  const y = pad + ((bounds.maxLat - c.y) / (bounds.maxLat - bounds.minLat)) * (height - 2 * pad)
   return { x, y }
 }
 
-export function fitViewBox(coords: XY[], padding = 0.1): { minLon: number; maxLon: number; minLat: number; maxLat: number } {
+export function fitViewBox(coords: XY[], width = 1000, height = 700): { minLon: number; maxLon: number; minLat: number; maxLat: number } {
   const finite = coords.filter(isFiniteXY)
   if (finite.length === 0) return { minLon: 0, maxLon: 1, minLat: 0, maxLat: 1 }
   const xs = finite.map((c) => c.x)
