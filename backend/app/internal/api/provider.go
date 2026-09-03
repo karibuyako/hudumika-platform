@@ -806,7 +806,7 @@ func toGenStaff(st provider.Staff) gen.ProviderStaff {
 // jsonb the store persists; a nil slice stays nil (column default applies).
 func jsonStringSlice(in *[]string) []byte {
 	if in == nil {
-		return nil
+		return []byte("[]")
 	}
 	out, _ := json.Marshal(*in)
 	return out
