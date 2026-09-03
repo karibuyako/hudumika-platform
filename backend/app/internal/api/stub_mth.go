@@ -90,12 +90,18 @@ func (s *Server) MthCreateSplit(w http.ResponseWriter, r *http.Request) {
 		OrderID        *string         `json:"orderId"`
 		OrderIdAlt     *string         `json:"order_id"`
 		Participants   json.RawMessage `json:"participants"`
+		Shares         json.RawMessage `json:"shares"`
 		IdempotencyKey *string         `json:"idempotencyKey"`
 		IdemAlt        *string         `json:"idempotency_key"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Invalid request body")
 		return
+	}
+	// Accept the contract shape {orderId, shares[{label,amountTZS}]} as an
+	// alias for the legacy {participants} payload.
+	if (len(body.Participants) == 0 || string(body.Participants) == "null") && len(body.Shares) != 0 && string(body.Shares) != "null" {
+		body.Participants = body.Shares
 	}
 	orderStr := ""
 	if body.OrderID != nil {

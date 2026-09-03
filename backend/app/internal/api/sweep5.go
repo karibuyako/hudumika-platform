@@ -296,10 +296,31 @@ func (s *Server) UpdateFleetAccount(w http.ResponseWriter, r *http.Request, flee
 	writeJSON(w, http.StatusOK, toFleetAccount(row))
 }
 
+// sweepMerchantID resolves the merchant session to the merchants row id
+// (not the users row id): merchant_staff rows are keyed by merchants.id,
+// while merchantOwnerID returns the owner users.id.
+func (s *Server) sweepMerchantID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
+	ownerID, ok := s.merchantOwnerID(w, r)
+	if !ok {
+		return uuid.Nil, false
+	}
+	m, err := s.merchantStore().GetMerchantByOwner(r.Context(), ownerID)
+	if err != nil {
+		s.logger.Error("merchant lookup failed", "user", ownerID, "error", err)
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+		return uuid.Nil, false
+	}
+	if m == nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "No merchant account for this session")
+		return uuid.Nil, false
+	}
+	return m.ID, true
+}
+
 // UpdateMerchantStaff updates a staff account of the caller's merchant
 // (PATCH /merchants/me/staff/{staffId}).
 func (s *Server) UpdateMerchantStaff(w http.ResponseWriter, r *http.Request, staffId openapi_types.UUID) {
-	merchantID, ok := s.merchantOwnerID(w, r)
+	merchantID, ok := s.sweepMerchantID(w, r)
 	if !ok {
 		return
 	}
@@ -345,7 +366,7 @@ func (s *Server) UpdateMerchantStaff(w http.ResponseWriter, r *http.Request, sta
 // (DELETE /merchants/me/staff/{staffId}). Idempotent: an absent or foreign
 // row answers 204.
 func (s *Server) DeleteMerchantStaff(w http.ResponseWriter, r *http.Request, staffId openapi_types.UUID) {
-	merchantID, ok := s.merchantOwnerID(w, r)
+	merchantID, ok := s.sweepMerchantID(w, r)
 	if !ok {
 		return
 	}
