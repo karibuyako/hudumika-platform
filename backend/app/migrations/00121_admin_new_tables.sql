@@ -1,3 +1,4 @@
+-- +goose Up
 -- 00121_admin_new_tables.sql
 -- New tables for admin endpoints: admin_users, admin_teams, admin_policies, admin_content, admin_scheduled_notifications, admin_payroll_batches
 

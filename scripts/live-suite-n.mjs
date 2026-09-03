@@ -92,7 +92,7 @@ await step('N dine-in splits + redpacket claim + voice/image + live-chat + coupo
     const o = await req('POST', '/dine-in/orders', { token: T.cust, body: { merchantId: T.merchantId, tableId: t.data.id, items: [{ catalogueItemId: T.itemId, quantity: 1 }] }, idem: idem('dine') });
     if ([200, 201].includes(o.status)) sp = await req('POST', `/dine-in/orders/${o.data.id}/splits`, { token: T.cust, body: { shares: [{ name: 'A', amountTZS: 3500 }] } });
   }
-  const rp = await req('POST', '/red-packets/me/share', { token: T.cust, body: { amountTZS: 2000, count: 2 } });
+  const rp = await req('POST', '/red-packets/me/share', { token: T.cust, body: { amountTZS: 2000, count: 2, expiresInHours: 24 } , idem: idem('rp') });
   const vs = await req('POST', '/search/voice', { token: T.cust, body: { query: 'chapati' } });
   const im = await req('POST', '/search/image', { token: T.cust, body: { imageUrl: 'https://example.com/food.jpg' } });
   const lc = await req('GET', '/marketing/live-deals', { token: T.cust.token ?? T.cust });
@@ -100,13 +100,30 @@ await step('N dine-in splits + redpacket claim + voice/image + live-chat + coupo
   return `dinesplit=${sp.status} redpack=${rp.status} voice=${vs.status} image=${im.status} livedeals=${lc.status} couponsug=${cs.status}`;
 }, { critical: false });
 await step('N bus reminders + bike lifecycle + travel/hotel booking + events', async () => {
-  const br = await req('GET', '/bus/routes?limit=5', { token: T.cust });
+  const br = await req('GET', '/bus/routes?origin=DAR&destination=ARU&limit=5', { token: T.cust });
   const bm = await req('POST', '/bus/reminders', { token: T.cust, body: { routeId: '00000000-0000-0000-0000-000000000000', stopId: 's1', enabled: true } });
   const bn = await req('GET', '/bikes/nearby?lat=-6.8&lon=39.28', { token: T.cust });
-  const tb = await req('POST', '/travel/bookings', { token: T.cust, body: { origin: 'DAR', destination: 'ARU', date: '2026-10-05', mode: 'bus', seats: 1 }, idem: idem('tv') });
-  const hb = await req('POST', '/hotel-bookings', { token: T.cust, body: { hotelId: '00000000-0000-0000-0000-000000000000', checkIn: '2026-10-01', checkOut: '2026-10-02', guests: 1 }, idem: idem('hb') });
-  const ev = await req('POST', '/entertainment/event-tickets', { token: T.cust, body: { eventId: '00000000-0000-0000-0000-000000000000', tierId: '00000000-0000-0000-0000-000000000000', quantity: 1 }, idem: idem('ev') });
-  return `bus=${br.status}/${bm.status} bikes=${bn.status} travel=${tb.status} hotel=${hb.status} events=${ev.status}`;
+  const to = await req('GET', '/travel/options?origin=DAR&destination=ARU&date=2026-10-05', { token: T.cust });
+  let tb = { status: 'skip' };
+  const opt = Array.isArray(to.data) ? to.data[0] : to.data?.options?.[0] ?? to.data?.results?.[0];
+  if (opt?.id) tb = await req('POST', '/travel/bookings', { token: T.cust, body: { travelOptionId: opt.id, passengers: 1, contactPhone: phone('61'), idempotencyKey: idem('tv') }, idem: idem('tv') });
+  const hl = await req('GET', '/hotels?limit=5', { token: T.cust });
+  const hotels = Array.isArray(hl.data) ? hl.data : hl.data?.results ?? [];
+  let hb = { status: 'skip' };
+  if (hotels[0]?.id) {
+    const hd = await req('GET', `/hotels/${hotels[0].id}`, { token: T.cust });
+    const room = hd.data?.rooms?.[0] ?? hd.data?.roomTypes?.[0];
+    if (room?.id) hb = await req('POST', '/hotel-bookings', { token: T.cust, body: { hotelId: hotels[0].id, roomId: room.id, checkIn: '2026-10-01', checkOut: '2026-10-02', guests: 1, idempotencyKey: idem('hb') }, idem: idem('hb') });
+  }
+  const el = await req('GET', '/entertainment/events?limit=5', { token: T.cust });
+  const evs = Array.isArray(el.data) ? el.data : el.data?.results ?? [];
+  let ev = { status: 'skip' };
+  if (evs[0]?.id) {
+    const ed = await req('GET', `/entertainment/events/${evs[0].id}`, { token: T.cust });
+    const tier = ed.data?.tiers?.[0] ?? ed.data?.ticketTiers?.[0];
+    if (tier?.id) ev = await req('POST', '/entertainment/event-tickets', { token: T.cust, body: { eventId: evs[0].id, tierId: tier.id, quantity: 1 }, idem: idem('ev') });
+  }
+  return `bus=${br.status}/${bm.status} bikes=${bn.status} travel=${to.status}/${tb.status} hotel=${hl.status}/${hb.status} events=${el.status}/${ev.status}`;
 }, { critical: false });
 await step('N sessions + 2fa status + social + password + privacy + checkin-detail', async () => {
   const sl = await req('GET', '/sessions', { token: T.cust });
@@ -114,7 +131,8 @@ await step('N sessions + 2fa status + social + password + privacy + checkin-deta
   const so = await req('POST', '/auth/social', { body: { provider: 'google', idToken: 'loop-test-token' } });
   const cp = await req('POST', '/auth/change-password', { token: T.cust, body: { currentPassword: 'x', newPassword: 'y12345678' } });
   const pe = await req('POST', '/privacy/export', { token: T.cust });
-  const ci = await req('POST', '/check-in', { token: T.cust, body: {} });
+  // check-in is rider-only (DailyCheckIn requires rider profile) — covered in O suite
+  const ci = { status: 'rider-only-see-O' };
   return `sessions=${sl.status} 2fa=${t2.status} social=${so.status} chpwd=${cp.status} privacy=${pe.status} checkin=${ci.status}`;
 }, { critical: false });
 await step('N notifications order-settings + announcements + lists + preferred', async () => {
@@ -122,8 +140,8 @@ await step('N notifications order-settings + announcements + lists + preferred',
   const an = await req('GET', '/announcements', { token: T.cust });
   const li = await req('GET', '/lists', { token: T.cust });
   const pr = await req('GET', '/providers/me/preferred', { token: T.cust });
-  const wd = await req('POST', '/wallet/withdrawals', { token: T.cust, body: { amountTZS: 1000 }, idem: idem('wd') });
-  return `ordset=${os.status} ann=${an.status} lists=${li.status} pref=${pr.status} withdraw-cust=${wd.status}`;
+  const wd = await req('POST', '/wallet/withdrawals', { token: T.cust, body: { amountTZS: 6000 }, idem: idem('wd') });
+  return `ordset=${os.status} ann=${an.status} lists=${li.status} pref=${pr.status} withdraw-cust=${wd.status} (403-correct: earners only)`;
 }, { critical: false });
 
 const pass = results.filter((r) => r.ok).length;

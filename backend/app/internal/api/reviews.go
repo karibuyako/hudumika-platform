@@ -261,6 +261,44 @@ func (s *Server) ListMyReceivedReviews(w http.ResponseWriter, r *http.Request, p
 		cursor = *params.Cursor
 	}
 
+	// Provider-role scoping: reviews received by the caller's own provider
+	// entity (target_type 'provider', target_id = providers.id), newest
+	// first with the same cursor pagination. A provider session without a
+	// providers row answers 404 like GET /providers/me; a targetType filter
+	// naming another entity kind yields the honest empty list. Every other
+	// role keeps the author-side listing below, unchanged.
+	if claims, ok := ClaimsFromContext(r.Context()); ok && claims.Role == RoleProvider {
+		p, err := s.merchantStore().GetProviderByOwner(r.Context(), user.ID)
+		if err != nil {
+			s.logger.Error("provider reviews lookup failed", "user", user.ID, "error", err)
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+			return
+		}
+		if p == nil {
+			writeError(w, http.StatusNotFound, "NOT_FOUND", "No provider application for this account")
+			return
+		}
+		if params.TargetType != nil && *params.TargetType != gen.ListMyReceivedReviewsParamsTargetTypeProvider {
+			writeJSON(w, http.StatusOK, []gen.ReviewDetail{})
+			return
+		}
+		rows, next, err := s.reviewStore().ListReceived(r.Context(), "provider", p.ID, limit, cursor)
+		if err != nil {
+			s.logger.Error("provider reviews list failed", "provider", p.ID, "error", err)
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+			return
+		}
+		out := make([]gen.ReviewDetail, 0, len(rows))
+		for i := range rows {
+			out = append(out, toGenReviewDetail(rows[i]))
+		}
+		if next != "" {
+			w.Header().Set("X-Next-Cursor", next)
+		}
+		writeJSON(w, http.StatusOK, out)
+		return
+	}
+
 	rows, next, err := s.reviewStore().ListMine(r.Context(), user.ID, limit, cursor)
 	if err != nil {
 		s.logger.Error("reviews list failed", "user", user.ID, "error", err)

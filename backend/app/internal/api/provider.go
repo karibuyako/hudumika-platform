@@ -1009,6 +1009,47 @@ func (s *Server) CreateProviderServicePlan(w http.ResponseWriter, r *http.Reques
 	writeJSON(w, http.StatusCreated, toGenServicePlan(p))
 }
 
+// UpdateProviderServicePlan patches a recurring plan (PUT
+// /providers/me/service-plans/{planId}). Only the caller's own plans are
+// visible: a missing or cross-provider plan is 404 PLAN_NOT_FOUND.
+func (s *Server) UpdateProviderServicePlan(w http.ResponseWriter, r *http.Request, planId openapi_types.UUID) {
+	providerID, ok := s.providerID(w, r)
+	if !ok {
+		return
+	}
+	var body gen.ServicePlan
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Invalid request body")
+		return
+	}
+	if strings.TrimSpace(body.Name) == "" {
+		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "name is required")
+		return
+	}
+	switch body.Frequency {
+	case gen.ServicePlanFrequencyWeekly, gen.ServicePlanFrequencyBiweekly, gen.ServicePlanFrequencyMonthly,
+		gen.ServicePlanFrequencyQuarterly, gen.ServicePlanFrequencyAnnually:
+	default:
+		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "frequency must be weekly, biweekly, monthly, quarterly or annually")
+		return
+	}
+	if body.PriceTZS < 0 {
+		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "priceTZS must be non-negative")
+		return
+	}
+	p, err := s.providerStore().UpdatePlan(r.Context(), providerID, planId,
+		strings.TrimSpace(body.Name), string(body.Frequency), int64(body.PriceTZS), body.Active)
+	switch {
+	case errors.Is(err, provider.ErrPlanNotFound):
+		writeError(w, http.StatusNotFound, "PLAN_NOT_FOUND", "Service plan not found for this provider")
+	case err != nil:
+		s.logger.Error("update provider service plan failed", "provider", providerID, "plan", planId, "error", err)
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+	default:
+		writeJSON(w, http.StatusOK, toGenServicePlan(p))
+	}
+}
+
 // toGenServicePlan maps a provider_service_plans row onto the contract
 // ServicePlan.
 func toGenServicePlan(p provider.ServicePlan) gen.ServicePlan {

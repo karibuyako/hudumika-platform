@@ -336,6 +336,7 @@ func (s *Server) mountAuthedRoutes(r chi.Router) {
 	})
 
 	r.Get("/orders", s.MthListOrders)
+	r.Get("/orders/estimate", s.EstimateOrder)
 	r.Post("/orders/{id}/refund", func(w http.ResponseWriter, rq *http.Request) {
 		s.MthCreateOrderRefund(w, rq, uuidParam(rq, "id"))
 	})
@@ -382,6 +383,12 @@ func (s *Server) mountAuthedRoutes(r chi.Router) {
 	r.Post("/admin/dispatch/nearest-rider", s.AdminFindNearestRiders)
 	r.Post("/admin/dispatch/optimize-routes", s.AdminOptimizeRoutes)
 	r.Post("/admin/dispatch/service-area", s.AdminCalculateServiceArea)
+	// Rider self-grab (POST /dispatch/available-orders/{orderId}/accept):
+	// rider-role only; the grab-mode counterpart to the staff manual
+	// override. Like the neighbouring GET /dispatch/available-orders feed
+	// (contract, served via the generated tree below) it sits outside the
+	// /admin/* staff policy so rider sessions reach it.
+	r.Post("/dispatch/available-orders/{orderId}/accept", s.GrabAvailableOrder)
 
 	r.With(s.RequireABAC("bookings", "refund")).Post("/refunds/{refundId}/decision", func(w http.ResponseWriter, rq *http.Request) {
 		s.AdminRefundDecision(w, rq, uuidParam(rq, "refundId"))
@@ -401,6 +408,13 @@ func (s *Server) mountAuthedRoutes(r chi.Router) {
 		s.ResumeBooking(w, rq, uuidParam(rq, "id"))
 	})
 	r.Post("/providers/me/kyc/verify", s.VerifyProviderKyc)
+
+	// PUT /providers/me/service-plans/{planId} is a manual extension (the
+	// contract only declares the collection GET/POST): same provider
+	// scoping as the collection handlers, 404 PLAN_NOT_FOUND when foreign.
+	r.Put("/providers/me/service-plans/{planId}", func(w http.ResponseWriter, rq *http.Request) {
+		s.UpdateProviderServicePlan(w, rq, uuidParam(rq, "planId"))
+	})
 
 	// Jibu AI bridge (POST /notifications): server-side notification
 	// creation endpoint mounted here so Jibu can push proactive messages.

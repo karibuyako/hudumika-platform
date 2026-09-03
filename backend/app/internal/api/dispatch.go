@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
@@ -163,6 +164,133 @@ func (s *Server) AdminAssignOrderToRider(w http.ResponseWriter, r *http.Request,
 	}
 	publishDomainEvent(r.Context(), s, "order.assigned", map[string]any{
 		"orderId": updated.ID.String(), "status": updated.Status, "riderId": assignedRider.String(),
+	})
+	writeJSON(w, http.StatusOK, toGenOrder(*updated))
+}
+
+// GrabAvailableOrder lets an online rider self-assign an open order (POST
+// /dispatch/available-orders/{orderId}/accept, rider role only). This is the
+// rider-side counterpart to the merchant-only POST /orders/{orderId}/accept:
+// rider-mobile's respondOffer grabs from the GET /dispatch/available-orders
+// feed, and without this route the only assignment path is the staff manual
+// override (AdminAssignOrderToRider).
+//
+// The order must exist (404 ORDER_NOT_FOUND), be unbound (rider_id IS NULL)
+// and sit in a dispatch-assignable status (409 ORDER_STATUS_CONFLICT
+// otherwise). The caller needs a riders row (404 when absent) and must be
+// online — the same Redis registry + durable-flag pattern
+// AdminAssignOrderToRider uses (409 ASSIGN_RIDER_UNAVAILABLE when offline).
+// The rider bind is guarded by rider_id IS NULL + the observed version, and
+// the move to rider_assigned goes through TransitionOrder, so a lost race
+// answers 409 and appends no duplicate event.
+func (s *Server) GrabAvailableOrder(w http.ResponseWriter, r *http.Request) {
+	claims, ok := ClaimsFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid bearer token")
+		return
+	}
+	if claims.Role != RoleRider {
+		writeError(w, http.StatusForbidden, "FORBIDDEN", "Only riders can accept dispatch offers")
+		return
+	}
+	orderID, err := uuid.Parse(chi.URLParam(r, "orderId"))
+	if err != nil {
+		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "orderId must be a valid UUID")
+		return
+	}
+	if s.db == nil {
+		s.logger.Error("grab order failed: database not configured")
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+		return
+	}
+	actor, err := s.orderActor(r)
+	if err != nil {
+		s.writeOrderActorError(w, err)
+		return
+	}
+	riderRow, err := riders.NewStore(s.db.Pool()).GetByOwner(r.Context(), actor)
+	if err != nil {
+		s.logger.Error("grab order: rider lookup failed", "user", actor, "error", err)
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+		return
+	}
+	if riderRow == nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "No rider profile for this account")
+		return
+	}
+
+	// The Redis online set is authoritative for dispatch availability; when
+	// Redis is absent (dev) or the check fails, degrade to the durable flag.
+	online := riderRow.Online
+	if reg := s.riderRegistry(); reg != nil {
+		online, err = reg.IsOnline(r.Context(), riderRow.ID)
+		if err != nil {
+			s.logger.Warn("grab order: online check failed; using DB flag", "riderId", riderRow.ID, "error", err)
+			online = riderRow.Online
+		}
+	}
+	if !online {
+		writeError(w, http.StatusConflict, "ASSIGN_RIDER_UNAVAILABLE", "Rider is offline or unavailable")
+		return
+	}
+
+	st := orders.NewStore(s.db.Pool())
+	row, err := st.GetOrderRow(r.Context(), orderID)
+	if errors.Is(err, orders.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "ORDER_NOT_FOUND", "Order not found")
+		return
+	}
+	if err != nil {
+		s.logger.Error("grab order: order lookup failed", "orderId", orderID, "error", err)
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+		return
+	}
+	if row.RiderID != nil {
+		writeError(w, http.StatusConflict, "ORDER_STATUS_CONFLICT", "Order is already assigned to a rider")
+		return
+	}
+	if !containsStatus(dispatchAssignableStatuses, row.Status) {
+		writeError(w, http.StatusConflict, "ORDER_STATUS_CONFLICT", "Order cannot be accepted in its current status")
+		return
+	}
+
+	// Bind the rider first, guarded by rider_id IS NULL + the observed
+	// version + an assignable status: exactly one concurrent grabber wins
+	// the row, everyone else sees zero rows and answers 409.
+	tag, err := s.db.Pool().Exec(r.Context(),
+		`UPDATE orders SET rider_id = $1, updated_at = now()
+		 WHERE id = $2 AND rider_id IS NULL AND version = $3 AND status = ANY($4)`,
+		riderRow.ID, orderID, row.Version, dispatchAssignableStatuses)
+	if err != nil {
+		s.logger.Error("grab order: bind rider failed", "orderId", orderID, "error", err)
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		writeError(w, http.StatusConflict, "ORDER_STATUS_CONFLICT", "Order is no longer available; refetch and retry")
+		return
+	}
+
+	version, err := st.TransitionOrder(r.Context(), orderID, row.Version, []string{row.Status}, "rider_assigned", actor, "rider assigned")
+	if errors.Is(err, orders.ErrConflict) {
+		writeError(w, http.StatusConflict, "VERSION_CONFLICT", "Order version or state changed; refetch and retry")
+		return
+	}
+	if err != nil {
+		s.logger.Error("grab order: transition failed", "orderId", orderID, "error", err)
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+		return
+	}
+	updated, err := st.GetOrderRow(r.Context(), orderID)
+	if err != nil {
+		s.logger.Error("grab order: reload failed", "orderId", orderID, "error", err)
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+		return
+	}
+	updated.Status = "rider_assigned"
+	updated.Version = version
+	publishDomainEvent(r.Context(), s, "order.assigned", map[string]any{
+		"orderId": updated.ID.String(), "status": updated.Status, "riderId": riderRow.ID.String(),
 	})
 	writeJSON(w, http.StatusOK, toGenOrder(*updated))
 }

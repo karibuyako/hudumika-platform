@@ -108,13 +108,14 @@ await step('O rider missions + training + goals + expenses + contacts + performa
 }, { critical: false });
 await step('O rider shifts swap/break + logistics vehicles/packages + sync status + facility', async () => {
   const sh = await req('GET', '/riders/me/shifts?scope=current', { token: T.rider.token });
+  const ci = await req('POST', '/check-in', { token: T.rider.token, body: { lat: -6.8, lon: 39.28 } });
   const sy = await req('GET', '/riders/me/sync/status', { token: T.rider.token });
   const vh = await req('GET', '/vehicles?limit=5', { token: T.rider.token });
   const pk = await req('GET', '/packages/00000000-0000-0000-0000-000000000000', { token: T.rider.token });
   const fs = await req('POST', '/riders/me/facility-scan', { token: T.rider.token, body: { facilityId: '00000000-0000-0000-0000-000000000000' } });
   const pt = await req('POST', '/push/tokens', { token: T.rider.token, body: { token: 'expo-loop-token', platform: 'android' } });
   const pd = await req('DELETE', '/push/tokens/expo-loop-token', { token: T.rider.token });
-  return `shifts=${sh.status} sync=${sy.status} vehicles=${vh.status} package404=${pk.status} facility=${fs.status} push=${pt.status}/${pd.status}`;
+  return `shifts=${sh.status} checkin=${ci.status} sync=${sy.status} vehicles=${vh.status} package404=${pk.status} facility=${fs.status} push=${pt.status}/${pd.status}`;
 }, { critical: false });
 
 const pass = results.filter((r) => r.ok).length;

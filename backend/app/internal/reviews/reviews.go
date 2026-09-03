@@ -174,6 +174,58 @@ func (s *Store) ListMine(ctx context.Context, authorUserID uuid.UUID, limit int,
 	return reviews[:limit], next, nil
 }
 
+// ListReceived returns the reviews received by one target entity (e.g. the
+// caller's own provider row), newest first, with keyset pagination over a
+// base64 (created_at, id) cursor. The returned cursor is empty when no
+// further page exists.
+func (s *Store) ListReceived(ctx context.Context, targetType string, targetID uuid.UUID, limit int, cursor string) ([]Review, string, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	query := `SELECT ` + reviewColumns + ` FROM reviews WHERE target_type = $1 AND target_id = $2`
+	args := []any{targetType, targetID}
+	if cursor != "" {
+		c, err := parseCursor(cursor)
+		if err != nil {
+			return nil, "", fmt.Errorf("reviews: list received: invalid cursor: %w", err)
+		}
+		query += ` AND (created_at, id) < ($3, $4)`
+		args = append(args, c.createdAt, c.id)
+	}
+	query += ` ORDER BY created_at DESC, id DESC LIMIT $` + strconv.Itoa(len(args)+1)
+	args = append(args, limit+1)
+
+	rows, err := s.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, "", fmt.Errorf("reviews: list received for %s %s: %w", targetType, targetID, err)
+	}
+	defer rows.Close()
+
+	reviews := make([]Review, 0, limit+1)
+	for rows.Next() {
+		var r Review
+		if err := rows.Scan(&r.ID, &r.TargetType, &r.TargetID, &r.AuthorUserID, &r.OrderID, &r.BookingID,
+			&r.Rating, &r.Body, &r.State, &r.HelpfulCount, &r.ReplyBody, &r.ReplyAuthorUserID,
+			&r.ReplyCreatedAt, &r.CreatedAt); err != nil {
+			return nil, "", fmt.Errorf("reviews: list received for %s %s: %w", targetType, targetID, err)
+		}
+		reviews = append(reviews, r)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, "", fmt.Errorf("reviews: list received for %s %s: %w", targetType, targetID, err)
+	}
+
+	if len(reviews) <= limit {
+		return reviews, "", nil
+	}
+	next := encodeCursor(reviews[limit-1].CreatedAt, reviews[limit-1].ID)
+	return reviews[:limit], next, nil
+}
+
 // AddReply attaches the single allowed reply to a review. It only succeeds on
 // reviews in the published or pending state without an existing reply; a
 // hidden/deleted or missing review yields ErrNotRepliable, and a review that

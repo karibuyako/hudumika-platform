@@ -154,14 +154,27 @@ await step('J shipment from order + scan chain', async () => {
   return `scan=${sc.status} custody=${cu.status} consign=${cs.status}`;
 }, { critical: false });
 await step('J rides + bikes + bus + hotels/travel/events', async () => {
-  const re = await req('POST', '/rides/estimate', { token: T.cust.token, body: { pickup: { lat: -6.8, lon: 39.28 }, destination: { lat: -6.81, lon: 39.29 } } });
-  const rc = await req('POST', '/rides', { token: T.cust.token, body: { pickup: { lat: -6.8, lon: 39.28 }, destination: { lat: -6.81, lon: 39.29 } }, idem: idem('ride') });
+  const re = await req('POST', '/rides/estimate', { token: T.cust.token, body: { pickup: 'Msasani, Dar es Salaam', destination: 'Kariakoo, Dar es Salaam', rideType: 'express' } });
+  const rc = await req('POST', '/rides', { token: T.cust.token, body: { pickup: 'Msasani, Dar es Salaam', destination: 'Kariakoo, Dar es Salaam', rideType: 'express' }, idem: idem('ride') });
   const bn = await req('GET', '/bikes/nearby?lat=-6.8&lon=39.28', { token: T.cust.token });
-  const br = await req('GET', '/bus/routes?limit=5', { token: T.cust.token });
+  const br = await req('GET', '/bus/routes?origin=DAR&destination=ARU&limit=5', { token: T.cust.token });
   const h = await req('GET', '/hotels?limit=5', { token: T.cust.token });
-  const hb = await req('POST', '/hotel-bookings', { token: T.cust.token, body: { hotelId: '00000000-0000-0000-0000-000000000000', checkIn: '2026-10-01', checkOut: '2026-10-02', guests: 1 }, idem: idem('hb') });
+  const hotels = Array.isArray(h.data) ? h.data : h.data?.results ?? [];
+  let hb = { status: 'skip' };
+  if (hotels[0]?.id) {
+    const hd = await req('GET', `/hotels/${hotels[0].id}`, { token: T.cust.token });
+    const room = hd.data?.rooms?.[0] ?? hd.data?.roomTypes?.[0];
+    if (room?.id) hb = await req('POST', '/hotel-bookings', { token: T.cust.token, body: { hotelId: hotels[0].id, roomId: room.id, checkIn: '2026-10-01', checkOut: '2026-10-02', guests: 1, idempotencyKey: idem('hb') }, idem: idem('hb') });
+  }
   const ev = await req('GET', '/entertainment/events?limit=5', { token: T.cust.token });
-  return `ride-est=${re.status} ride=${rc.status} bikes=${bn.status} bus=${br.status} hotels=${h.status} hotel-bk=${hb.status} events=${ev.status}`;
+  const evs = Array.isArray(ev.data) ? ev.data : ev.data?.results ?? [];
+  let ep = { status: 'skip' };
+  if (evs[0]?.id) {
+    const ed = await req('GET', `/entertainment/events/${evs[0].id}`, { token: T.cust.token });
+    const tier = ed.data?.tiers?.[0] ?? ed.data?.ticketTiers?.[0];
+    if (tier?.id) ep = await req('POST', '/entertainment/event-tickets', { token: T.cust.token, body: { eventId: evs[0].id, tierId: tier.id, quantity: 1 }, idem: idem('ev') });
+  }
+  return `ride-est=${re.status} ride=${rc.status} bikes=${bn.status} bus=${br.status} hotels=${h.status}/${hb.status} events=${ev.status}/${ep.status}`;
 }, { critical: false });
 
 const pass = results.filter((r) => r.ok).length;

@@ -246,15 +246,6 @@ await step('merchant marks preparing', async () => {
   if (![200, 201].includes(r.status)) throw new Error(`${r.status} ${JSON.stringify(r.data)}`);
   return `status=${r.data?.status}`;
 });
-await step('merchant assigns rider (preparing→rider_assigned)', async () => {
-  const r = await req('POST', `/orders/${T.orderId}/status`, { token: T.merch.token, body: { status: 'rider_assigned' } });
-  if (![200, 201].includes(r.status)) throw new Error(`${r.status} ${JSON.stringify(r.data)}`);
-  // Test setup mirrors staff dispatch assignment (POST /admin/orders/{id}/assign-rider needs staff+MFA):
-  // bind the online test rider so rider-chain advances resolve to them.
-  psql(`UPDATE orders SET rider_id = '${T.riderRowId}' WHERE id = '${T.orderId}';`);
-  return `status=${r.data?.status} rider=${T.riderRowId}`;
-});
-
 // 5. Rider delivers
 await step('rider goes online', async () => {
   const r = await req('PUT', '/riders/me/availability', { token: T.rider.token, body: { online: true } });
@@ -264,8 +255,17 @@ await step('rider goes online', async () => {
 await step('rider sees dispatch feed', async () => {
   const r = await req('GET', '/dispatch/available-orders?lat=-6.8&lon=39.28&limit=20', { token: T.rider.token });
   if (r.status !== 200) throw new Error(`${r.status} ${JSON.stringify(r.data)}`);
-  return 'ok';
+  const list = Array.isArray(r.data) ? r.data : [];
+  if (!list.some((o) => (o.orderId ?? o.id) === T.orderId)) throw new Error('order missing from feed');
+  return `${list.length} offers`;
 }, { critical: false });
+await step('rider grabs order from dispatch feed (→rider_assigned)', async () => {
+  // Rider self-grab replaces the old SQL-bind hack (staff assign needs staff+MFA).
+  const r = await req('POST', `/dispatch/available-orders/${T.orderId}/accept`, { token: T.rider.token, body: {} });
+  if (![200, 201].includes(r.status)) throw new Error(`${r.status} ${JSON.stringify(r.data)}`);
+  if (r.data?.status !== 'rider_assigned') throw new Error(`status=${r.data?.status}`);
+  return `status=rider_assigned rider=${r.data?.riderId ?? T.riderRowId}`;
+});
 // Server chain (orders.go): rider_assigned→picked_up→delivering→delivered→completed
 for (const s of ['picked_up', 'delivering', 'delivered']) {
   await step(`rider advances → ${s}`, async () => {

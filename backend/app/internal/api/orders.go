@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -238,6 +240,87 @@ func (s *Server) CreateOrder(w http.ResponseWriter, r *http.Request, params gen.
 		`INSERT INTO user_behavior_events (user_id, event_type, merchant_id, daypart) VALUES ($1, 'order_paid', $2, $3)`,
 		userID, body.MerchantId, recommendations.DaypartFor(time.Now()))
 	writeJSON(w, http.StatusCreated, toGenOrder(row))
+}
+
+// orderEstimateResponse is the GET /orders/estimate body: the server-side
+// fee preview for a cart. Fees are the same flat platform fees CreateOrder
+// prices with (orders.DeliveryFeeTZS / orders.PlatformFeeTZS); tax stays 0
+// and the total is subtotal + delivery + platform. The preview is advisory —
+// CreateOrder recomputes authoritatively at order time.
+type orderEstimateResponse struct {
+	MerchantID     string `json:"merchantId"`
+	SubtotalTZS    int64  `json:"subtotalTZS"`
+	DeliveryFeeTZS int64  `json:"deliveryFeeTZS"`
+	PlatformFeeTZS int64  `json:"platformFeeTZS"`
+	TaxTZS         int64  `json:"taxTZS"`
+	TotalTZS       int64  `json:"totalTZS"`
+}
+
+// EstimateOrder previews order fees (GET
+// /orders/estimate?merchantId&subtotalTZS&lat&lon, consumer checkout flow).
+// merchantId is required and must reference a real merchants row (by id or,
+// like CreateOrder, by owner_user_id) else 404 MERCHANT_NOT_FOUND.
+// subtotalTZS defaults to 0; lat/lon are accepted for forward compatibility
+// and do not affect the flat-fee preview.
+func (s *Server) EstimateOrder(w http.ResponseWriter, r *http.Request) {
+	if _, ok := ClaimsFromContext(r.Context()); !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid bearer token")
+		return
+	}
+	q := r.URL.Query()
+	merchantID, err := uuid.Parse(q.Get("merchantId"))
+	if err != nil {
+		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "merchantId is required and must be a valid UUID")
+		return
+	}
+	var subtotal int64
+	if raw := q.Get("subtotalTZS"); raw != "" {
+		v, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil || v < 0 {
+			writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "subtotalTZS must be a non-negative integer")
+			return
+		}
+		subtotal = v
+	}
+	if raw := q.Get("lat"); raw != "" {
+		v, err := strconv.ParseFloat(raw, 64)
+		if err != nil || v < -90 || v > 90 {
+			writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "lat must be within -90..90")
+			return
+		}
+	}
+	if raw := q.Get("lon"); raw != "" {
+		v, err := strconv.ParseFloat(raw, 64)
+		if err != nil || v < -180 || v > 180 {
+			writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "lon must be within -180..180")
+			return
+		}
+	}
+	if s.db == nil {
+		s.logger.Error("estimate order failed: database not configured")
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+		return
+	}
+	var exists bool
+	err = s.db.Pool().QueryRow(r.Context(),
+		`SELECT true FROM merchants WHERE id = $1 OR owner_user_id = $1`, merchantID).Scan(&exists)
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeError(w, http.StatusNotFound, "MERCHANT_NOT_FOUND", "Merchant not found")
+		return
+	}
+	if err != nil {
+		s.logger.Error("estimate order: merchant lookup failed", "merchantId", merchantID, "error", err)
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+		return
+	}
+	writeJSON(w, http.StatusOK, orderEstimateResponse{
+		MerchantID:     merchantID.String(),
+		SubtotalTZS:    subtotal,
+		DeliveryFeeTZS: orders.DeliveryFeeTZS,
+		PlatformFeeTZS: orders.PlatformFeeTZS,
+		TaxTZS:         0,
+		TotalTZS:       subtotal + orders.DeliveryFeeTZS + orders.PlatformFeeTZS,
+	})
 }
 
 // ListMyOrders returns the caller's orders (GET /orders/me), cursor-

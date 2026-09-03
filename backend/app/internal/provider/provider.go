@@ -839,6 +839,25 @@ func (s *Store) CreatePlan(ctx context.Context, providerID uuid.UUID, name strin
 	return p, nil
 }
 
+// UpdatePlan patches a plan owned by the provider (name, frequency,
+// price, active). active nil keeps the stored value. ErrPlanNotFound when
+// the row is missing or belongs to another provider.
+func (s *Store) UpdatePlan(ctx context.Context, providerID, planID uuid.UUID, name string, frequency string, priceTZS int64, active *bool) (ServicePlan, error) {
+	p, err := scanPlan(s.pool.QueryRow(ctx,
+		`UPDATE provider_service_plans
+		 SET name = $3, frequency = $4, price_tzs = $5,
+		     active = COALESCE($6, active)
+		 WHERE id = $1 AND provider_id = $2 RETURNING `+planColumns,
+		planID, providerID, name, frequency, priceTZS, active))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ServicePlan{}, fmt.Errorf("provider: update plan %s: %w", planID, ErrPlanNotFound)
+	}
+	if err != nil {
+		return ServicePlan{}, fmt.Errorf("provider: update plan %s: %w", planID, err)
+	}
+	return p, nil
+}
+
 // DeletePlan removes a plan; one still referenced by a service_contracts row
 // is protected with ErrPlanInUse (PLAN_IN_USE). ErrPlanNotFound when missing.
 func (s *Store) DeletePlan(ctx context.Context, providerID, planID uuid.UUID) error {
