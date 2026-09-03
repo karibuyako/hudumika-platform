@@ -61,10 +61,13 @@ jobs:
       - name: Install workspace dependencies
         run: npm install --legacy-peer-deps --no-audit --no-fund
 
+      # Pinned to 22.x: 23.x changed monorepo/workspace handling and broke
+      # provider (yarn registry 404 for workspace:*) and rider (expo config).
+      # v1.0.9 built green on 22.3.0 — do not float to latest.
       - name: Setup EAS
         uses: expo/expo-github-action@v8
         with:
-          eas-version: latest
+          eas-version: 22.3.0
           token: ${{ secrets.EXPO_TOKEN }}
 
       # Local build runs inside an EAS Docker container on the runner. Builds run
