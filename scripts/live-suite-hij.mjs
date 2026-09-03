@@ -116,7 +116,8 @@ await step('H coupons + referrals + check-in + redpackets', async () => {
 }, { critical: false });
 // I: promos + group-buy + dine-in + reservations
 await step('I promotion create+pause+performance', async () => {
-  const c = await req('POST', '/promotions', { token: T.merch.token, body: { merchantId: T.merchantId, type: 'discount', title: 'Loop 10%', status: 'draft', discountRateBps: 1000 } });
+  const now = Date.now();
+  const c = await req('POST', '/promotions', { token: T.merch.token, body: { merchantId: T.merchantId, type: 'discount', title: 'Loop 10%', status: 'draft', discountRateBps: 1000, startsAt: new Date(now).toISOString(), endsAt: new Date(now + 86400000 * 7).toISOString() } });
   if (![200, 201].includes(c.status)) throw new Error(`create ${c.status} ${JSON.stringify(c.data)}`);
   const id = c.data.id;
   const p = await req('POST', `/promotions/${id}/pause`, { token: T.merch.token, body: { paused: true } });
@@ -133,7 +134,7 @@ await step('I group-buy purchase + voucher verify', async () => {
   return `purchase=${pu.status} vouchers=${v.status}`;
 }, { critical: false });
 await step('I dine-in table + order + bill + reservation', async () => {
-  const t = await req('POST', '/dine-in/tables', { token: T.merch.token, body: { name: 'T1', seats: 4 } });
+  const t = await req('POST', '/dine-in/tables', { token: T.merch.token, body: { label: 'T1', seats: 4 } });
   if (![200, 201].includes(t.status)) throw new Error(`table ${t.status} ${JSON.stringify(t.data)}`);
   const tid = t.data.id;
   const o = await req('POST', '/dine-in/orders', { token: T.cust.token, body: { merchantId: T.merchantId, tableId: tid, items: [{ catalogueItemId: T.itemId, quantity: 1 }] }, idem: idem('dine') });
@@ -147,7 +148,7 @@ await step('J shipment from order + scan chain', async () => {
   const s = await req('POST', '/shipments', { token: T.merch.token, body: { orderId: o.data.id } });
   if (![200, 201].includes(s.status)) throw new Error(`shipment ${s.status} ${JSON.stringify(s.data)}`);
   const sid = s.data.id;
-  const sc = await req('POST', `/shipments/${sid}/scan`, { token: T.merch.token, body: { event: 'hub_in', note: 'loop' } });
+  const sc = await req('POST', `/shipments/${sid}/scan`, { token: T.merch.token, body: { scanType: 'hub_in', location: 'Hub DSM' } });
   const cu = await req('GET', `/shipments/${sid}/custody`, { token: T.merch.token });
   const cs = await req('GET', '/linehaul/consignments?limit=5', { token: T.merch.token });
   return `scan=${sc.status} custody=${cu.status} consign=${cs.status}`;
