@@ -70,7 +70,19 @@ func (s *Server) mediaMerchantID(w http.ResponseWriter, r *http.Request) (uuid.U
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "No account for this session")
 		return uuid.Nil, false
 	}
-	return user.ID, true
+	// Resolve to the merchants row id (not the users row id) so categories
+	// are keyed identically to catalogue items (catalogueMerchantID).
+	merchantID, err := s.merchantIDForUser(r.Context(), user.ID)
+	if errors.Is(err, errNoMerchant) {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "No merchant account for this session")
+		return uuid.Nil, false
+	}
+	if err != nil {
+		s.logger.Error("media merchant lookup failed", "subject", claims.Subject, "error", err)
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
+		return uuid.Nil, false
+	}
+	return merchantID, true
 }
 
 // --- barcode formats -------------------------------------------------------

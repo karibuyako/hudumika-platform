@@ -116,18 +116,31 @@ const bookingColumns = `id, customer_user_id, provider_id, service_id, status, s
 	created_at, updated_at`
 
 // GetService loads a single service row for booking; ErrNotFound when
-// absent.
+// absent. Provider-created listings live in provider_services (priced via
+// pricing->baseTZS), so fall back there when the platform services catalog
+// has no such row — otherwise a consumer can never book a provider service.
 func (s *Store) GetService(ctx context.Context, id uuid.UUID) (*ServiceRow, error) {
 	var svc ServiceRow
 	err := s.pool.QueryRow(ctx,
 		`SELECT id, name, price_tzs, active FROM services WHERE id = $1`, id).
 		Scan(&svc.ID, &svc.Name, &svc.PriceTZS, &svc.Active)
+	if err == nil {
+		return &svc, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("bookings: get service %s: %w", id, err)
+	}
+	var price int64
+	err = s.pool.QueryRow(ctx,
+		`SELECT id, name, COALESCE((pricing->>'baseTZS')::bigint, 0), active FROM provider_services WHERE id = $1`, id).
+		Scan(&svc.ID, &svc.Name, &price, &svc.Active)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("bookings: get service %s: %w", id, ErrNotFound)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("bookings: get service %s: %w", id, err)
+		return nil, fmt.Errorf("bookings: get provider service %s: %w", id, err)
 	}
+	svc.PriceTZS = price
 	return &svc, nil
 }
 
@@ -152,9 +165,18 @@ func (s *Store) CreateBooking(ctx context.Context, in CreateInput) (BookingRow, 
 		`SELECT id, name, price_tzs, active FROM services WHERE id = $1`, in.ServiceID).
 		Scan(&service.ID, &service.Name, &service.PriceTZS, &service.Active)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return BookingRow{}, fmt.Errorf("bookings: create booking: service %s: %w", in.ServiceID, ErrNotFound)
-	}
-	if err != nil {
+		var price int64
+		err = tx.QueryRow(ctx,
+			`SELECT id, name, COALESCE((pricing->>'baseTZS')::bigint, 0), active FROM provider_services WHERE id = $1`, in.ServiceID).
+			Scan(&service.ID, &service.Name, &price, &service.Active)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return BookingRow{}, fmt.Errorf("bookings: create booking: service %s: %w", in.ServiceID, ErrNotFound)
+		}
+		if err != nil {
+			return BookingRow{}, fmt.Errorf("bookings: create booking: load provider service %s: %w", in.ServiceID, err)
+		}
+		service.PriceTZS = price
+	} else if err != nil {
 		return BookingRow{}, fmt.Errorf("bookings: create booking: load service %s: %w", in.ServiceID, err)
 	}
 

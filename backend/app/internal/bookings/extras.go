@@ -45,9 +45,15 @@ func (s *Store) Estimate(ctx context.Context, serviceID uuid.UUID, durationMinut
 	err := s.pool.QueryRow(ctx,
 		`SELECT price_tzs FROM services WHERE id = $1 AND active`, serviceID).Scan(&price)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return 0, fmt.Errorf("bookings: estimate service %s: %w", serviceID, ErrNotFound)
-	}
-	if err != nil {
+		err = s.pool.QueryRow(ctx,
+			`SELECT COALESCE((pricing->>'baseTZS')::bigint, 0) FROM provider_services WHERE id = $1 AND active`, serviceID).Scan(&price)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, fmt.Errorf("bookings: estimate service %s: %w", serviceID, ErrNotFound)
+		}
+		if err != nil {
+			return 0, fmt.Errorf("bookings: estimate provider service %s: %w", serviceID, err)
+		}
+	} else if err != nil {
 		return 0, fmt.Errorf("bookings: estimate service %s: %w", serviceID, err)
 	}
 	hours := int64(durationMinutes) / 60
