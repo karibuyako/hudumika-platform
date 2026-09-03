@@ -377,6 +377,10 @@ func (s *Server) AdminAssignTicket(w http.ResponseWriter, r *http.Request, ticke
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Could not process request")
 		return
 	}
+	if uuid.UUID(body.AgentUserId) == uuid.Nil {
+		writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "agentUserId is required")
+		return
+	}
 	if err := support.NewStore(s.db.Pool()).Assign(r.Context(), uuid.UUID(ticketId), uuid.UUID(body.AgentUserId)); err != nil {
 		if errors.Is(err, support.ErrNotFound) {
 			writeError(w, http.StatusNotFound, "TICKET_NOT_FOUND", "Ticket not found")
