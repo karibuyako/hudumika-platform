@@ -86,7 +86,7 @@ await step('M staff CRUD + shifts + attendance + performance + commissions', asy
   return `list=${g.status} shift=${sh.status}/${sl.status} att=${at.status} perf=${pf.status} comm=${cm.status} del=${d.status}`;
 });
 await step('M devices + print jobs', async () => {
-  const c = await req('POST', '/devices', { token: T.merch.token, body: { type: 'printer', label: 'Kitchen P1' } });
+  const c = await req('POST', '/devices', { token: T.merch.token, body: { type: 'printer', label: 'Kitchen P1', status: 'online' } });
   if (![200, 201].includes(c.status)) throw new Error(`device ${c.status} ${JSON.stringify(c.data)}`);
   const l = await req('GET', '/devices', { token: T.merch.token });
   const p = await req('POST', '/print-jobs', { token: T.merch.token, body: { jobType: 'kitchen_ticket', content: 'loop test ticket', deviceId: c.data.id, copies: 1 } });

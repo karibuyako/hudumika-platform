@@ -1407,9 +1407,14 @@ func (s *Server) CreatePrintJob(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
+	// Devices may be keyed by the merchants row id (new) or the owner's
+	// users id (legacy staff-ops writes) — accept either so neither
+	// generation of rows goes invisible.
 	var deviceStatus string
 	err := s.db.Pool().QueryRow(ctx,
-		`SELECT status FROM devices WHERE id = $1 AND merchant_id = $2`, *body.DeviceId, merchantID).
+		`SELECT status FROM devices WHERE id = $1 AND (merchant_id = $2 OR merchant_id IN (
+			SELECT owner_user_id FROM merchants WHERE id = $2
+		))`, *body.DeviceId, merchantID).
 		Scan(&deviceStatus)
 	if errors.Is(err, pgx.ErrNoRows) {
 		writeError(w, http.StatusNotFound, "DEVICE_NOT_FOUND", "Print device not found")
